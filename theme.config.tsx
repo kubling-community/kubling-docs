@@ -19,6 +19,7 @@ const config: DocsThemeConfig = {
     link: 'https://github.com/kubling-community',
   },
   docsRepositoryBase: 'https://github.com/kubling-community/kubling-docs',
+  editLink: { component: null },
   footer: {
     text: 'Kubling Documentation',
   },
