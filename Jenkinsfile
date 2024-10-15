@@ -18,11 +18,16 @@ pipeline {
                 script {
                     env.NOW_SECONDS = Instant.now().getEpochSecond()
                 }
+                sh """ echo $DOCKERHUB_CREDS_PSW | docker login -u $DOCKERHUB_CREDS_USR --password-stdin """
+
                 sh """
                   docker build $CACHE -t kubling/$SERVICE_NAME:$VERSION .
                 """
 
-                sh """ echo $DOCKERHUB_CREDS_PSW | docker login -u $DOCKERHUB_CREDS_USR --password-stdin """
+                sh """
+                    docker image tag kubling/$SERVICE_NAME:$VERSION kubling/$SERVICE_NAME:latest
+                """
+
                 sh """ docker push kubling/$SERVICE_NAME:$VERSION """
                 sh """ docker push kubling/$SERVICE_NAME:latest """
                 sh """ docker image rm kubling/$SERVICE_NAME:$VERSION """
