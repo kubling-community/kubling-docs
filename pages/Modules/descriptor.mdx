@@ -1,0 +1,77 @@
+import { FileTree } from 'nextra/components'
+
+# Descriptor Bundle Module
+
+This module contains Virtual Database descriptors as well as actions and queries definitions. 
+The bundle must include a meta-configuration file, which the Engine uses to interpret the contents of this descriptor.
+
+Kubling provides extensive flexibility in configuration options. As your project scales, maintaining a well-organized structure becomes increasingly important.
+
+The following tree shows the recommended internal directory and file organization:
+
+<FileTree>
+  <FileTree.File name="bundle-info.yaml" />
+  <FileTree.Folder name="vdb">
+    <FileTree.Folder name="datasource">
+        <FileTree.File name="devops-datasource.yaml" />
+        <FileTree.File name="identity-datasource.yaml" />
+        <FileTree.File name="project-management-datasource.yaml" />
+        <FileTree.File name="psql-datasource.yaml" />
+        <FileTree.Folder name="infra">
+            <FileTree.File name="k8s-cluster1-datasource" />
+        </FileTree.Folder>
+    </FileTree.Folder>
+    <FileTree.Folder name="ddl">
+        <FileTree.Folder name="devops">
+            <FileTree.File name="azure.ddl" />
+            <FileTree.File name="container.ddl" />
+            <FileTree.File name="github.ddl" />
+            <FileTree.File name="k8s.ddl" />
+        </FileTree.Folder>
+        <FileTree.Folder name="identity">
+            <FileTree.File name="fusionauth.ddl" />
+        </FileTree.Folder>
+        <FileTree.Folder name="project-management">
+            <FileTree.File name="jira.ddl" />
+        </FileTree.Folder>
+        <FileTree.File name="join-psql.ddl" />
+    </FileTree.Folder>
+    <FileTree.Folder name="translator">
+        <FileTree.File name="base-translator-config" />
+    </FileTree.Folder>
+    <FileTree.File name="MyVDB.yaml" />
+  </FileTree.Folder>
+  <FileTree.Folder name="endpoint">
+    <FileTree.Folder name="actions">
+        <FileTree.File name="add_component.yaml" />
+        <FileTree.File name="deploy_component.yaml" />
+        <FileTree.File name="new_app.yaml" />
+        <FileTree.File name="onboard_dev.yaml" />
+        <FileTree.File name="offboard_dev.yaml" />
+    </FileTree.Folder>
+    <FileTree.Folder name="queries">
+        <FileTree.File name="get_app_full.yaml" />
+        <FileTree.File name="get_apps.yaml" />
+        <FileTree.File name="get_component_full.yaml" />
+        <FileTree.File name="get_component_instance.yaml" />
+        <FileTree.File name="get_component_instance_logs.yaml" />
+        <FileTree.File name="get_component_instance_status.yaml" />
+        <FileTree.File name="get_component_instance_metrics.yaml" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+## 📄 `bundle-info.yaml`
+This is the only file whose location must be the root directory of the module.
+See here the [schema](/schemas#descriptor-bundle-information-file-bundle-infoyaml) of the file.
+
+## 📂 `vdb` directory
+We suggest to use this directory to put all Virtual Database related files, including the [Virtual Database information file](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle).
+
+The example above uses the following directories:
+- 📂 `datasource`: Contains the `config` objects for each data source.
+- 📂 `ddl`: Contains the DDL files used to create the schemas.
+- 📂 `translator`: Contains the translation capabilities configurations.
+
+## 📂 `endpoint` directory
+Since endpoints can grow exponentially in number, we do suggest having them in a separate directory.

@@ -1,0 +1,1203 @@
+import { Callout } from 'nextra/components'
+
+All configuration files, are parsed as templates.
+For more information about template parser, [please see this](Engine/template).
+
+# Configuration processed during initialization
+
+<Callout type="warning">
+  User Defined Template functions are not available during Engine initialization, therefore **cannot be used** in the following templates:
+  * Main Application Configuration
+  * Descriptor bundle information file (bundle-info.yaml)
+  * Virtual Database information file
+  * Script Module bundle information file (bundle-script-info.yaml)
+  * SQL Function Module bundle information file (bundle-sql-function-info.yaml)
+  * Template Function Module bundle information file (bundle-function-info.yaml)
+</Callout>
+
+## Main application configuration
+```yaml
+type: "object"
+id: "schema:kubling:config:app:Application"
+properties:
+  transports:
+    type: "object"
+    id: "schema:kubling:config:app:Transports"
+    properties:
+      pgProtocol:
+        type: "object"
+        id: "schema:kubling:config:app:Transport"
+        properties:
+          bindAddress:
+            type: "string"
+            description: "Listening bind address."
+          portNumber:
+            type: "integer"
+            description: "Listening port number."
+          secure:
+            type: "boolean"
+            description: "Indicates whether this transport must be secured (requires\
+              \ SSL configuration)."
+          sslConfig:
+            type: "object"
+            id: "schema:kubling:config:app:SSLConfig"
+            properties:
+              storeType:
+                type: "string"
+                description: "SSL certificate store type (do not change if certificates\
+                  \ were generated with Kubling CLI)."
+              storeFilePath:
+                type: "string"
+                description: "Location of the certificate store file."
+              storePassword:
+                type: "string"
+                description: "Certificate store password."
+              entryAlias:
+                type: "string"
+                description: "Certificate store entry name/alias (do not change if\
+                  \ certificates were generated with Kubling CLI)."
+      nativeProtocol:
+        type: "object"
+        $ref: "schema:kubling:config:app:Transport"
+  management:
+    type: "object"
+    id: "schema:kubling:config:app:Management"
+    properties:
+      enableRestartEndpoint:
+        type: "boolean"
+  vdb:
+    type: "object"
+    id: "schema:kubling:config:app:VirtualDatabase"
+    properties:
+      descriptorBundle:
+        type: "string"
+  console:
+    type: "object"
+    id: "schema:kubling:config:app:Console"
+    properties:
+      moduleRepoBaseURI:
+        type: "string"
+        description: "URL of the repository used to resolve modules. Used also when\
+          \ resolving URI with 'kbl' scheme."
+  maxConcurrentJSContexts:
+    type: "integer"
+    description: "Maximum allowed concurrent script contexts for query resolution."
+  maxConcurrentAuthJSContexts:
+    type: "integer"
+    description: "Maximum allowed concurrent script contexts for auth*."
+  propertiesFilePath:
+    type: "string"
+    description: "Properties file location."
+  metricsCommonTags:
+    type: "object"
+    description: "Tags added to exposed metrics. Useful for identifying engine instances."
+    additionalProperties:
+      type: "string"
+```
+
+### Sample
+```yaml
+transports:
+  nativeProtocol:
+    bindAddress: {{ NATIVE_PROTOCOL_BIND_ADDRESS }}
+    portNumber: {{ NATIVE_PROTOCOL_PORT }}
+    secure: false
+  pgProtocol:
+    bindAddress: "0.0.0.0"
+    portNumber: 35432
+    secure: false
+vdb:
+  descriptorBundle: {{ DESCRIPTOR_BUNDLE }}
+
+propertiesFilePath: {{ PROPS_FILE }}
+```
+
+## Descriptor bundle information file (`bundle-info.yaml`)
+```yaml
+type: "object"
+id: "schema:kubling:model:vdb:BundleInfo"
+properties:
+  virtualDatabases:
+    type: "array"
+    description: "List of Virtual Database location, relative to this bundle info\
+      \ location inside the module."
+    items:
+      type: "string"
+  authentication:
+    type: "object"
+    id: "schema:kubling:model:vdb:Authentication"
+    properties:
+      scriptFilePath:
+        type: "string"
+        description: "Path to the authenticator script, relative to this bundle info\
+          \ location inside the module."
+      module:
+        type: "object"
+        id: "schema:kubling:translation:scripting:base:model:Module"
+        properties:
+          zipFilePath:
+            type: "string"
+            description: "URI of the module bundle."
+  actionsDirectory:
+    type: "string"
+    description: "Directory with action descriptor files, relative to this bundle\
+      \ info location inside the module."
+  queryEndpointsDirectory:
+    type: "string"
+    description: "Directory with query descriptor files, relative to this bundle info\
+      \ location inside the module."
+  actionTemplatesFunctionModule:
+    type: "object"
+    $ref: "schema:kubling:translation:scripting:base:model:Module"
+  sqlFunctionModule:
+    type: "object"
+    $ref: "schema:kubling:translation:scripting:base:model:Module"
+```
+
+### Sample
+```yaml
+virtualDatabases:
+  - 'vdb/AppModelVDB.yaml'
+actionsDirectory: 'endpoint/actions'
+queryEndpointsDirectory: 'endpoint/queries'
+actionTemplatesFunctionModule:
+  zipFilePath: "{{ FUNCTIONS_BUNDLE }}"
+```
+
+## Virtual Database information file (located inside the descriptor bundle)
+```yaml
+type: "object"
+id: "schema:kubling:model:vdb:VirtualDatabase"
+properties:
+  name:
+    type: "string"
+    description: "VDB name that will be exposed by the engine. Note that this is the\
+      \ name must be used when generating the connection URL."
+  version:
+    type: "string"
+    description: "VDB version."
+  description:
+    type: "string"
+  dataSources:
+    type: "array"
+    description: "List of VDB Data Sources."
+    items:
+      type: "object"
+      id: "schema:kubling:model:vdb:DataSource"
+      properties:
+        name:
+          type: "string"
+          description: "Name is also used as schema name if no schema.name is provided."
+        dataSourceType:
+          type: "string"
+          description: "Supported source types."
+          enum:
+          - "SCRIPT_JS"
+          - "SCRIPT_DOCUMENT_JS"
+          - "EMBEDDED_INMEM"
+          - "H2"
+          - "MYSQL"
+          - "POSTGRESQL"
+          - "KUBLING_DBVIRT"
+          - "KUBERNETES"
+        properties:
+          type: "object"
+          description: "Additional properties injected to template contexts."
+          additionalProperties:
+            type: "string"
+        config:
+          type: "string"
+          description: "Location path of the Data Source configuration file, whose\
+            \ schema depends on the type.In case the file is located inside the bundle,\
+            \ path must start with 'bundle:'"
+        configObject:
+          type: "any"
+          description: "Data Source configuration parsed as a YAML object, whose schema\
+            \ depends on the type.It is only checked when 'config' is not present\
+            \ or null."
+        translatorConfig:
+          type: "string"
+          description: "Location path of the Translator configuration file.In case\
+            \ the file is located inside the bundle, path must start with 'bundle:',\
+            \ in case of the source type is a module, and this configuration file\
+            \ is located inside the module, path must start with 'module:'."
+        schema:
+          type: "object"
+          id: "schema:kubling:model:vdb:DataSourceSchema"
+          description: "Schema configuration."
+          properties:
+            name:
+              type: "string"
+            type:
+              type: "string"
+              description: "Schema type. By default it is 'PHYSICAL', which is the\
+                \ right one in almost all cases."
+              enum:
+              - "PHYSICAL"
+              - "VIRTUAL"
+              - "FUNCTION"
+              - "OTHER"
+            properties:
+              type: "object"
+              description: "Additional properties injected to template contexts."
+              additionalProperties:
+                type: "string"
+            ddl:
+              type: "string"
+              description: "Content of the DDL used to generate the schema's tables."
+            ddlFilePaths:
+              type: "array"
+              description: "List of location paths of the DDL files.In case the file\
+                \ is located inside the bundle, path must start with 'bundle:', in\
+                \ case of the source type is a module, and this configuration file\
+                \ is located inside the module, path must start with 'module:'."
+              items:
+                type: "string"
+  aggregatorSchemaModels:
+    type: "array"
+    description: "List of schema aggregators."
+    items:
+      type: "object"
+      id: "schema:kubling:model:vdb:AggregatorSchemaModel"
+      properties:
+        name:
+          type: "string"
+          description: "Schema name."
+        schemas:
+          type: "array"
+          description: "List of previously defined schemas that must be aggregated."
+          items:
+            type: "string"
+        tables:
+          type: "array"
+          description: "List of tables of the schemas to be aggregated."
+          items:
+            type: "object"
+            id: "schema:kubling:model:vdb:AggregatorSchemaTable"
+            properties:
+              name:
+                type: "string"
+                description: "Table name."
+              options:
+                type: "object"
+                description: "List of Table options. Supported options are the same\
+                  \ as supported when defining a table in a DDL."
+                additionalProperties:
+                  type: "object"
+                  id: "schema:kubling:InnerObject"
+  rbacDataRoles:
+    type: "array"
+    description: "List of RBAC data roles."
+    items:
+      type: "object"
+      id: "schema:kubling:model:vdb:rbac:RBACDataRole"
+      properties:
+        name:
+          type: "string"
+          description: "Internal Engine Role name."
+        description:
+          type: "string"
+          description: "Role description."
+        roleNameMappings:
+          type: "array"
+          description: "External role names that are mapped to this internal Engine\
+            \ role."
+          items:
+            type: "string"
+        allowCreateTemporaryTables:
+          type: "boolean"
+          description: "Indicates whether this Role has permissions to create temp\
+            \ tables."
+        permissions:
+          type: "array"
+          description: "List of granted/denied permissions."
+          items:
+            type: "object"
+            id: "schema:kubling:model:vdb:rbac:RBACPermission"
+            properties:
+              resource:
+                type: "string"
+                description: "Resource where to apply the permission to. Must be the\
+                  \ fully qualified name, that is [schema].[tables]."
+              resourceType:
+                type: "string"
+                description: "Indicates the type of Resource."
+                enum:
+                - "DATABASE"
+                - "SCHEMA"
+                - "PROCEDURE"
+                - "TABLE"
+                - "FUNCTION"
+                - "COLUMN"
+                - "LANGUAGE"
+              allowCreate:
+                type: "boolean"
+                description: "Indicates whether the Role can CREATE resources."
+              allowRead:
+                type: "boolean"
+                description: "Indicates whether the Role can READ tuples from tables."
+              allowUpdate:
+                type: "boolean"
+                description: "Indicates whether the Role can UPDATE tuples from tables."
+              allowDelete:
+                type: "boolean"
+                description: "Indicates whether the Role can DELETE tuples from tables."
+              allowAlter:
+                type: "boolean"
+                description: "Indicates whether the Role can UPDATE tuples from tables."
+              allowExecute:
+                type: "boolean"
+                description: "Indicates whether the Role can EXECUTE procedures."
+        schemas:
+          type: "array"
+          description: "List of specific schemas where to apply Role's permissions."
+          items:
+            type: "string"
+```
+
+### Sample
+```yaml
+---
+name: "App"
+version: "{{ vdb_version }}"
+
+dataSources:
+  - name: "app_db"
+    dataSourceType: "POSTGRESQL"
+    config: "bundle:datasource/psql-datasource.yaml"
+    translatorConfig: "bundle:translator/base-translator-config.yaml"
+    schema:
+      type: "PHYSICAL"
+      properties:
+        'importer.useFullSchemaName': 'false'
+        'importer.useCatalogName': 'false'
+        'importer.schemaName': 'public'
+
+  - name: "k8s_1"
+    dataSourceType: "KUBERNETES"
+    config: "bundle:datasource/k8s-cluster1-datasource.yaml"
+    translatorConfig: "bundle:translator/base-translator-config.yaml"
+    schema:
+      type: "PHYSICAL"
+      properties:
+        cluster_name: "k8s_cluster_1"
+        kubernetes_api_url: {{ kubernetes_cluster_1_api_url }}
+      ddlFilePaths:
+        - "bundle:k8s.ddl"
+
+  - name: "k8s_2"
+    dataSourceType: "KUBERNETES"
+    config: "bundle:datasource/k8s-cluster2-datasource.yaml"
+    translatorConfig: "bundle:translator/base-translator-config.yaml"
+    schema:
+      type: "PHYSICAL"
+      properties:
+        cluster_name: "k8s_cluster_2"
+        kubernetes_api_url: {{ kubernetes_cluster_2_api_url }}
+      ddlFilePaths:
+        - "bundle:k8s.ddl"
+
+  - name: "app_delegate"
+    dataSourceType: "SCRIPT_DOCUMENT_JS"
+    config: "bundle:datasource/js-datasource.yaml"
+    translatorConfig: "bundle:translator/base-translator-config.yaml"
+    schema:
+      type: "PHYSICAL"
+      ddl: |
+        CREATE FOREIGN TABLE CODE_REPO
+                  ( 
+                    identifier string OPTIONS(val_pk 'org+name' ),
+                    org string not null, 
+                    owner__login string, 
+                    id integer,
+                    node_id string,
+                    name string not null,
+                    full_name string, 
+                    description string, 
+                    private boolean, 
+                    visibility string, 
+                    html_url string,
+                    owner json OPTIONS(parser_format 'asJsonPretty'),                  
+                    PRIMARY KEY(identifier)
+              ) OPTIONS(updatable true);
+
+aggregatorSchemaModels:
+  - name: "k8s"
+    schemas:
+      - "k8s_1"
+      - "k8s_2"
+    tables:
+      - name: "DEPLOYMENT"
+        options:
+          updatable: false
+      - name: "NAMESPACE"
+        options:
+          updatable: false
+      - name: "DEPLOYMENT_CONDITIONS"
+        options:
+          updatable: false
+      - name: "DEPLOYMENT_CONTAINER"
+        options:
+          updatable: false
+      - name: "DEPLOYMENT_CONTAINER_VOLS"
+        options:
+          updatable: false
+
+rbacDataRoles:
+  - name: "full_control"
+    description: "RBAC with full control"
+    allowCreateTemporaryTables: true
+    roleNameMappings:
+      - "ROLE_FULL"
+    permissions:
+      - resource: "k8s_1.DEPLOYMENT"
+        resourceType: TABLE
+        allowCreate: true
+        allowRead: true
+        allowUpdate: true
+        allowDelete: true
+      - resource: "k8s_2.DEPLOYMENT"
+        resourceType: TABLE
+        allowCreate: true
+        allowRead: true
+        allowUpdate: true
+        allowDelete: true
+
+  - name: "only_read"
+    description: "RBAC with only read access"
+    allowCreateTemporaryTables: true
+    roleNameMappings:
+      - "ROLE_ONLY_READ"
+    permissions:
+      - resource: "k8s_1.DEPLOYMENT"
+        resourceType: TABLE
+        allowCreate: false
+        allowRead: true
+        allowUpdate: false
+        allowDelete: false
+      - resource: "k8s_2.DEPLOYMENT"
+        resourceType: TABLE
+        allowCreate: false
+        allowRead: true
+        allowUpdate: false
+        allowDelete: false  
+```
+
+## Script Module bundle information file (`bundle-script-info.yaml`)
+```yaml
+type: "object"
+id: "schema:kubling:translation:scripting:base:model:ScriptingBundleInfo"
+properties:
+  initScript:
+    type: "object"
+    id: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+    properties:
+      submodule:
+        type: "string"
+        description: "DEPRECATED"
+      scriptFilePath:
+        type: "string"
+        description: "Path to the script, relative to this bundle info location inside\
+          \ the module."
+  resultSetScript:
+    type: "object"
+    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+  insertScript:
+    type: "object"
+    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+  updateScript:
+    type: "object"
+    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+  deleteScript:
+    type: "object"
+    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+  scheduledScripts:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:translation:scripting:base:model:ScheduledScript"
+      properties:
+        cron:
+          type: "string"
+          description: "CRON expression."
+        submodule:
+          type: "string"
+          description: "DEPRECATED"
+        scriptFilePath:
+          type: "string"
+          description: "Path to the script, relative to this bundle info location\
+            \ inside the module."
+  contextVariables:
+    type: "array"
+    description: "List of variables used by the module."
+    items:
+      type: "object"
+      id: "schema:kubling:translation:scripting:base:model:BundleContextVariable"
+      properties:
+        name:
+          type: "string"
+        sensitive:
+          type: "boolean"
+        failIfMissing:
+          type: "boolean"
+          description: "Indicates whether the module load must fail in case of the\
+            \ variable value is not present."
+        defaultIfMissing:
+          type: "object"
+          id: "schema:kubling:InnerObject"
+          description: "Default value in case of the variable is not present."
+  name:
+    type: "string"
+    description: "Name of the module, as it will be published in the repository."
+  version:
+    type: "string"
+    description: "Version of the module, as it will be published in the repository."
+  description:
+    type: "string"
+  innerDDLFilePath:
+    type: "string"
+    description: "Path to the DDL file, relative to this bundle info location inside\
+      \ the module."
+  innerTranslatorConfigFilePath:
+    type: "string"
+    description: "Path to the translator configuration file, relative to this bundle\
+      \ info location inside the module."
+```
+
+### Sample
+```yaml
+name: github
+version: 0.0.1
+description: |
+  This module provides access to various GitHub API endpoints.
+innerDDLFilePath: "github.ddl"
+innerTranslatorConfigFilePath: "translator-config.yaml"
+
+resultSetScript:
+  scriptFilePath: "GitHubResultSetDelegate.js"
+
+contextVariables:
+  - name: "GITHUB_PAT"
+    sensitive: true
+    failIfMissing: true
+  - name: "GITHUB_ORG"
+    failIfMissing: true    
+```
+
+## SQL Function Module bundle information file (`bundle-sql-function-info.yaml`)
+```yaml
+type: "object"
+id: "schema:kubling:model:sql:function:SQLFunctionBundleInfo"
+properties:
+  partitions:
+    type: "integer"
+    description: "Internal Script contexts pool partitions. Default: 2"
+  minContexts:
+    type: "integer"
+    description: "Minimum available Script contexts in the pool per partition. The\
+      \ overall total Minimum Script contexts must be calculated per partition, that\
+      \ is: partitions * minContexts. Default: 3"
+  maxContexts:
+    type: "integer"
+    description: "Maximum Script contexts to be added to the pool per partition. Once\
+      \ reached, subsequent function execution requests will be enqueued. The overall\
+      \ total Maximum Script contexts must be calculated per partition, that is: partitions\
+      \ * maxContexts. Default: 10"
+  maxWaitMilliseconds:
+    type: "integer"
+    description: "Maximum wait time in milliseconds the thread will wait in the queue\
+      \ for a Script context from the pool. Once reached, an error is thrown if no\
+      \ available context.Default: 10000ms (10s)"
+  functions:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:model:sql:function:SQLFunctionDefinition"
+      properties:
+        name:
+          type: "string"
+          description: "Function name."
+        scriptFilePath:
+          type: "string"
+          description: "Path to the function script, relative to this bundle info\
+            \ location inside the module."
+```
+
+### Sample
+```yaml
+minContexts: 5
+maxContexts: 10
+functions:
+  - name: "az_sql_get_rg"
+    scriptFilePath: "fn/azure/sql_get_rg.js"
+```
+
+## Template Function Module bundle information file (`bundle-function-info.yaml`)
+```yaml
+type: "object"
+id: "schema:kubling:model:template:function:TemplateFunctionDefinition"
+properties:
+  name:
+    type: "string"
+    description: "Function name."
+  params:
+    type: "array"
+    description: "List of function parameter names."
+    items:
+      type: "string"
+  scriptFilePath:
+    type: "string"
+    description: "Path to the function script, relative to this bundle info location\
+      \ inside the module."
+  partitions:
+    type: "integer"
+    description: "Internal Script contexts pool partitions. Default: 2"
+  parallelContexts:
+    type: "integer"
+    description: "Maximum Script contexts to be added to the pool per partition. Once\
+      \ reached, subsequent function execution requests will be enqueued. The overall\
+      \ total Maximum Script contexts must be calculated per partition, that is: partitions\
+      \ * parallelContexts. Default: 5"
+  maxWaitMilliseconds:
+    type: "integer"
+    description: "Maximum wait time in milliseconds the thread will wait in the queue\
+      \ for a Script context from the pool. Once reached, an error is thrown if no\
+      \ available context.Default: 10000ms (10s)"
+```
+
+### Sample
+```yaml
+functions:
+  - name: "get_k8s_component_info"
+    params:
+      - vdb
+      - componentId
+    scriptFilePath: "k8s/get_k8s_component_info.js"
+    parallelContexts: 3
+  - name: "find_best_cluster_for_deploy"
+    params:
+      - vdb
+      - componentId
+      - env
+    scriptFilePath: "k8s/find_best_cluster_for_deploy.js"
+  - name: "ns_exists"
+    params:
+      - vdb
+      - cluster
+      - namespace
+    scriptFilePath: "k8s/ns_exists.js"
+```
+
+# Data Sources
+
+## Standard DB Data Source Configuration
+Applies to the following Data Source types:
+
+- `KUBLING_DBVIRT`
+- `EMBEDDED_INMEM`
+- `MYSQL`
+- `POSTGRESQL`
+
+```yaml
+type: "object"
+id: "schema:kubling:model:vdb:sources:BaseDatabaseSourceConfig"
+properties:
+  dataSourceName:
+    type: "string"
+    description: "Internal Engine data source name."
+  serverAddress:
+    type: "string"
+    description: "Address of the remote data source."
+  serverPort:
+    type: "integer"
+    description: "Port where the remote data source is listening for connections."
+  databaseName:
+    type: "string"
+    description: "Remote Data Base name."
+  userName:
+    type: "string"
+    description: "Username used to establish the connection."
+  token:
+    type: "string"
+    description: "Token or password used to establish the connection."
+  maxConnectionPoolSize:
+    type: "integer"
+    description: "Maximum number of connections the Engine will open. Default: 5"
+  minConnectionPoolSize:
+    type: "integer"
+    description: "Minimum number of connections the Engine will keep open. Default:\
+      \ 1"
+  maxConnectionIdleMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool without\
+      \ being used. Once reached, the connection is closed and removed from the pool.Default:\
+      \ 7200000ms (2 hours)"
+  maxConnectionLifeTimeMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool.\
+      \ Once reached, the connection is closed and removed from the pool. In case\
+      \ of pool size is less than minConnectionPoolSize after the removal, a new fresh\
+      \ connection is created.Default: 14400000ms (4 hours)"
+  ddl:
+    type: "string"
+    description: "Allows to run a DDL in the REMOTE data source once the connection\
+      \ is established."
+  ddlFilePaths:
+    type: "array"
+    description: "Allows to run multiple DDL, loaded from external file paths, in\
+      \ the REMOTE data source once the connection is established."
+    items:
+      type: "string"
+```
+
+## Kubernetes Data Source Configuration
+
+Applies to the following Data Source types:
+
+- `KUBERNETES`
+
+```yaml
+type: "object"
+id: "schema:kubling:model:vdb:sources:KubernetesSourceConfig"
+properties:
+  contextVariables:
+    type: "object"
+    description: "Additional context variables."
+    additionalProperties:
+      type: "object"
+      id: "schema:kubling:InnerObject"
+  configFile:
+    type: "string"
+    description: "Kubernetes configuration file (kubeconfig)."
+  masterUrl:
+    type: "string"
+    description: "Kubernetes cluster API URL. Only used when configFile is not present."
+```
+
+## Script Document Data Source Configuration
+
+Applies to the following Data Source types:
+
+- `SCRIPT_DOCUMENT_JS`
+
+```yaml
+type: "object"
+id: "schema:kubling:model:vdb:sources:script:ScriptingSourceConfig"
+properties:
+  contextVariables:
+    type: "object"
+    description: "Additional variables to add to the Script context."
+    additionalProperties:
+      type: "object"
+      id: "schema:kubling:InnerObject"
+  contextOptions:
+    type: "object"
+    description: "Additional options to add to the Script context."
+    additionalProperties:
+      type: "string"
+  module:
+    type: "object"
+    id: "schema:kubling:translation:scripting:base:model:Module"
+    properties:
+      zipFilePath:
+        type: "string"
+        description: "URI of the module bundle."
+```
+
+# Endpoints
+
+## Query endpoint
+```yaml
+type: "object"
+id: "schema:kubling:model:query:QueryEndpointBase"
+properties:
+  type:
+    type: "string"
+    description: "Query type."
+    enum:
+    - "sqlDirect"
+  virtualDatabase:
+    type: "string"
+    description: "Virtual Database the query must be routed to."
+  neededFields:
+    type: "array"
+    description: "Required fields that must be present, in the form of variables,\
+      \ in the template context."
+    items:
+      type: "string"
+```
+
+### Sample
+```yaml
+{% set vdb = "k8s" %}
+{% set tables = getTablesByTags(vdb=_context.vdb, schema="all", tags="kubernetes;deployment") %}
+---
+
+type: sqlDirect
+virtualDatabase: {{ vdb }}
+
+neededFields:
+  - namespace
+
+query: |
+  {% set first = true %}
+  {% for table in tables %}
+    {{ "UNION ALL" | filterValWhenVarFalse(var="first", flip=true) }}
+    SELECT * FROM {{ table }} WHERE metadata__namespace = '{{ namespace }}'
+  {% endfor %}
+    ORDER BY clusterName
+```
+
+## Action endpoint
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:action:Action"
+properties:
+  asserters:
+    type: "array"
+    description: "List of simple boolean checks run before action is performed, useful\
+      \ for testing template variables values."
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:model:action:BeforeCheck"
+      properties:
+        name:
+          type: "string"
+        checkValue:
+          type: "boolean"
+          description: "Check result."
+        message:
+          type: "string"
+          description: "Message returned by the endpoint in case of failure."
+  before:
+    type: "array"
+    description: "Verifications performed before the actual operation chain."
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:model:action:BeforeOperation"
+      properties:
+        name:
+          type: "string"
+        virtualDatabase:
+          type: "string"
+          description: "Virtual Database the query must be routed to."
+        entity:
+          type: "string"
+          description: "Table (entity) name."
+        filters:
+          type: "array"
+          description: "List of query filters."
+          items:
+            type: "object"
+            id: "schema:kubling:dbvirt:translation:scripting:base:member:filter:FilterValue"
+            properties:
+              field:
+                type: "string"
+                description: "Field name."
+              dataType:
+                type: "string"
+                description: "Engine data type."
+              value:
+                type: "object"
+                id: "schema:kubling:InnerObject"
+                description: "Value to compare."
+              operation:
+                type: "string"
+                enum:
+                - "EQUAL"
+                - "NOT_EQUAL"
+                - "GREATER_THAN"
+                - "GREATER_THAN_OR_EQUAL"
+                - "LESS_THAN"
+                - "LESS_THAN_OR_EQUAL"
+        assertThat:
+          type: "string"
+          description: "Assertion to be test."
+          enum:
+          - "does_not_exist"
+          - "exists"
+        message:
+          type: "string"
+          description: "Message returned by the endpoint in case of failure."
+  operations:
+    type: "array"
+    description: "The list of operations."
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:model:action:Operation"
+      properties:
+        name:
+          type: "string"
+          description: "Operation name."
+        type:
+          type: "string"
+          description: "Operation type."
+          enum:
+          - "insert"
+          - "update"
+          - "delete"
+        virtualDatabase:
+          type: "string"
+          description: "Virtual Database the operation must be routed to."
+        entity:
+          type: "string"
+          description: "Table (entity) name."
+        filters:
+          type: "array"
+          description: "Filter used in case of the operation is an UPDATE or DELETE."
+          items:
+            type: "object"
+            $ref: "schema:kubling:dbvirt:translation:scripting:base:member:filter:FilterValue"
+        valueAssignments:
+          type: "array"
+          description: "List of value assignments."
+          items:
+            type: "object"
+            id: "schema:kubling:dbvirt:model:action:OperationValueAssignment"
+            properties:
+              field:
+                type: "string"
+                description: "Field name."
+              dataType:
+                type: "string"
+                description: "Field data type."
+              value:
+                type: "object"
+                $ref: "schema:kubling:InnerObject"
+                description: "Value to be assigned to the field."
+              jsonValue:
+                type: "object"
+                description: "A Key-Value list transformed to a JSON value. It is\
+                  \ only used when value is not present."
+                additionalProperties:
+                  type: "object"
+                  $ref: "schema:kubling:InnerObject"
+              specialConversion:
+                type: "string"
+                description: "Useful to compute checksums."
+                enum:
+                - "base64"
+                - "base62"
+        rollback:
+          type: "object"
+          id: "schema:kubling:dbvirt:model:action:OperationRollback"
+          description: "A sub-operation to be triggered in case of failure, in those\
+            \ situations in which rollback is not automatic."
+          properties:
+            type:
+              type: "string"
+              enum:
+              - "insert"
+              - "update"
+              - "delete"
+            filters:
+              type: "array"
+              items:
+                type: "object"
+                id: "schema:kubling:model:entity:FilterValue"
+                properties:
+                  field:
+                    type: "string"
+                  dataType:
+                    type: "string"
+                    enum:
+                    - "STRING"
+                    - "LONG"
+                    - "INTEGER"
+                    - "DOUBLE"
+                    - "BOOLEAN"
+                  value:
+                    type: "object"
+                    $ref: "schema:kubling:InnerObject"
+                  operation:
+                    type: "string"
+                    enum:
+                    - "EQUAL"
+                    - "NOT_EQUAL"
+                    - "GREATER_THAN"
+                    - "GREATER_THAN_OR_EQUAL"
+                    - "LESS_THAN"
+                    - "LESS_THAN_OR_EQUAL"
+            valueAssignments:
+              type: "array"
+              items:
+                type: "object"
+                $ref: "schema:kubling:dbvirt:model:action:OperationValueAssignment"
+        waitUntilEffective:
+          type: "object"
+          id: "schema:kubling:dbvirt:model:action:WaitUntilEffective"
+          description: "A wait loop that verifies a condition. Useful when operation\
+            \ chain continuity depends on a value fetched from a data source."
+          properties:
+            maxSeconds:
+              type: "integer"
+              description: "Maximum number of seconds to wait in the loop."
+            checkEverySeconds:
+              type: "integer"
+              description: "Seconds to wait before next iteration."
+            byGetting:
+              type: "object"
+              id: "schema:kubling:dbvirt:model:action:ByGetting"
+              properties:
+                fields:
+                  type: "array"
+                  description: "List of field to get (SELECT)."
+                  items:
+                    type: "string"
+                usingFilterFields:
+                  type: "array"
+                  description: "List of field names used in filter (WHERE). Values\
+                    \ used for comparison are taken from the valueAssignments."
+                  items:
+                    type: "string"
+                usingFilterFieldValuePairs:
+                  type: "object"
+                  description: "List of field names used in filter (WHERE) along with\
+                    \ the values used for comparison."
+                  additionalProperties:
+                    type: "object"
+                    $ref: "schema:kubling:InnerObject"
+                putInContextVar:
+                  type: "string"
+                  description: "Name of the Template context variable where to write\
+                    \ the result of the SELECT."
+        skipWhenTrue:
+          type: "boolean"
+          description: "A boolean flag that prevents the operation to be performed\
+            \ when its value is true."
+  needed:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:action:BeforeNeeded"
+    properties:
+      fields:
+        type: "array"
+        description: "List of field names."
+        items:
+          type: "string"
+```
+
+### Sample
+```yaml
+{% set vdb = "App" %}
+{% set componentName = get_k8s_component_info(_context.vdb, _context.component_id) %}
+{% set clusterSchema = find_best_cluster_for_deploy(_context.vdb, _context.component_id, _context.env) %}
+{% set selectorUUID = uuid() %}
+---
+
+needed:
+  fields:
+    - component_id
+    - env
+    - containers
+
+before:
+  - name: "Component must exist"
+    virtualDatabase: {{ vdb }}
+    entity: "app_db.COMPONENT"
+    filters:
+      - field: "ID"
+        value: {{ component_id }}
+        operation: EQUAL
+    assertThat: exists
+    message: "Component {{ component_id }} does no exist."
+
+  - name: "Deployment does not yet exist"
+    virtualDatabase: {{ vdb }}
+    entity: "app_db.COMPONENT_DEPLOYMENT_JOIN"
+    filters:
+      - field: "component_id"
+        value: {{ component_id }}
+        operation: EQUAL
+      - field: "environment"
+        value: {{ env }}
+        operation: "EQUAL"
+    assertThat: does_not_exist
+    message: "Deployment {{ componentName }} of Application {{ app_id }} environment {{ env }} already exists."
+
+# ********* OPERATIONS *********
+
+operations:
+
+  - name: "namespace_insert"
+    type: "insert"
+    virtualDatabase: {{ vdb }}
+    entity: "{{ clusterSchema }}.NAMESPACE"
+    skipWhenTrue: {{ ns_exists(_context.vdb, _context.clusterSchema, _context.component_id) }}
+    valueAssignments:
+      - field: "metadata__name"
+        value: "{{ component_id }}"
+    waitUntilEffective:
+      maxSeconds: 15
+      checkEverySeconds: 5
+      byGetting:
+        fields:
+          - "metadata__name"
+        usingFilterFieldValuePairs:
+          metadata__name: "{{ component_id }}"
+          status__phase: "Active"
+
+  - name: "deployment_insert"
+    type: "insert"
+    virtualDatabase: {{ vdb }}
+    entity: "{{ clusterSchema }}.DEPLOYMENT"
+    valueAssignments:
+      - field: "identifier"
+        value: "xxx"
+      - field: "metadata__namespace"
+        value: "{{ component_id }}"
+      - field: "metadata__name"
+        value: "{{ componentName }}"
+      - field: "spec__template__metadata__labels"
+        dataType: "json"
+        value:
+          mgmt.kubling.com/managed: "appmodel"
+          mgmt.kubling.com/uid: {{ selectorUUID }}
+      - field: "spec__selector__matchLabels"
+        dataType: "json"
+        value:
+          mgmt.kubling.com/managed: "appmodel"
+          mgmt.kubling.com/uid: {{ selectorUUID }}
+      - field: "spec__template__spec__containers"
+        dataType: "json"
+        value:
+    {% for container in fromYamlArrayToIterable(containers) %}
+          - name: {{ container.name }}
+            image: {{ container.image }}
+            imagePullPolicy: IfNotPresent
+          {% for envEntry in fromYamlArrayToIterable(container.env) %}
+            env:
+              - name: {{ envEntry.name }}
+                value: {{ envEntry.value }}
+          {% endfor %}
+            resources:
+              requests:
+                cpu: {{ container.cpuRequest }}
+                memory: {{ container.memRequest }}
+          {% for port in fromYamlArrayToIterable(container.ports) %}
+            ports:
+              - containerPort: {{ port.portNumber }}
+          {% endfor %}
+    {% endfor %}
+    waitUntilEffective:
+      maxSeconds: 60
+      checkEverySeconds: 5
+      byGetting:
+        fields:
+          - "identifier"
+        usingFilterFields:
+          - "metadata__namespace"
+          - "metadata__name"
+        putInContextVar: newAppliedDeployment
+
+  - name: "join_insert"
+    type: "insert"
+    virtualDatabase: {{ vdb }}
+    entity: "app_db.COMPONENT_DEPLOYMENT_JOIN"
+    valueAssignments:
+      - field: "component_id"
+        value: "{{ component_id }}"
+      - field: "environment"
+        value: "{{ env }}"
+      - field: "deployment_identifier"
+        value: "{{ deferValueProcessing(contextVar='newAppliedDeployment.identifier') }}"
+```

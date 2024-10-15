@@ -1,0 +1,169 @@
+# JDBC Native Driver
+
+The Kubling [native protocol](/Concepts/architecture#transport) is based on RedHat's Teiid project, which is why you still see "teiid" in the connection string. 
+We chose Teiid because it is a mature, rock-solid project that has proven its reliability. 
+Additionally, the wiring layer, among others, is written in Java, making Teiid's transport implementation particularly suitable for our use case.
+
+Both the Kubling native [protocol and its drivers](https://github.com/kubling-community/kubling-teiid-os/tree/master) are open-source and simple, 
+meaning you can easily fork the project and write your own implementation if needed.
+
+## Get the Driver
+Drivers are regularly [published here](https://github.com/kubling-community/kubling-teiid-os/releases).
+
+However, you can also add it via Maven dependency:
+```xml
+<dependency>
+    <groupId>com.kubling</groupId>
+    <artifactId>kubling-client</artifactId>
+    <version>24.2.2</version>
+</dependency>
+```
+
+## Connection
+The main driver class is `com.kubling.teiid.jdbc.TeiidDriver`.
+
+Connection URL:
+```
+jdbc:teiid:<vdb-name>[@mm[s]://<host>:<port>][;prop-name=prop-value]*
+```
+
+- `<vdb-name>`: Name of the VDB you are connecting to. 
+Optionally VDB name can also contain version information inside it. For example: `myvdb.2`, 
+this is equivalent to supplying the `version=2` connection property defined below.
+However, use of vdb name in this format and the `version` property at the same time is not allowed.
+
+- `mm`: defines the JDBC protocol, `mms` indicates a secure channel.
+
+- `<host>`: Address of the Kubling instance. If you are using IPv6 binding address as the host name, place it in square brackets. ex:[::1]
+
+- `<port>`: Post port on which the Kubling instance is listening for incoming **native** connections.
+
+- `[prop-name=prop-value]`: Additionally you can supply any number of `property:value` pairs separated by semi-colon [`;`]. 
+Property values should be URL encoded if they contain reserved characters, e.g. `’?’`, `'='`, `';'`, etc.
+
+## Connection Properties
+
+| Property Name               |   Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+|:----------------------------|:---------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ApplicationName`           | `string`  | Name of the client application; allows the administrator to identify the connections                                                                                                                                                                                                                                                                                                                                                               |
+| `FetchSize`                 |   `int`   | Size of the `resultset`; The default size if `500`. `0` indicates that the default should be used.                                                                                                                                                                                                                                                                                                                                                 |
+| `partialResultsMode`        | `boolean` | Enable/disable partial results mode. Default `false`                                                                                                                                                                                                                                                                                                                                                                                               |
+| `user`                      | `string`  | User name                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `password`                  | `string`  | User credential                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `version`                   | `integer` | VDB version                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `resultSetCacheMode`        | `boolean` | `ResultSet` caching is turned on/off. Default `false`.                                                                                                                                                                                                                                                                                                                                                                                             |
+| `queryTimeout`              | `integer` | Query timeout in seconds. Must be >= `0`, while `0` indicates no timeout. Can be overridden by `Statement.setQueryTimeout`. Default `0`.                                                                                                                                                                                                                                                                                                           |
+| `encryptRequest`            | `boolean` | Only applies to non-SSL socket connections.  When `true`, the request message as well as its payload will be encrypted using the connection `cryptor`.  Default `false`.                                                                                                                                                                                                                                                                           |
+| `disableResultSetFetchSize` | `boolean` | In some situations, the client may choose undesirable fetch sizes for processing results. Set to `true` to disable honoring `ResultSet.setFetchSize`. Default `false`.                                                                                                                                                                                                                                                                             |
+| `loginTimeout`              | `integer` | The login timeout in seconds. Must be >= `0`, while `0` indicates no specific timeout, but other timeouts may apply. If a connection cannot be created in approximately the `timeout` number of seconds, connection attempt will fail and the session closed by Kubling. A default value `0` does not mean that the login will wait indefinitely, instead it is up the Session Manager to close the sessions when in login (authentication) phase. |
+| `reportAsViews`             | `boolean` | Indicates whether `DatabaseMetaData` must report views as `VIEW` table type. If `false` then views will be reported as `TABLE`. Default `true`.                                                                                                                                                                                                                                                                                                    |
+| `connectionPropsFilePath`   | `string`  | Path to the **client** connection properties file, also known as client settings. These properties are related to networking and transport, so please do not confuse with connection string (URL) properties listed in this table.                                                                                                                                                                                                                 |
+
+### Client Networking Properties File
+
+```properties copy
+########################################
+# SSL Settings
+########################################
+
+#
+# The key store type.  default = PKCS12
+#
+
+org.teiid.ssl.keyStoreType=PKCS12
+
+#
+# Path to the client certificate, required when org.teiid.ssl.trustAll is set to false
+#
+
+org.teiid.ssl.trustStore=/sample/path/client.ks
+
+#
+# The trust store password. It is always required when certificates were generated using kdv
+#
+
+org.teiid.ssl.trustStorePassword=mypass
+
+#
+# The cipher protocol. 
+# Earlier versions (TLS 1.0, 1.1, and 1.2) are considered vulnerable, so try to avoid them as much as possible.
+#
+
+org.teiid.ssl.protocol=TLSv1.3
+
+#
+# Indicates whether to allow anonymous SSL (the TLS_DH_anon_WITH_AES_128_CBC_SHA cipher suite)
+# THIS CIPHER SUITE IS INSECURE! See https://ciphersuite.info/cs/TLS_DH_anon_WITH_AES_128_CBC_SHA/
+#
+
+org.teiid.ssl.allowAnon=false
+
+#
+# Indicates whether to trust all server certificates, in which case org.teiid.ssl.trustStore must point to a valid certificate.
+# default = false
+#
+
+org.teiid.ssl.trustAll=false
+
+#
+# Indicates whether the client must check expired server certificates (skipped when org.teiid.ssl.trustAll is set to true)
+# default = false
+#
+
+org.teiid.ssl.checkExpired=false
+
+########################################
+# Misc Socket Configuration
+########################################
+
+#
+# The time in milliseconds for socket timeouts.
+# Timeouts during the initialization, handshake, or
+# a server ping may be treated as an error.
+#
+# This is the lower bound for all other timeouts
+# the JDBC login timeout.
+#
+# Typically this should be left at the default of 1000
+# (1 second). Setting this value too low may cause read
+# errors.
+#
+
+org.teiid.sockets.soTimeout=1000
+
+#
+# Set the max time to live (in milliseconds) for non-execution
+# synchronous calls.
+#
+
+org.teiid.sockets.synchronousttl=240000
+
+#
+# Set the socket receive buffer size (in bytes)
+# 0 indicates that the default socket setting will be used.
+#
+
+org.teiid.sockets.receiveBufferSize=0
+
+#
+# Set the socket send buffer size (in bytes)
+# 0 indicates that the default socket setting will be used.
+#
+
+org.teiid.sockets.sendBufferSize=0
+
+#
+# Set to true to enable Nagle's algorithm to conserve bandwidth
+# by minimizing the number of segments that are sent.
+#
+
+org.teiid.sockets.conserveBandwidth=false
+
+#
+# Maximum number of bytes per server message.
+# May need to be increased when using custom types and/or large batch sizes.
+#
+
+org.teiid.sockets.maxObjectSize=33554432
+
+```

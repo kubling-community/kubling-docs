@@ -1,0 +1,87 @@
+import { Callout, FileTree } from 'nextra/components'
+
+# SQL Functions Bundle Module
+This module contains functions that can be called in SQL contexts, like DDL.
+
+Having all functions grouped in modules makes it easier to manage than putting them in each Script Bundle Module.
+
+Let's see first the recommended internal directory and file organization:
+
+<FileTree>
+  <FileTree.File name="bundle-sql-function-info.yaml" />  
+  <FileTree.Folder name="fn">
+    <FileTree.Folder name="azure">
+        <FileTree.File name="sql_get_rg_from_id.js" />
+        <FileTree.File name="sql_get_subscription_from_id.js" />
+    </FileTree.Folder>    
+  </FileTree.Folder>
+</FileTree>
+
+## 📄 `bundle-sql-function-info.yaml`
+This is the only file whose location must be the root directory of the module.
+See here the [schema](/schemas#sql-function-module-bundle-information-file-bundle-sql-function-infoyaml) of the file.
+
+## 📂 Platform-related functions directories
+Ideally, a functions module should contain all the necessary functions for all the Data Sources. 
+That is why it is highly recommended to keep them separate in directories.
+
+<Callout type='info'>
+  We are considering adding the ability to also define SQL functions within Script Bundle Modules.<br/>
+  See [roadmap](/roadmap) for more info about it.  
+</Callout>
+
+## Function script
+Kubling does not evaluate functions the same way it evaluates Delegate scripts, in the sense that in functions only the function code is loaded and evaluated,
+not the whole script file, and the following limitations apply:<br/>
+- `import` is not supported.
+- Calling other functions is not supported.
+
+Let's break down the following example:
+
+```js
+function sql_get_rg(args) {
+    if ((args.value === null) || (args.value === undefined)) return null;
+    return args.value.split("/")[4];
+}
+```
+
+That simple functions receives an Azure ID, and returns the Resource Group, which is located in the fourth position of the FQN.
+
+The argument passed to functions is always one `args`, which is a KV with three members:
+- `value`: the document field OR the column value specified in the Directive, by enclosing it in &lt;&gt;.
+- `column`: the name of the column, always referring to the TABLE column name this function in being applied to. When used with a different column name, 
+such as `sql_get_rg<SOME>`, the column will not take that name and will always remain associated with the original field to which this function is applied.
+- `datatype`: column's data type.
+
+The function can be used, for example, when defining a `TABLE`, as follows:
+```sql
+CREATE FOREIGN TABLE AZ_STORAGE_ACCOUNT
+(
+    subscription string OPTIONS(val_constant '{{ schema.properties.azure_subscription }}'),
+    resourceGroup string OPTIONS(call_func 'az_sql_get_rg<id>'),
+    sku json OPTIONS(parser_format 'asJsonPretty'),
+    kind string,
+    "identity" string,
+    properties json OPTIONS(parser_format 'asJsonPretty'),
+    tags json OPTIONS(parser_format 'asJsonPretty'),
+    location string,
+    "id" string,
+    name string,
+    type string,
+    properties__provisioningState string,
+    properties__accessTier string,
+    PRIMARY KEY(id)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'azure;{{ schema.properties.azure_subscription }};storage;account');
+```
+
+In which case `resourceGroup` will contain the value returned by the function.
+
+### Performance
+Bear in mind that functions have a limited number of contexts, configurable via `partitions`, `minContexts` and `maxContexts` in `bundle-sql-function-info.yaml` configuration file,
+and each context can execute one function at a time. If the Engine receives a `SELECT resourceGroup FROM AZ_STORAGE_ACCOUNT` that returns, let's say, 100 rows,
+the `sql_get_rg` will be called, as you guessed, 100 times, likely generating queues. 
+
+Therefore, it is important to keep functions as simple as possible, with basic transformations, and to avoid putting a lot of logic into them.

@@ -1,0 +1,46 @@
+# Properties
+
+Property injection is the standard mechanism for passing variables into a Kubling instance. 
+As a general rule, when a property is defined in a more specific context, it overrides any values set in a broader context.<br/>
+
+## Environment variables
+They are the most basic mechanism for passing variables. All variables are picked up when the engine initializes and are available in all template contexts.
+
+## Properties File
+A properties file, similar to `.env` files, specified at the [Main application configuration](/schemas#main-application-configuration) 
+level using the `propertiesFilePath`. This file overrides any environment variable properties.
+
+However, it’s important to note that variables defined in this file are not available during the parsing of the main application configuration itself.
+
+The expected file format is as follows:
+- Each entry is generally expected to be a single line of the form `key=value`. 
+White space between the key and value is ignored, therefore `key = value` is equivalent.
+- Lines starting with `#` are comments, therefore ignored.
+
+## Data Source Properties
+Properties passed in the [Virtual Database information file](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle), 
+`dataSources.[data_source].properties` attribute.
+
+Variables defined in this scope are available in Data Source configuration (`dataSources.[data_source].config`),
+Translator configuration (`dataSources.[data_source].translatorConfig`), DDL (`dataSources.[data_source].schema.ddl`) 
+and DDL Files (`dataSources.[data_source].schema.ddlFilePaths`).
+
+It's important to note that Schema DDLs receive a special object in the context, called `schema`, which includes `dataSources.[data_source].schema`. 
+If this object contains properties, they can be accessed via `schema.properties`. 
+For example, you can refer to the [Built-in Kubernetes DDL](/data-sources#kubernetes-data-source-kubernetes) section for a practical use case. 
+This approach enables reusability of common configuration files, such as `translatorConfig`, by isolating specific schema properties.
+
+
+Properties specified in the Virtual Database (VDB) information file, defined using the `dataSources.[data_source].properties` attribute.
+
+Variables defined at this level are accessible throughout the following configurations:
+
+- Data Source Configuration (`dataSources.[data_source].config`)
+- Translator Configuration (`dataSources.[data_source].translatorConfig`)
+- Schema DDL (`dataSources.[data_source].schema.ddl`)
+- DDL Files (`dataSources.[data_source].schema.ddlFilePaths`).
+
+It's important to highlight that Schema DDLs are injected with a special context object named `schema`, which includes `dataSources.[data_source].schema`. 
+If the `schema` object contains `properties`, they can be accessed via `schema.properties`. This enables flexibility and reusability, 
+especially when working with shared configurations, such as `translatorConfig`. For an example, refer to the [Built-in Kubernetes DDL](/data-sources#kubernetes-data-source-kubernetes) section, 
+which demonstrates a practical use case.

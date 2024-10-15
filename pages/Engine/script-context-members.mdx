@@ -1,0 +1,507 @@
+import { Callout } from 'nextra/components'
+
+# Script Context Member
+
+When your scripts are executed, specific objects, known as bound objects, are automatically injected into the execution context. 
+These objects allow your scripts to interact directly with the Engine, enabling more complex operations than simply returning a single value. 
+Instead of limiting scripts to basic functions, you can write robust programs that populate data or perform tasks using these member objects. 
+After execution, the Engine evaluates these objects to retrieve the necessary results.
+
+Besides, some bounds are meant to support your scripts with the most common tasks and, since they are statically compiled, you can expect much better performance
+compared to having them as code in your scripts. 
+
+## Script Data Source
+
+For more information [see here](/schemas#script-module-bundle-information-file-bundle-script-infoyaml).
+
+### Common to all script types
+
+#### `contextVars`
+
+An `object` whose properties are the combination of: environment variables + variables defined in properties file.
+
+In JavaScript, properties can be accessed using dot-notation since it is injected as a regular JavaScript `object`.
+
+#### `global`
+
+A common, shared, thread-safe key-value store. The difference between this and `contextVars` is the scope: `global` has only one instance per Engine instance, 
+so it is Engine-scoped, whereas `contextVars` is Script-scoped, making `global` suitable for sharing information between script contexts.
+
+| Function                              | Description                                                                                                                                                                                                      |
+|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `put(key : string, value : object)`   | Associates the specified `value` object with the specified `key`. If the store previously contained a mapping for the `key`, the old `value` is replaced by the specified `value`.                               |
+| `remove(key : string)`                | Removes the `mapping` for a `key` from the store if it is present.                                                                                                                                               |
+| `get(key : string)`                   | Returns the `value` to which the specified `key` is mapped, or `null` if the store does not contain mapping for the `key`.                                                                                       |
+| `containsKey(key : string) : boolean` | Returns `true` if the store does not contain a mapping for the specified `key`.                                                                                                                                  |
+| `isEmpty() : boolean`                 | Returns `true` if the store does not contain key-value mappings.                                                                                                                                                 |
+| `keys() : <string>`                   | Returns an iterable wrapper, containing the list of `keys`, that is resolved by the script context as a native feature. For example, in JavaScript it will allow you to use a `for (variable of iterable)` loop. |
+| `values() : <object>`                 | Returns an iterable wrapper, containing the list of `values`, that is resolved by the script context as a native feature.                                                                                        |
+| `forEach(action)`                     | Direct support for the standard `forEach` form when the particular script context or the language does not support it. For example, in JavaScript it is recommended the usage of `forEach(callbackFn)` instead.  |
+| `size() : integer`                    | Returns the number of elements in the store.                                                                                                                                                                     |
+
+#### `helper`
+
+Convenience `class` with some functionality not always included in a scripting language spec, [like the ECMAScript](schemas#script-module-bundle-information-file-bundle-script-infoyaml).
+
+| Function                            | Description                                                                                                         |
+|-------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `toLong(object) : long`             | Transforms an `object` to its `long` representation.                                                                |
+| `toInt(object) : integer`           | Transforms an `object` to its `integer` representation.                                                             |
+| `base62(string) : string`           | Encodes a `string` to base62.                                                                                       |
+| `base62Decode(string) : string`     | Decodes a `string` from base62.                                                                                     |
+| `base64(string) : string`           | Encodes a `string` from base64.                                                                                     |
+| `base64Decode(string) : string`     | Decodes a `string` from base64.                                                                                     |
+| `compressString(string) : string`   | Compresses a `string` using the basic gzip deflater.                                                                |
+| `decompressString(string) : string` | Decompresses a `string` using the basic gzip inflater.                                                              |
+| `encryptString(string) : string`    | Encrypts a `string` using a random key, which is created when the engine starts, and `AES/CBC/PKCS5Padding` cipher. |
+| `decryptString(string) : string`    | Decrypts a `string` encrypted via `encryptString`.                                                                  |
+| `asJson(object) : string`           | Transforms an `object` to its `json` representation.                                                                |
+| `asJsonPretty(object) : string`     | Transforms an `object` to its prettified `json` representation.                                                     |
+| `unescapeJson(string) : string`     | Unescape a `json` document, which removed escape chars.                                                             |
+| `isValidJson(string) : boolean`     | Returns whether an arbitrary text is a valid `json` document.                                                       |
+| `asYaml(object) : string`           | Transforms an `object` to its `yaml` representation.                                                                |
+| `dt() : DateTimeHelper`             | Returns a [DateTimeHelper](#helperdatetimehelper) object.                                                           |
+| `jsonPath() : JSONPath`             | Returns a [JSONPath](#helperjsonpath) object.                                                                       |
+
+<Callout type="info">
+  The `helper` functions list will grow in future versions as we identify more requirements/uses cases reported by users.
+</Callout>
+
+##### `helper.DateTimeHelper`
+
+All values are expressed in [EPOCH/Unix time](https://en.wikipedia.org/wiki/Unix_time "target=_blank").
+
+| Function                                     | Description                                                                                 |
+|----------------------------------------------|---------------------------------------------------------------------------------------------|
+| `nowMillis() : long`                         | Returns the current time in milliseconds.                                                   |
+| `nowSeconds() : long`                        | Returns the current time in seconds.                                                        |
+| `nowPlusSeconds(seconds : long) : long`      | Returns the current time in milliseconds after adding the specified amount of seconds.      |
+| `nowPlusMillis(millis : long) : long`        | Returns the current time in milliseconds after adding the specified amount of milliseconds. |
+| `nowPlusMinutes(minutes : long) : long`      | Returns the current time in milliseconds after adding the specified amount of minutes.      |
+| `nowPlusHours(hours : long) : long`          | Returns the current time in milliseconds after adding the specified amount of hours.        |
+| `nowPlusDays(days : long) : long`            | Returns the current time in milliseconds after adding the specified amount of days.         |
+| `nowPlusMonths(months : long) : long`        | Returns the current time in milliseconds after adding the specified amount of months.       |
+| `nowPlusYears(years : long) : long`          | Returns the current time in milliseconds after adding the specified amount of years.        |
+| `fromMillisToSeconds(millis : long) : long`  | Transforms milliseconds to number of seconds.                                               |
+| `fromSecondsToMillis(seconds : long) : long` | Transforms seconds to number of milliseconds.                                               |
+
+##### `helper.JSONPath`
+
+Allows to perform basic operations using [JSON Path](https://datatracker.ietf.org/doc/html/rfc9535 "target=_blank").
+
+| Function | Description                                                                                                                                                                                                       |
+|----------|------------|
+| `read(document : string, path : string) : ListProxyObject<string>` | Parses a `JSON` document and read the specified path. The result is a [list](#listproxyobject) of matches.
+| `excludeListedFields(document : object, fields : string[]) : string` | Generates a new `JSON` document, based on the original, with the specified fields excluded.
+| `excludeNonListedFields(document : object, fields : string[]) : string` | Generates a new `JSON` document, based on the original, keeping only the specified fields and excluding the rest.
+
+#### `httpCli`
+
+Built-in HTTP/s client, designed to be faster than a client implementation within a Module.
+
+| Function                                                                       | Description                                                                                                                |
+|--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `exec(rawRequestParam : object<HTTPRequestParam>) : object<HTTPRequestReturn>` | Executes an HTTP request. See [how build a request](#rawrequestparam) and [schema of returned object](#httprequestreturn). |
+| `newFileWrapper(name : string) : FileWrapper`                                  | Creates and returns a new [`FileWrapper`](#httpclifilewrapper) that can be added to the `form` KV.                         |
+
+##### `httpCli.HTTPRequestParam`
+
+A native language `object`, for example, in JavaScript it is a regular object created using the standard way:
+
+```js
+var request = {
+  "url": url,
+  "method": httpMethod,
+  "headers": headerParams
+}
+...
+request.timeout = 15000;
+request.body = ...
+```
+
+When sending a form, the value can be an `object`, in which case is transformed to its `string` representation, or a [`FileWrapper`](#httpclifilewrapper).
+
+Full Schema:
+```yaml
+type: "object"
+id: "schema:kubling:translation:scripting:base:member:client:http:HTTPRequestParam"
+properties:
+  url:
+    type: "string"
+    description: "The URL to be invoked."
+  decodeUrl:
+    type: "boolean"
+    description: "Indicates whether the URL must be decoded (only useful when url\
+      \ param is encoded."
+  method:
+    type: "string"
+    description: "HTTP Method to use."
+  timeout:
+    type: "integer"
+    description: "Timeout in milliseconds to read data from an established connection.\
+      \ Value 0 means infinite."
+  params:
+    type: "object"
+    description: "Key-Value list of parameters."
+    additionalProperties:
+      type: "string"
+  headers:
+    type: "object"
+    description: "Key-Value list of headers."
+    additionalProperties:
+      type: "string"
+  followRedirects:
+    type: "boolean"
+    description: "Indicates whether to follow redirects automatically."
+  credentials:
+    type: "object"
+    id: "schema:kubling:translation:scripting:base:member:client:http:HTTPRequestParam:Credentials"
+    description: "Basic credentials appended to the request."
+    properties:
+      username:
+        type: "string"
+      password:
+        type: "string"
+  body:
+    type: "object"
+    id: "schema:kubling:InnerObject"
+    description: "Request body put as raw type."
+  form:
+    type: "object"
+    description: "Key-Value list used as request body of form-data type."
+    additionalProperties:
+      type: "object"
+      $ref: "schema:kubling:InnerObject"
+  formUrlEncoded:
+    type: "boolean"
+  contentType:
+    type: "string"
+    description: "Content type of the body. Default: \"application/json\""
+  contentCharset:
+    type: "string"
+    description: "Charset of the body. Default: \"utf-8\""
+  userAgent:
+    type: "string"
+    description: "Sets the \"User-Agent\" header. Default: \"kubling\""
+  accept:
+    type: "string"
+    description: "Sets the \"Accept\" header"
+  username:
+    type: "string"
+  password:
+    type: "string"
+```
+
+##### `httpCli.HTTPRequestReturn`
+
+A native language `object` with the relevant information of an HTTP response.
+
+Full Schema:
+```yaml
+type: "object"
+id: "schema:kubling:translation:scripting:base:member:client:http:HTTPRequestReturn"
+properties:
+  statusCode:
+    type: "integer"
+    description: "HTTP status code."
+  statusMessage:
+    type: "string"
+    description: "HTTP status message."
+  contentType:
+    type: "string"
+    description: "Response content type."
+  headers:
+    type: "object"
+    description: "Response headers."
+    additionalProperties:
+      type: "object"
+      id: "schema:kubling:InnerObject"
+  content:
+    type: "string"
+    description: "Response content."
+```
+
+##### `httpCli.FileWrapper`
+
+A wrapper `object` that contains information about a file being added in the body form-data of a request.
+
+| Function                      | Description                                                                                                                |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `setContent(content: byte[])` | Sets the file content.                                                                                                     |
+| `addContent(content: byte[])` | Adds additional content to the file content. Please note that the content is added at the end of the current file content. |
+| `getContent() : byte[]`       | Returns the current file content.                                                                                          |
+| `setType(type : string)`      | Set the file type.                                                                                                         |
+
+#### `logger`
+
+| Function                                   | Description                                                                     |
+|--------------------------------------------|---------------------------------------------------------------------------------|
+| `debug(message: object)`                   | Log a message at the `DEBUG` level.                                             |
+| `debug(context : string, message: object)` | Log a message at the `DEBUG` level, with a context you can add to recognize it. |
+| `info(message: object)`                    | Log a message at the `INFO` level.                                              |
+| `info(context : string, message: object)`  | Log a message at the `INFO` level, with a context you can add to recognize it.  |
+| `warn(message: object)`                    | Log a message at the `WARN` level.                                              |
+| `warn(context : string, message: object)`  | Log a message at the `WARN` level, with a context you can add to recognize it.  |
+| `error(message: object)`                   | Log a message at the `ERROR` level.                                             |
+| `error(context : string, message: object)` | Log a message at the `ERROR` level, with a context you can add to recognize it. |
+
+`logger` will always attempt to transform the `object` into a printable string representation. If that transformation is not possible, it will print `[object]`.
+
+<Callout>
+  The `logger` cannot access the script's call trace, making it impossible to print the exact file and line number that triggered the call.<br/>
+  We are investigating how to improve it.
+</Callout>
+
+#### `DBEngine`
+
+Allows to execute queries by directly accessing the Engine. It is important to note that CUD operations (`INSERT`, `UPDATE` and `DELETE`) are **not supported** by design.
+
+| Function                                                                  | Description                                                                                                                                             |
+|---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `executeQuery(vdbName : string, query : string) : QueryResultProxyObject` | Executes a data-retrieval query (`SELECT`) using one of the internal opened sessions. It returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
+
+### resultSetScript
+
+#### `resultSet`
+
+A proxy `object` that contains the rows returned by the script.
+
+| Function                 | Description                                                                                 |
+|--------------------------|---------------------------------------------------------------------------------------------|
+| `addRow(row: string)`    | Adds a `JSON` or `YAML` document to the set.                                                |
+| `addRow(rows: string[])` | Adds array of rows to the set.                                                              |
+| `dataFormat(df: string)` | Specified the format of the documents contained by the set. Can be either `JSON` or `YAML`. |
+
+#### `queryFilter`
+
+Filter information. See [`QueryFilterProxyObject`](#queryfilterproxyobject) type.
+
+### insertScript
+
+#### `insertOperation`
+
+An `object` that contains only members (not functions), which describes the insert operation.
+
+| Member                                                           | Description                                                                                                                                                                                                                                                                                                                                                      |
+|------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `table : string`                                                 | `TABLE` name.                                                                                                                                                                                                                                                                                                                                                    |
+| `fieldValues : ListProxyObject<SetOperationProxyObject>`         | Returns the list of fields and values of the operation. Elements of the List are of [`SetOperationProxyObject` type](#setoperationproxyobject).                                                                                                                                                                                                                  |
+| `jsonList : ListProxyObject<string>`                             | Returns the list of final documents to be inserted. When the original insertion occurred in a `synthetic` `TABLE`, the document received is the final one, that is, the root document with a new nested document. For more information [see here](/Engine/data-sources#script-document-data-source).                                                             |
+| `yamlList : ListProxyObject<string>`                             | Same as `jsonList` but in `YAML` format.                                                                                                                                                                                                                                                                                                                         |
+| `originalJsonList : ListProxyObject<string>`                     | It returns the list of original documents before the insertion. It is only valid when the `TABLE` is `synthetic`, otherwise list is always empty.                                                                                                                                                                                                                |
+| `originalYamlList : ListProxyObject<string>`                     | Same as `originalJsonList` but in `YAML` format.                                                                                                                                                                                                                                                                                                                 |
+| `differences : ListProxyObject<JsonDifferenceResultProxyObject>` | Returns the list of differences detected when compared to the original document.<br/>Position matches `jsonList` and `originalJsonList`, therefore `differences[index]` uses `jsonList[index]` and `originalJsonList[index]` to make the comparison.<br/>Elements of the List are of [`JsonDifferenceResultProxyObject` type](#jsondifferenceresultproxyobject). |
+
+#### [`affectedRows`](#affectedrows)
+
+Must specify the number of documents effectively created/inserted during the operation.
+
+### updateScript
+
+#### `updateOperation`
+
+An `object` that contains only members (not functions), which describes the update operation.
+
+| Member                                                           | Description                                                                                                                                                                                                                                                                                                                                                      |
+|------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `table : string`                                                 | `TABLE` name.                                                                                                                                                                                                                                                                                                                                                    |
+| `updates : ListProxyObject<SetOperationProxyObject[]>`           | Returns the list of changes in documents, each entry is a list of fields and values updated of the operation.<br/>The reason why this returns a list of documents, is because an `UPDATE` may affect multiple documents, depending on the search result.                                                                                                         |
+| `queryFilter : QueryFilterProxyObject`                           | Returns the `WHERE` clause of the update operation. See [`QueryFilterProxyObject`](#queryfilterproxyobject) type.                                                                                                                                                                                                                                                |
+| `jsonList : ListProxyObject<string>`                             | Returns the list of final documents, with its values updated. When the `TABLE` is `synthetic`, the document received is the final one, that is, the root document with a new nested document. For more information [see here](/Engine/data-sources#script-document-data-source).                                                                                 |
+| `yamlList : ListProxyObject<string>`                             | Same as `jsonList` but in `YAML` format.                                                                                                                                                                                                                                                                                                                         |
+| `originalJsonList : ListProxyObject<string>`                     | It returns the list of original documents before the update.                                                                                                                                                                                                                                                                                                     |
+| `originalYamlList : ListProxyObject<string>`                     | Same as `originalJsonList` but in `YAML` format.                                                                                                                                                                                                                                                                                                                 |
+| `differences : ListProxyObject<JsonDifferenceResultProxyObject>` | Returns the list of differences detected when compared to the original document.<br/>Position matches `jsonList` and `originalJsonList`, therefore `differences[index]` uses `jsonList[index]` and `originalJsonList[index]` to make the comparison.<br/>Elements of the List are of [`JsonDifferenceResultProxyObject` type](#jsondifferenceresultproxyobject). |
+| `partialJsonList : ListProxyObject<string>`                      | Returns a list of documents containing only the fields that were changed. Difference between this and `updates`, is that this member returns a valid `JSON`.                                                                                                                                                                                                     |
+| `partialYamlList : ListProxyObject<string>`                      | Same as `partialJsonList` but in `YAML` format.                                                                                                                                                                                                                                                                                                                  |
+
+#### [`affectedRows`](#affectedrows)
+
+Must specify the number of documents effectively updated during the operation.
+
+### deleteScript
+
+#### `deleteOperation`
+
+An `object` that contains only members (not functions), which describes the delete operation.
+
+| Member                                 | Description                                                                                                       |
+|----------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `table : string`                       | `TABLE` name.                                                                                                     |
+| `queryFilter : QueryFilterProxyObject` | Returns the `WHERE` clause of the delete operation. See [`QueryFilterProxyObject`](#queryfilterproxyobject) type. |
+| `jsonList : ListProxyObject<string>`   | Returns the list of documents to be deleted.                                                                      |
+| `yamlList : ListProxyObject<string>`   | Same as `jsonList` but in `YAML` format.                                                                          |
+
+#### [`affectedRows`](#affectedrows)
+
+Must specify the number of documents effectively deleted during the operation.
+
+### initScript
+
+#### `initResult`
+
+An `object` that indicates to the Engine the result of the initialization.
+
+| Function                  | Description                                                          |
+|---------------------------|----------------------------------------------------------------------|
+| `initialized()`           | Marks the initialization process as correctly initialized.           |
+| `error()`                 | Marks the initialization process as erroneous.                       |
+| `error(message : string)` | Marks the initialization process as erroneous with a custom message. |
+
+### scheduledScript
+
+Only common members.
+
+## Template function
+
+Only common members.
+
+## SQL script function
+
+Only common members.
+
+## Authentication/Authorization script
+
+### `auth`
+An `object` used to exchange information between the script and the session manager.
+
+| Function                      | Description                                                                                                                  |
+|-------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `userName : string`           | Contains the username informed by the remote client to initialize a session (login).                                         |
+| `credentials : string`        | Contains the credentials (i.e. password or token) informed by the remote client to initialize a session (login).             |
+| `trust()`                     | Accepts the login request and informs to the session manager that remote client is allowed to establish a permanent session. |
+| `bad()`                       | Rejects the login, and closes the session, due to invalid username or credential.                                            |
+| `bad(message : string)`       | Same as `bad()` but with the possibility to add a custom reason message which is sent to the remote client.                  |
+| `locked()`                    | Rejects the login, and closes the session, due to a locked or disabled user.                                                 |
+| `locked(message : string)`    | Same as `locked()` but with the possibility to add a custom reason message which is sent to the remote client.               |
+| `addPrincipal(name : string)` | Associates a principal name to the session.                                                                                  |
+| `addRole(name : string)`      | Associates a role name to the session.                                                                                       |
+
+## General
+
+#### `ListProxyObject`
+
+A List of elements created in the engine and exposed to the script context.<br/>
+Its functions are only proxies that point to the original, non-script-compatible array.
+
+| Function                      | Description                                                                                                                                                                                                                  |
+|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `array() : object[]`          | Returns all elements as an array of `object`.                                                                                                                                                                                |
+| `get(pos : integer) : object` | Returns the `object` at the specified position in the array.                                                                                                                                                                 |
+| `getFirst() : object`         | Returns the first `object` of the array.                                                                                                                                                                                     |
+| `getLast() : object`          | Returns the last `object` of the array.                                                                                                                                                                                      |
+| `iterable() : <object>`       | Returns an iterable wrapper that is resolved by the script context as a native feature. For example, in JavaScript it will allow you to use a `for (variable of iterable)` loop.                                             |
+| `forEach(action)`             | Direct support for the standard `forEach` form when the particular script context or the language does not support it. For example, in JavaScript it is recommended the usage of `array.forEach((element) => ...);` instead. |
+| `size() : integer`            | Returns the number of elements in the array.                                                                                                                                                                                 |
+| `isEmpty() : boolean`         | Returns `true` if the array has no elements.                                                                                                                                                                                 |
+| `stringify() : string[]`      | Returns an array containing the string representation of the elements in the array.                                                                                                                                          |
+
+#### `QueryFilterProxyObject`
+
+An `object` that contains only members (not functions), which describes the filter, or `WHERE` clause, of the query.
+
+| Member                                    | Description                                                                                                                  |
+|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `filters : ListProxyObject<FilterValue>`  | Returns the list of filters. Elements of the List are of [`FilterValue` type](#filtervalue-full-schema).                     |
+| `sort : ListProxyObject<QueryFilterSort>` | Returns the requested sort (`ORDER BY`). Elements of the List are of [`QueryFilterSort` type](#queryfiltersort-full-schema). |
+| `pagination : QueryPageFilterProxyObject` | Returns the requested pagination (`LIMIT`). [See proxy information.](#querypagefilterproxyobject)                            |
+| `table : string`                          | Query table name.                                                                                                            |
+| `json : string`                           | Self-representation in `JSON` format.                                                                                        |
+| `yaml : string`                           | Self-representation in `YAML` format.                                                                                        |
+
+
+#### `FilterValue` full schema:
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:translation:scripting:base:member:filter:FilterValue"
+properties:
+  field:
+    type: "string"
+    description: "Field name."
+  dataType:
+    type: "string"
+    description: "Engine data type."
+  value:
+    type: "object"
+    id: "schema:kubling:InnerObject"
+    description: "Value to compare."
+  operation:
+    type: "string"
+    enum:
+    - "EQUAL"
+    - "NOT_EQUAL"
+    - "GREATER_THAN"
+    - "GREATER_THAN_OR_EQUAL"
+    - "LESS_THAN"
+    - "LESS_THAN_OR_EQUAL"
+```
+
+#### `QueryFilterSort` full schema:
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:translation:scripting:base:member:filter:QueryFilterSort"
+properties:
+  field:
+    type: "string"
+  orderType:
+    type: "string"
+    enum:
+    - "ASC"
+    - "DESC"
+    - "FIRST"
+    - "LAST"
+```
+
+#### `QueryPageFilterProxyObject`
+
+An `object` that contains only members (not functions), which describes the filter, or `LIMIT` clause, of the query.
+
+| Member               | Description                               |
+|----------------------|-------------------------------------------|
+| `pageSize : integer` | Number of rows returned by the query.     |
+| `page : integer`     | Page to start from, also known as offset. |
+| `json : string`      | Self-representation in `JSON` format.     |
+| `yaml : string`      | Self-representation in `YAML` format.     |
+
+#### `SetOperationProxyObject`
+
+An `object` that contains only members (not functions), with values passed to the operation.
+
+| Member               | Description                           |
+|----------------------|---------------------------------------|
+| `fieldName : string` | Field name.                           |
+| `value : object`     | Field value.                          |
+| `json : string`      | Self-representation in `JSON` format. |
+| `yaml : string`      | Self-representation in `YAML` format. |
+
+#### `AffectedRows`
+
+A proxy `object` that contains the the number of rows affected by the operation.
+
+| Member                        | Description                                     |
+|-------------------------------|-------------------------------------------------|
+| `increment()`                 | Increments (1) the number of affected rows.     |
+| `increment(number : integer)` | Increments a specified number of affected rows. |
+| `get() : integer`             | Returns the current affected rows.              |
+
+#### `JsonDifferenceResultProxyObject`
+
+An `object` that contains only members (not functions), that describes the result of a document comparison operation.
+
+| Member                                | Description                                                             |
+|---------------------------------------|-------------------------------------------------------------------------|
+| `added : ListProxyObject<string>`     | List of fully qualified field names added to the document.              |
+| `removed : ListProxyObject<string>`   | List of fully qualified field names removed from the original document. |
+| `modified : ListProxyObject<string>`  | List of fully qualified field names modified.                           |
+| `untouched : ListProxyObject<string>` | List of fully qualified field names that have not been modified.        |
+
+#### `QueryResultProxyObject`
+
+An `object` that contains the result set of query.
+
+| Member                                 | Description                                                                                                                         |
+|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `count : integer`                      | Returns the number of rows contained in the result set.                                                                             |
+| `countFields : integer`                | Returns the number of columns (fields) contained in the result set.                                                                 |
+| `fieldNames : ListProxyObject<string>` | List of field names returned by the query.                                                                                          |
+| `rows : ListProxyObject<object>`       | Returns the actual rows of the result set. Each element is an native `object`, therefore fields can be accessed using dot-notation. |

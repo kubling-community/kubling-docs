@@ -1,0 +1,36 @@
+# PostgreSQL interactive terminal
+[psql](https://www.postgresql.org/docs/current/app-psql.html) is a standard terminal-based front-end to PostgreSQL. Which you can use it to interact with Kubling.
+
+Please note that `psql` uses the PostgreSQL protocol, therefore you cannot establish a connection using the Kubling native protocol.
+
+## Installation
+
+### Ubuntu 23.10,22.04 and Debian 12
+```sh copy
+sudo apt update
+sudo apt install postgresql-client
+```
+
+### MacOS Using Homebrew
+You will need the [Brew Package Manager](https://brew.sh) installed on your system.
+
+One done, open a terminal and just execute:
+```sh copy
+brew update
+brew install libpq
+```
+
+Optionally, `symlink` `psql` and other `libpq` tools and binaries, into `/usr/local/bin`:
+```sh copy
+brew link --force libpq
+```
+
+### Windows
+In windows, we do recommend installing using the [postgresql installer](https://www.postgresql.org/download/windows).
+
+# Usage
+
+Open a terminal and run:
+```sh copy
+psql -h <IP/HOSTNAME> -p 35432 -U <USERNAME> -W -d <VDB>
+```

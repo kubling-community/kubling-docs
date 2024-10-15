@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+      font-family: 'gilroy-bold';
+      src: local('gilroy-bold'), url(../fonts/Gilroy-Bold.ttf) format('truetype');
+  }
+
+  @font-face {
+      font-family: 'gilroy-medium';
+      src: local('gilroy-medium'), url(../fonts/Gilroy-Medium.ttf) format('truetype');
+  }
+
+  @font-face {
+      font-family: 'gilroy-regular';
+      src: local('gilroy-regular'), url(../fonts/Gilroy-Regular.ttf) format('truetype');
+  }
+
+  body {
+      font-family: "gilroy-medium", sans-serif;
+  }

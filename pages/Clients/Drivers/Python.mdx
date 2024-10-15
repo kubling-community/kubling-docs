@@ -1,0 +1,32 @@
+# Connect from a Python Application
+
+Since Kubling does not provide a Python driver for native protocol, PostgreSQL protocol must be used instead.
+
+For python we do recommend the lightweight, pure-Python [pg8000](https://github.com/tlocke/pg8000/tree/main) driver.
+
+Example:
+```python
+import pg8000
+
+# Establish a connection
+conn = pg8000.connect(
+    host="localhost",
+    port=35432,
+    database="MyVDB",
+    user="sa",
+    password="sa",
+    ssl_context=True
+)
+
+cur = conn.cursor()
+
+cur.execute("SELECT * from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('dbvirt-samples');")
+allRows = cur.fetchall()
+
+for allCols in allRows:
+    for col in allCols:
+        print(col)
+
+cur.close()
+conn.close()
+```

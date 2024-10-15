@@ -1,0 +1,1324 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Data Sources
+
+Kubling Data Source Adapters are divided into three major types:
+- **Database Data Source:**<br/>
+This adapter allows connections to external databases using built-in connectors and drivers. Kubling queries are automatically 
+translated into the appropriate query language that the target database can process. With this type of data source, you can either:
+    - Automatically import schemas and tables from the remote database, generating virtual schemas based on metadata retrieved from the source, or
+    - Manually define `FOREIGN` tables using SQL-like DDL to customize the data model.
+
+- **Kubernetes Data Source:**<br/>
+A specialized adapter designed to connect with Kubernetes clusters. It leverages a built-in module to interact with the cluster, 
+providing seamless access to Kubernetes-native data and resources.
+
+- **Script Document Data Source:**<br/>
+This adapter is used to manage semi-structured documents, such as `JSON` and `YAML` files. 
+Data fetching and operations on these documents are handled through scripts, such as JavaScript, allowing flexible manipulation of external APIs as data sources.
+
+For more information, please have a look at the [architecture.](/Concepts/architecture)
+
+### Documents
+Some data sources, primarily those that exchange information with an API in `JSON` format, are referred to as `document` data sources troughtout this documentation.<br/>
+The term comes from the original way of naming databases that store semi-structured objects, like Elasticsearch and MongoDB.
+
+Kubling engine has the ability to manipulate documents, and to transform CRUD operations into changes in the documents.
+
+## Embedded InMemory Data Source (`EMBEDDED_INMEM`)
+This Data Source creates an in-memory embedded database that operates entirely within system memory.<br/>
+Initially added to Kubling as an internal feature for conducting heavy testing without needing an external database instance, 
+it has since proven useful based on user feedback. 
+It can also be employed for various operational tasks such as storing instance-related information, caching data, managing temporary tables, or synchronizing scripts.
+
+### Configuration
+Uses the [Standard DB Data Source Configuration.](/schemas#standard-db-data-source-configuration)
+
+Sample config in VDB file:
+```yaml
+- name: my_embedded
+  dataSourceType: EMBEDDED_INMEM
+  configObject:
+    dataSourceName: my_embedded
+    databaseName: my_embedded
+    userName: sa
+    token: sa
+    maxConnectionPoolSize: 5
+    minConnectionPoolSize: 1
+    maxConnectionIdleMilliseconds: 7200000
+    maxConnectionLifeTimeMilliseconds: 14400000
+    ddlFilePaths:
+    - /path/to/some.ddl
+  translatorConfig: /path/to/some-config.yaml
+  schema:
+    type: PHYSICAL
+    properties:
+    importer.useCatalogName: "false"
+    importer.useFullSchemaName: "false"
+    importer.schemaName: PUBLIC
+```
+
+Kubling uses an adapted version of the popular H2 DB Engine, so please refer to [their documentation](https://github.com/h2database/h2database) to get info about the supported grammar
+and other limitations.
+
+<Callout>
+  In this Data Source DDLs have a special meaning, since they're used to create the in-memory table schema, therefore they are not [standard Kubling DDL](/Engine/DDL).<br/>
+  After creation and setup, the Engine imports schemas automatically, so there is not option of controlling the `FOREIGN` tables manually like in other Data Sources.
+</Callout>
+
+## PostgreSQL Data Source (`POSTGRESQL`)
+A Database Data Source that translates and adapts queriers to `POSTGRESQL`.
+
+### Configuration
+Uses the [Standard DB Data Source Configuration.](/schemas#standard-db-data-source-configuration)
+
+Sample config in VDB file:
+```yaml
+- name: "app_db"
+  dataSourceType: "POSTGRESQL"
+  config: "bundle:datasource/psql-datasource.yaml"
+  translatorConfig: "bundle:translator/base-translator-config.yaml"
+  schema:
+    type: "PHYSICAL"
+    properties:
+      'importer.useFullSchemaName': 'false'
+      'importer.useCatalogName': 'false'
+      'importer.schemaName': 'public'
+```
+
+When no DDL is defined and there are `importer` properties, the engine automatically creates all the `FOREIGN` tables that match the import strategy.<br/>
+In this specific sample all the `TABLES` of the schema `PUBLIC` will have a local Kubling `TABLE`.
+
+
+## MySQL Data Source (`MYSQL`)
+Configuration is exactly the same as `POSTGRESQL` (above). Only difference is that `dataSourceType` must have the value `MYSQL`.
+
+## Kubernetes Data Source (`KUBERNETES`)
+
+This Data Source allows to interact with Kubernetes cluster resources as if they were just `TABLES`.
+
+Sample config in VDB file:
+```yaml
+- name: "k8s_1"
+  dataSourceType: "KUBERNETES"
+  config: "bundle:datasource/k8s-cluster1-datasource.yaml"
+  translatorConfig: "bundle:translator/base-translator-config.yaml"
+  schema:
+    type: "PHYSICAL"
+    properties:
+      cluster_name: "k8s_cluster_1"
+    ddlFilePaths:
+      - "bundle:k8s.ddl"
+```
+
+[Check here](/schemas#kubernetes-data-source-configuration) the Kubernetes Data Source configuration spec.
+
+Kubling comes with a built-in, statically compiled module for Kubernetes that uses, by default, a DDL files with all the supported tables.
+Please note that it has only a few synthetic `TABLES`, therefore, in case you need a much more specialized or even reduced version, please use the
+following as a starting point.
+
+<Callout type='info'>
+  The built-in DDL defines a schema field for all `TABLES`, which requires the `schema.name` property to be passed to the template context. 
+  Since this field is informational and does not impact behavior, you can safely remove it if it is not needed.
+</Callout>
+
+<details>
+<summary>Built-in Kubernetes DDL</summary>
+```sql showLineNumbers copy
+CREATE FOREIGN TABLE NODE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__configSource json OPTIONS(parser_format 'asJsonPretty'),
+    spec__externalID string,
+    spec__podCIDR string,
+    spec__podCIDRs string,
+    spec__providerID string,
+    spec__unschedulable boolean,
+    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__addresses json OPTIONS(parser_format 'asJsonPretty'),
+    status__allocatable json OPTIONS(parser_format 'asJsonPretty'),
+    status__capacity json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__config json OPTIONS(parser_format 'asJsonPretty'),
+    status__daemonEndpoints json OPTIONS(parser_format 'asJsonPretty'),
+    status__images json OPTIONS(parser_format 'asJsonPretty'),
+    status__nodeInfo json OPTIONS(parser_format 'asJsonPretty'),
+    status__phase string,
+    status__volumesAttached json OPTIONS(parser_format 'asJsonPretty'),
+    status__volumesInUse json,
+    status__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};node');
+
+CREATE FOREIGN TABLE NODE_CONDITIONS
+(
+    clusterName string OPTIONS(val_variable 'cluster_name'),
+    clusterUrl string OPTIONS(val_constant '{{ schema.properties.kubernetes_api_url }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+
+    lastTransitionTime string,
+    lastUpdateTime string,
+    message string,
+    reason string,
+    status string,
+    type string
+)
+OPTIONS(updatable false,
+    synthetic_parent '{{ schema.name }}.NODE',
+    synthetic_path 'status__conditions',
+    tags 'kubernetes;{{ schema.properties.cluster_name }};node;conditions');
+
+
+CREATE FOREIGN TABLE NAMESPACE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    status__phase string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};namespace');
+
+CREATE FOREIGN TABLE POD
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    spec__activeDeadlineSeconds long,
+    spec__affinity json,
+    spec__containers json OPTIONS(parser_format 'asJsonPretty'),
+    spec__nodeName string,
+    spec__restartPolicy string,
+    spec__tolerations json OPTIONS(parser_format 'asJsonPretty'),
+    spec__volumes json OPTIONS(parser_format 'asJsonPretty'),
+    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod');
+
+CREATE FOREIGN TABLE POD_CONTAINER
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels string OPTIONS(updatable false, synthetic_type 'parent'),
+
+    image string NOT NULL,
+    name string NOT NULL,
+    command json,
+    volumeMounts json,
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(metadata__namespace, metadata__name, name)
+)
+  OPTIONS(updatable true,
+        synthetic_parent '{{ schema.name }}.POD',
+        synthetic_path 'spec__containers',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container');
+
+CREATE FOREIGN TABLE POD_CONTAINER_VOLS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels string OPTIONS(synthetic_type 'parent'),
+    containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name'),
+    containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image'),
+
+    mountPath string NOT NULL,
+    name string NOT NULL,
+    readOnly boolean,
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+containerName+name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(metadata__namespace, metadata__name, containerName, name)
+)
+  OPTIONS(updatable true,
+        synthetic_parent '{{ schema.name }}.POD_CONTAINER',
+        synthetic_path 'volumeMounts',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;vols');
+
+CREATE FOREIGN TABLE DEPLOYMENT
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    spec__template__spec__containers json OPTIONS(parser_format 'asJsonPretty'),
+    spec__selector__matchLabels json OPTIONS(parser_format 'asJsonPretty'),
+    spec__template__metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__availableReplicas integer,
+    status__readyReplicas integer,
+    status__replicas integer,
+    status__updatedReplicas integer,
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment');
+
+CREATE FOREIGN TABLE DEPLOYMENT_CONDITIONS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+
+    lastTransitionTime string,
+    lastUpdateTime string,
+    message string,
+    reason string,
+    status string,
+    type string
+)
+  OPTIONS(updatable false,
+        synthetic_parent '{{ schema.name }}.DEPLOYMENT',
+        synthetic_path 'status__conditions',
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;conditions');
+
+CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels string OPTIONS(updatable false, synthetic_type 'parent'),
+
+    image string NOT NULL,
+    name string NOT NULL,
+    command json,
+    volumeMounts json,
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(metadata__namespace, metadata__name, name)
+)
+  OPTIONS(updatable true,
+        synthetic_parent '{{ schema.name }}.DEPLOYMENT',
+        synthetic_path 'spec__template__spec__containers',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;container');
+
+CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER_VOLS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels string OPTIONS(synthetic_type 'parent'),
+    containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name'),
+    containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image'),
+
+    mountPath string NOT NULL,
+    name string NOT NULL,
+    readOnly boolean,
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+containerName+name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(metadata__namespace, metadata__name, containerName, name)
+)
+  OPTIONS(updatable true,
+        synthetic_parent '{{ schema.name }}.DEPLOYMENT_CONTAINER',
+        synthetic_path 'volumeMounts',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;container;vols');
+
+CREATE FOREIGN TABLE PERSISTENT_VOLUME
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__accessModes json,
+    spec__azureDisk json OPTIONS(parser_format 'asJsonPretty'),
+    spec__azureFile json OPTIONS(parser_format 'asJsonPretty'),
+    spec__capacity json OPTIONS(parser_format 'asJsonPretty'),
+    spec__csi json OPTIONS(parser_format 'asJsonPretty'),
+    spec__hostPath json OPTIONS(parser_format 'asJsonPretty'),
+    spec__local json OPTIONS(parser_format 'asJsonPretty'),
+    spec__nodeAffinity json OPTIONS(parser_format 'asJsonPretty'),
+    spec__persistentVolumeReclaimPolicy string,
+    spec__storageClassName string,
+    spec__volumeAttributesClassName string,
+    spec__volumeMode string,
+    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__lastPhaseTransitionTime string,
+    status__message string,
+    status__phase string,
+    status__reason string,
+    status__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pv');
+
+
+CREATE FOREIGN TABLE PERSISTENT_VOLUME_CLAIM
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__accessModes json OPTIONS(parser_format 'asJsonPretty'),
+    spec__dataSource json OPTIONS(parser_format 'asJsonPretty'),
+    spec__dataSourceRef json OPTIONS(parser_format 'asJsonPretty'),
+    spec__resources json OPTIONS(parser_format 'asJsonPretty'),
+    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__storageClassName string,
+    spec__volumeAttributesClassName string,
+    spec__volumeMode string,
+    spec__volumeName string,
+
+    status__accessModes json OPTIONS(parser_format 'asJsonPretty'),
+    status__allocatedResourceStatuses json OPTIONS(parser_format 'asJsonPretty'),
+    status__allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
+    status__capacity json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__currentVolumeAttributesClassName string,
+    status__modifyVolumeStatus json OPTIONS(parser_format 'asJsonPretty'),
+    status__phase string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pvc');
+
+
+CREATE FOREIGN TABLE STATEFULSET
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__minReadySeconds integer,
+    spec__ordinals json OPTIONS(parser_format 'asJsonPretty'),
+    spec__persistentVolumeClaimRetentionPolicy json OPTIONS(parser_format 'asJsonPretty'),
+    spec__podManagementPolicy string,
+    spec__replicas integer,
+    spec__revisionHistoryLimit integer,
+    spec__serviceName string,
+    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__template json OPTIONS(parser_format 'asJsonPretty'),
+    spec__updateStrategy json OPTIONS(parser_format 'asJsonPretty'),
+    spec__volumeClaimTemplates json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__availableReplicas integer,
+    status__collisionCount integer,
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__currentReplicas integer,
+    status__currentRevision string,
+    status__observedGeneration long,
+    status__readyReplicas integer,
+    status__replicas integer,
+    status__updateRevision string,
+    status__updatedReplicas integer,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};statefulset');
+
+CREATE FOREIGN TABLE NETWORK_INGRESS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__backend json OPTIONS(parser_format 'asJsonPretty'),
+    spec__ingressClassName string,
+    spec__rules json OPTIONS(parser_format 'asJsonPretty'),
+    spec__tls json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__loadBalancer json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};network;ingress');
+
+CREATE FOREIGN TABLE NETWORK_POLICY
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__egress json OPTIONS(parser_format 'asJsonPretty'),
+    spec__ingress json OPTIONS(parser_format 'asJsonPretty'),
+    spec__podSelector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__policyTypes json,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};network;policy');
+
+CREATE FOREIGN TABLE DAEMONSET
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__minReadySeconds integer,
+    spec__revisionHistoryLimit integer,
+    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__template json OPTIONS(parser_format 'asJsonPretty'),
+    spec__updateStrategy json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__collisionCount integer,
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__currentNumberScheduled integer,
+    status__desiredNumberScheduled integer,
+    status__numberAvailable integer,
+    status__numberMisscheduled integer,
+    status__numberReady integer,
+    status__numberUnavailable integer,
+    status__observedGeneration long,
+    status__updatedNumberScheduled integer,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};daemonset');
+
+CREATE FOREIGN TABLE REPLICASET
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__minReadySeconds integer,
+    spec__replicas integer,
+    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__template json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__availableReplicas integer,
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__fullyLabeledReplicas integer,
+    status__observedGeneration long,
+    status__replicas integer,
+    status__readyReplicas integer,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};replicaset');
+
+CREATE FOREIGN TABLE SECRET
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    stringData json OPTIONS(parser_format 'asJsonPretty'),
+    immutable boolean,
+    type string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};secret');
+
+CREATE FOREIGN TABLE CERTIFICATE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    expirationSeconds integer,
+    extra json OPTIONS(parser_format 'asJsonPretty'),
+    groups json,
+    request string,
+    signerName string,
+    uid string,
+    usages json,
+    username string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+uid' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, uid)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};certificate');
+
+CREATE FOREIGN TABLE ENDPOINT_SLICE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    addressType string,
+    endpoints json OPTIONS(parser_format 'asJsonPretty'),
+    ports json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};endpointslice');
+
+CREATE FOREIGN TABLE RESOURCE_CLASS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    driverName string,
+    parametersRef json OPTIONS(parser_format 'asJsonPretty'),
+    suitableNodes json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};resourceclass');
+
+CREATE FOREIGN TABLE RESOURCE_CLAIM
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__allocationMode string,
+    spec__resourceClassName string,
+    spec__parametersRef json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__allocation json OPTIONS(parser_format 'asJsonPretty'),
+    status__deallocationRequested boolean,
+    status__driverName string,
+    status__reservedFor json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};resourceclaim');
+
+CREATE FOREIGN TABLE POD_SCHEDULING_CONTEXT
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__potentialNodes json OPTIONS(parser_format 'asJsonPretty'),
+    spec__selectedNode string,
+
+    status__resourceClaims json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};podschedulingcontext');
+
+CREATE FOREIGN TABLE EVENT
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    action string,
+    deprecatedCount integer,
+    deprecatedFirstTimestamp string,
+    deprecatedLastTimestamp string,
+    deprecatedSource json OPTIONS(parser_format 'asJsonPretty'),
+    eventTime json OPTIONS(parser_format 'asJsonPretty'),
+    note string,
+    reason string,
+    regarding json OPTIONS(parser_format 'asJsonPretty'),
+    related json OPTIONS(parser_format 'asJsonPretty'),
+    reportingController string,
+    reportingInstance string,
+    series json OPTIONS(parser_format 'asJsonPretty'),
+    type string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};event');
+
+CREATE FOREIGN TABLE FLOW_SCHEMA
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__distinguisherMethod json OPTIONS(parser_format 'asJsonPretty'),
+    spec__matchingPrecedence integer,
+    spec__priorityLevelConfiguration json OPTIONS(parser_format 'asJsonPretty'),
+    spec__rules json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};flowschema');
+
+CREATE FOREIGN TABLE PRIORITY_LEVEL_CONFIGURATION
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__exempt json OPTIONS(parser_format 'asJsonPretty'),
+    spec__type string,
+    spec__limited json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};prioritylevelconfiguration');
+
+CREATE FOREIGN TABLE VALIDATING_WEBHOOK_CONFIGURATION
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    webhooks json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};validatingwebhookconfiguration');
+
+CREATE FOREIGN TABLE MUTATING_WEBHOOK_CONFIGURATION
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};mutatingwebhookconfiguration');
+
+CREATE FOREIGN TABLE HORIZONTAL_POD_AUTOSCALER
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__minReplicas integer,
+    spec__maxReplicas integer,
+    spec__metrics json OPTIONS(parser_format 'asJsonPretty'),
+    spec__scaleTargetRef json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__currentMetrics json OPTIONS(parser_format 'asJsonPretty'),
+    status__currentReplicas integer,
+    status__desiredReplicas integer,
+    status__lastScaleTime string,
+    status__observedGeneration long,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};horizontalpodautoscaler');
+
+CREATE FOREIGN TABLE STORAGE_CLASS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    allowVolumeExpansion boolean,
+    allowedTopologies json OPTIONS(parser_format 'asJsonPretty'),
+    mountOptions json OPTIONS(parser_format 'asJsonPretty'),
+    parameters json OPTIONS(parser_format 'asJsonPretty'),
+    provisioner string,
+    reclaimPolicy string,
+    volumeBindingMode string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};storageclass');
+
+CREATE FOREIGN TABLE CSI_DRIVER
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__attachRequired boolean,
+    spec__fsGroupPolicy string,
+    spec__podInfoOnMount boolean,
+    spec__requiresRepublish boolean,
+    spec__seLinuxMount boolean,
+    spec__storageCapacity boolean,
+    spec__tokenRequests json OPTIONS(parser_format 'asJsonPretty'),
+    spec__volumeLifecycleModes json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};csidriver');
+
+CREATE FOREIGN TABLE CSI_NODE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__drivers json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};csinode');
+
+CREATE FOREIGN TABLE CSI_STORAGE_CAPACITY
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    capacity json OPTIONS(parser_format 'asJsonPretty'),
+    maximumVolumeSize json OPTIONS(parser_format 'asJsonPretty'),
+    nodeTopology json OPTIONS(parser_format 'asJsonPretty'),
+    storageClassName string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};csistoragecapacity');
+
+CREATE FOREIGN TABLE VOLUME_ATTACHMENT
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__attacher string,
+    spec__nodeName string,
+    spec__source json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__attachError json OPTIONS(parser_format 'asJsonPretty'),
+    status__attached boolean,
+    status__attachmentMetadata json OPTIONS(parser_format 'asJsonPretty'),
+    status__detachError json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};volumeattachment');
+
+CREATE FOREIGN TABLE JOB
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__activeDeadlineSeconds long,
+    spec__backoffLimit integer,
+    spec__backoffLimitPerIndex integer,
+    spec__completionMode string,
+    spec__completions integer,
+    spec__manualSelector boolean,
+    spec__maxFailedIndexes integer,
+    spec__parallelism integer,
+    spec__podFailurePolicy json OPTIONS(parser_format 'asJsonPretty'),
+    spec__podReplacementPolicy string,
+    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__suspend boolean,
+    spec__template json OPTIONS(parser_format 'asJsonPretty'),
+    spec__ttlSecondsAfterFinished integer,
+
+    status__active integer,
+    status__completedIndexes string,
+    status__completionTime string,
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__failed integer,
+    status__failedIndexes string,
+    status__ready integer,
+    status__startTime string,
+    status__succeeded integer,
+    status__terminating integer,
+    status__uncountedTerminatedPods json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};job');
+
+CREATE FOREIGN TABLE CRON_JOB
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__concurrencyPolicy string,
+    spec__failedJobsHistoryLimit integer,
+    spec__jobTemplate json OPTIONS(parser_format 'asJsonPretty'),
+    spec__schedule string,
+    spec__startingDeadlineSeconds long,
+    spec__successfulJobsHistoryLimit integer,
+    spec__suspend boolean,
+    spec__timeZone string,
+
+    status__active json OPTIONS(parser_format 'asJsonPretty'),
+    status__lastScheduleTime string,
+    status__lastSuccessfulTime string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};cronjob');
+
+CREATE FOREIGN TABLE POD_DISRUPT_BUDGET
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__maxUnavailable string,
+    spec__minAvailable string,
+    spec__unhealthyPodEvictionPolicy string,
+    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__currentHealthy integer,
+    status__desiredHealthy integer,
+    status__disruptedPods json OPTIONS(parser_format 'asJsonPretty'),
+    status__disruptionsAllowed integer,
+    status__expectedPods integer,
+    status__observedGeneration long,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};poddisruptbudget');
+
+CREATE FOREIGN TABLE RBAC_ROLE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    rules json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;role');
+
+CREATE FOREIGN TABLE RBAC_ROLE_BINDING
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    roleRef json OPTIONS(parser_format 'asJsonPretty'),
+    subjects json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;rolebinding');
+
+CREATE FOREIGN TABLE RBAC_CLUSTER_ROLE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    rules json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;clusterrole');
+
+CREATE FOREIGN TABLE RBAC_CLUSTER_ROLE_BINDING
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    roleRef json OPTIONS(parser_format 'asJsonPretty'),
+    subjects json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;clusterrolebinding');
+
+CREATE FOREIGN TABLE PRIORITY_CLASS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    description string,
+    globalDefault boolean,
+    preemptionPolicy string,
+    "value" integer,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};priorityclass');
+
+CREATE FOREIGN TABLE API_SERVICE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__caBundle string,
+    spec__group string,
+    spec__groupPriorityMinimum integer,
+    spec__insecureSkipTLSVerify boolean,
+    spec__service json OPTIONS(parser_format 'asJsonPretty'),
+    spec__version string,
+    spec__versionPriority integer,
+
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};apiservice');
+
+CREATE FOREIGN TABLE CONFIGMAP
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    binaryData json OPTIONS(parser_format 'asJsonPretty'),
+    data json OPTIONS(parser_format 'asJsonPretty'),
+    immutable boolean,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};configmap');
+
+CREATE FOREIGN TABLE LIMIT_RANGE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__limits json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};limitrange');
+
+CREATE FOREIGN TABLE LEASE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__acquireTime string,
+    spec__holderIdentity string,
+    spec__leaseDurationSeconds integer,
+    spec__leaseTransitions integer,
+    spec__renewTime string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};lease');
+
+CREATE FOREIGN TABLE CUSTOM_RESOURCE_DEFINITION
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__conversion json OPTIONS(parser_format 'asJsonPretty'),
+    spec__group string,
+    spec__names json OPTIONS(parser_format 'asJsonPretty'),
+    spec__preserveUnknownFields boolean,
+    spec__scope string,
+    spec__versions json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__acceptedNames json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__storedVersions json,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};crd;customresourcedefinition');
+```
+
+</details>
+
+## Script Document Data Source (`SCRIPT_DOCUMENT_JS`)
+
+A Data Source that handles `JSON` and `YAML` documents and delegates the final processing steps to JavaScript.
+
+As explained [here](/Engine/script-context-members#script-data-source) the adapter exchanges `JSON` documents with your JavaScript, via bound objects.<br/>
+Therefore, your scripts do not have to deal with the document build, since that happens at adapter level, so your scripts have only the logic to interact with other
+systems, which in most cases means calling its API.
+
+When the engine receives, for example, and `UPDATE` query, the documents that match the criteria are returned by calling your `resultSetScript`, then, based on the
+type of table being updated, the engine updates the document/s and calls the script defined as `updateScript`.
+
+<Callout>
+It is important to note that the `resultSetScript` must do its **best effort** to return documents that match the criteria, or `WHERE` clause, however when the
+system does not have specific filter mechanisms or it is complex to implement, your script can return documents not matching the criteria, since the result set
+is further inspected by the engine before returning the rows.
+</Callout>
+
+Sample config in VDB file:
+```yaml
+- name: github
+  dataSourceType: SCRIPT_DOCUMENT_JS
+  configObject:
+    module:
+      zipFilePath: kbl://github/0.0.1
+  translatorConfig: module:translator-config.yaml
+  schema:
+    type: PHYSICAL
+    ddlFilePaths:
+      - module:github.ddl
+```
+
+In the sample above, `zipFilePath` uses the `kbl` URL `scheme` that points to the Module repository configured in the [Main application configuration](/schemas#main-application-configuration),
+under `moduleRepoBaseURI`. By default, it points to `https://repo.kubling.com`.
+
+`translatorConfig` and `schema.ddlFilePaths` point to files inside the module, that is why they use the special `module:` prefix.
+For more information please see [Virtual Database information file](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle).

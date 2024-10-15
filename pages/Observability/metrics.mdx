@@ -1,0 +1,211 @@
+import { Callout } from 'nextra/components'
+
+# Metrics
+
+Kubling provides a set of metrics that can be integrated into your observability stack. 
+We prioritize offering a concise, meaningful set of metrics that provide accurate insights rather than overwhelming you with an extensive list of 
+unhelpful metrics that could unnecessarily consume system resources, particularly CPU.
+
+<Callout>
+    There could be use cases we are not aware of, in which case we encourage you to open an issue and make the request or to communicate with us using
+    any of the available channels.
+</Callout>
+
+## Metrics Format
+By default, Kubling provides metrics in a base standard format. 
+While this format may not be directly compatible with most observability stacks, Kubling adapts these base metrics to other widely used formats to ensure compatibility. 
+Importantly, the underlying metrics remain unchanged; only the presentation is adapted for the specific monitoring tool or format. 
+
+This documentation focuses on the default format because it is easier to read and provides a clear view of the metrics’ structure. 
+Despite the formatting changes, the metrics' core data and meaning remain consistent across all formats.
+
+Current support formats are Prometheus and Azure Monitor.
+
+## Metrics endpoint
+Metrics list can be fetch from `GET` `http[s]://[address]:8282/observe/metrics`<br/>
+Each metric's measurement and tags can be fetch from `GET` `http[s]://[address]:8282/observe/metrics/[metric_name]`
+
+## HTTP related metrics
+
+### `http.server.requests`
+Gathers information about HTTP requests.
+
+<details>
+<summary>See measurements and tags</summary>
+```json
+{
+    "name": "http.server.requests",
+    "baseUnit": "seconds",
+    "measurements": [
+        {
+            "statistic": "COUNT",
+            "value": 0.0
+        },
+        {
+            "statistic": "TOTAL_TIME",
+            "value": 0.0
+        },
+        {
+            "statistic": "MAX",
+            "value": 0.0
+        }
+    ],
+    "availableTags": [
+        {
+            "tag": "exception",
+            "values": [
+                "none"
+            ]
+        },
+        {
+            "tag": "method",
+            "values": [
+                "GET"
+            ]
+        },
+        {
+            "tag": "error",
+            "values": [
+                "none"
+            ]
+        },
+        {
+            "tag": "uri",
+            "values": [
+                "/observe/metrics",
+                "/observe/prometheus",
+                "/observe/metrics/{requiredMetricName}"
+            ]
+        },
+        {
+            "tag": "outcome",
+            "values": [
+                "SUCCESS"
+            ]
+        },
+        {
+            "tag": "status",
+            "values": [
+                "200"
+            ]
+        }
+    ]
+}
+```
+</details>
+
+### `http.server.requests.active`
+Provides information about currently **active** HTTP requests.
+
+<details>
+<summary>See measurements and tags</summary>
+```json
+{
+    "name": "http.server.requests.active",
+    "baseUnit": "seconds",
+    "measurements": [
+        {
+            "statistic": "ACTIVE_TASKS",
+            "value": 0.0
+        },
+        {
+            "statistic": "DURATION",
+            "value": 0.0
+        }
+    ],
+    "availableTags": [
+        {
+            "tag": "exception",
+            "values": [
+                "none"
+            ]
+        },
+        {
+            "tag": "method",
+            "values": [
+                "GET"
+            ]
+        },
+        {
+            "tag": "uri",
+            "values": [
+                "UNKNOWN"
+            ]
+        },
+        {
+            "tag": "outcome",
+            "values": [
+                "SUCCESS"
+            ]
+        },
+        {
+            "tag": "status",
+            "values": [
+                "200"
+            ]
+        }
+    ]
+}
+```
+</details>
+
+## Engine related metrics
+These metrics come with without any tags by default. You can specify yours in the `metricsCommonTags` attribute of the [Main application configuration](/schemas#main-application-configuration).
+
+### `kubling.engine.sql.sessions.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Provides the number of current active SQL Sessions (Native & PG transports).
+
+### `kubling.engine.sql.plan.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Number of current active SQL atomic plans. Atomic plans are effective work items within the DQP, that is, once the DQP identified the Data Sources involved in the query.
+
+### `kubling.engine.sql.plan.enqueued.current` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Number of current Jobs (queries sent by any valid session) waiting for a free thread to process the plan.
+
+### `kubling.engine.sql.plan.enqueued_time.max` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+The maximum time a plan spent waiting in the queue for a free thread during the current execution.
+
+### `kubling.engine.sql.threads.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Number of current active SQL related threads, like DQP's plan processing. Take into account that one query may trigger multiple threads, one per atomic plan.
+
+### `kubling.engine.sql.jobs.total` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Number of total submitted SQL Jobs.
+
+### `kubling.engine.sql.jobs.completed` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Number of total completed SQL Jobs.
+
+### `kubling.engine.sql.jobs.enqueued` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Number of current enqueued SQL Jobs.
+
+### `kubling.engine.sql.jobs.max` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Maximum number of SQL jobs running in parallel during the current execution.
+
+### `kubling.engine.sql.jobs.enqueued.max` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Maximum number of SQL jobs enqueued during the current execution.
+
+### `kubling.js.threads.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Provides the number of current active JavaScript context threads.
+
+### `kubling.js.executions` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Counter</span>
+Provides the number of total JavaScript context threads claimed during current execution.
+
+### `kubling.js.auth.thread.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+Provides the number of current active JavaScript Auth* context threads. Same measurement as `kubling.js.threads.active`.
+
+### `kubling.js.auth.executions` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Counter</span>
+Provides the number of total JavaScript Auth* context threads claimed during current execution. Same measurement as `kubling.js.executions`.
+
+## Prometheus
+The metrics mentioned above are automatically adapted to [Prometheus format](https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md).<br/>
+Metrics in this format can be obtained from `GET` `http[s]://[address]:8282/observe/prometheus`
+
+<Callout>
+    Bear in mind that Kubling does not push Prometheus metrics, since Prometheus uses a pull-based model for monitoring, 
+    that is, the server pulls metrics from configured targets by scraping their endpoints which is, from the Kubling Engine stand pot of view, the preferred option.
+</Callout>
+
+## Azure Monitor
+Metrics can be **pushed** to Azure Monitor using a built-in client. To activate it, you only need to pass an Application Insights instrumentation key via
+`INST_AZ_MON_KEY` environment variable.
+
+See [the official documentation](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) for more information about Application Insights.
+

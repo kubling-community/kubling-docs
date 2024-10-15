@@ -1,0 +1,78 @@
+import { Callout, FileTree } from 'nextra/components'
+
+# Template Functions Bundle Module
+
+This module contains functions that can be called in any template parsing contexts, like configuration files, DDLs, endpoints, etc.
+
+Let's see first the recommended internal directory and file organization:
+
+<FileTree>
+  <FileTree.File name="bundle-function-info.yaml" />  
+  <FileTree.Folder name="fn">
+    <FileTree.Folder name="atlassian">
+        <FileTree.File name="get_jira_internal_user_name.js" />
+    </FileTree.Folder>    
+    <FileTree.File name="enclose_string_param.js" />
+  </FileTree.Folder>
+</FileTree>
+
+## 📄 `bundle-function-info.yaml`
+This is the only file whose location must be the root directory of the module.
+See here the [schema](/schemas#template-function-module-bundle-information-file-bundle-function-infoyaml) of the file.
+
+## 📂 Platform-related functions directories
+Ideally, a functions module should contain all the necessary functions required in all templates. 
+That is why it is highly recommended to keep them separate in directories.
+
+In the example above, there is a common function `enclose_string_param.js` that can be applied to any template file, whereas those inside `atlassian` directory will
+only make sense in DDL, configuration and endpoints related with Jira, Confluence, etc.
+
+## Function script
+Kubling does not evaluate functions the same way it evaluates Delegate scripts, in the sense that in functions only the function code is loaded and evaluated,
+not the whole script file, and the following limitations apply:<br/>
+- `import` is not supported.
+- Calling other functions is not supported.
+
+Let's analyze how it works using the following simple example:
+
+```yaml
+functions:
+# Filename: bundle-function-info.yaml
+  - name: "get_jira_internal_user_name"
+    params:
+      - accountId
+      - email
+    scriptFilePath: "fn/atlassian/get_jira_internal_user_name.js"
+  - name: "enclose_string_param"
+    params:
+      - value
+    scriptFilePath: "fn/enclose_string_param.js"
+```
+
+Please note that we not only define the function scripts but also their parameters. 
+The order of parameters matters since values passed as arguments to the [function](/template#functions) can be either positional or named. 
+**However, what you receive in your script is a wrapper `object` whose members are the actual parameter names.**
+
+```js
+// Filename: enclose_string_param.js
+function(args) {
+    return `'${args.value}'`;
+}
+```
+
+As you can see, `args` is just an object whose members are the the parameters listed for the function.
+
+Example of function call with a single param:
+```yaml
+...
+- field: "some_field"
+  value: {{ enclose_string_param(_context.myVar) }}
+```
+
+The following function requires two parameters, as it constructs a different username based on a combination of the owner's email and accountId:
+```js
+// Filename: get_jira_internal_user_name.js
+function(args) {
+    return `${args.email.substring(0, args.email.indexOf("@"))}-${args.accountId}`;
+}
+```

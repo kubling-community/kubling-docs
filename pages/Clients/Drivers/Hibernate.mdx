@@ -1,0 +1,50 @@
+import { Callout } from 'nextra/components'
+
+# Hibernate
+We [released a Hibernate dialect](https://github.com/kubling-community/kubling-teiid-os/tree/master/hibernate-dialect) that currently supports 
+Hibernate `6.1.7`, but [we are planning](http://localhost:3000/roadmap) to move directly to version `7` once it is released, tested and adopted mostly by Spring and Quarkus.
+
+<Callout>
+  Take into account that from Hibernate version `6.1.x` to `6.2.x`, the `Dialect` base class changed some important methods like `initializeFunctionRegistry`,
+  therefore if you need support for versions >= `6.2.x`, you just need to register the same functions and column types
+  following the new API model, that is, even though we haven't tested it, from `Kubling` viewpoint it should not change.
+</Callout>
+
+## Usage
+In your project, add Apache Maven dependencies for the Hibernate ORM core and Kubling JDBC Driver and Dialect.
+
+```xml
+<dependency>
+    <groupId>com.kubling</groupId>
+    <artifactId>kubling-client</artifactId>
+    <version>24.2.2</version>
+</dependency>
+<dependency>
+    <groupId>com.kubling</groupId>
+    <artifactId>kubling-hibernate-dialect</artifactId>
+    <version>24.2.2</version>
+</dependency>
+```
+
+### Set up Hibernate properties
+Configure `hibernate.properties` to use the Kubling Dialect and Kubling JDBC Driver.
+
+```properties
+hibernate.dialect=com.kubling.hibernate.dialect.KublingDialect
+hibernate.connection.driver_class=com.kubling.teiid.jdbc.TeiidDriver
+hibernate.connection.url=jdbc:teiid:MinimalVDB@mm://localhost:35482
+hibernate.connection.username=sa
+hibernate.connection.pool_size=5
+hibernate.show_sql=true
+hibernate.format_sql=true
+hibernate.hbm2ddl.auto=update
+```
+
+In case you want to specify client networking properties, add the property to the `url` as follows:
+```properties
+hibernate.connection.url=jdbc:teiid:MinimalVDB@mms://localhost:35482;connectionPropsFilePath=/path/to/client-settings.properties
+```
+
+<Callout type='info'>
+  [We prepared an example](https://github.com/kubling-community/dbvirt-samples/tree/main/hibernate) in which you will find the Hibernate Dialect in action on a Spring Boot project.
+</Callout>

@@ -1,0 +1,45 @@
+# Product roadmap
+Adopting a new technology, especially foundational software like a database engine—even a virtual one like Kubling—is a long process that involves some degree of uncertainty.
+
+As developers and DevOps professionals, one thing we often value, but don't always have, is a clear idea of where the products we rely on are heading. 
+This is why we’re sharing our high-level roadmap with you.
+
+Please keep in mind that we only list features here that might directly impact you, and not all of them will necessarily be implemented.
+
+## Support all DDL options in non-document data sources <span class="inline-flex items-center rounded-md bg-kubling-green px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Analysis</span> <span class="inline-flex items-center rounded-md bg-kubling-dark-violet px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">High Prio</span>
+When we initially implemented support for traditional RDBMS and other NoSQL databases, we focused on a straightforward, 1:1 schema import. 
+However, we've recently identified use cases where users need to generate new schemas based on existing data source schemas, incorporating new fields and transformations.
+
+We plan to develop a new Query Processor's interceptor meta-adapter, transparent to the user, to enhance DDL capabilities across all non-document data sources.
+
+## Support Couchbase Data Source <span class="inline-flex items-center rounded-md bg-kubling-green px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Implemented</span>
+We will support Couchbase, possibly with some limitations, in the next release.
+
+## Support Cassandra Data Source <span class="inline-flex items-center rounded-md bg-kubling-green px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Implemented</span>
+We will support Cassandra, possibly with some limitations, in the next release.
+
+## File Logs <span class="inline-flex items-center rounded-md bg-kubling-dark-violet px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">High Prio</span>
+We plan to support saving logs in files, with the ability to define some rolling strategy.
+
+## Log Routers <span class="inline-flex items-center rounded-md bg-kubling-green px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Analysis</span>
+We are analyzing whether to support routing logs, based on a predefined criteria, to custom script functions.
+
+## Cache <span class="inline-flex items-center rounded-md bg-kubling-green px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Analysis</span> <span class="inline-flex items-center rounded-md bg-kubling-dark-violet px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">High Prio</span>
+We are analyzing how to implement configurable local cache strategy in data sources, with performant invalidation mechanism.
+
+## Transaction support on `SCRIPT_DOCUMENT_JS` and `KUBERNETES` Data Sources <span class="inline-flex items-center rounded-md bg-kubling-green px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Analysis</span>
+We are analyzing whether it is possible to implement transactions without breaking these DS principles.
+
+## SQL functions defined in modules
+Currently, SQL functions are [defined in specific modules](/Modules/Functions/SQL), forcing to have everything centralized. We plan to support defining SQL functions also
+in [Script Bundle Modules](/Modules/DataSource/Script).
+
+## Smaller `kdv` CLI
+We'll release a smaller version of the CLI without the `test` command, which requires lots of libraries to be added to the utility.
+
+## Load DDL from modules in Integration tests <span class="inline-flex items-center rounded-md bg-kubling-green px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Analysis</span>
+Loading DDL files defined inside modules is not yet supported. We are currently analyzing whether the integration tests should read the internal module metadata, 
+or if the `ddlFilePath` property should support schemes like `module:` and/or `bundle:`.
+
+## Upgrade Hibernate dialect to version 7 <span class="inline-flex items-center rounded-md bg-kubling-dark-violet px-2 py-1 text-sm font-bold text-white ring-1 ring-inset ring-gray-500/10">Low Prio</span>
+We currently support up to version `6.1.7`, and we are planning to jump directly to version `7`.

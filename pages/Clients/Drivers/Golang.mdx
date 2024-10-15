@@ -1,0 +1,49 @@
+# Connect from a Go Application
+
+Kubling does not provide a Go driver for native protocol, PostgreSQL protocol must be used instead.
+All the tests we conducted in Go were using [pgx](https://github.com/jackc/pgx) driver
+
+Example:
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/jackc/pgx/v4"
+)
+
+func main() {
+
+	// Connection string
+	connStr := "postgres://sa:sa@localhost:35432/MyVDB"
+
+	// Connect to the PostgreSQL database
+	conn, err := pgx.Connect(context.Background(), connStr)
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v\n", err)
+	}
+	defer conn.Close(context.Background())
+
+	fmt.Println("Connected to Kubling!")
+
+	rows, err := conn.Query(context.Background(), `SELECT identifier, org, repo from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('dbvirt-samples');`)
+	if err != nil {
+		log.Fatalf("Unable to query table: %v\n", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var identifier, org, repo string
+		err = rows.Scan(&identifier, &org, &repo)
+		if err != nil {
+			log.Fatalf("Unable to scan row: %v\n", err)
+		}
+		fmt.Printf("ID: %d, Org: %s, Repo: %s\n", identifier, org, repo)
+	}
+
+}
+
+```

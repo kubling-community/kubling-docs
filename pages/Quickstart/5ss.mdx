@@ -1,0 +1,26 @@
+import { Steps } from 'nextra/components'
+
+<Steps>
+
+### Clone our samples repository
+
+```shell copy
+$ git clone https://github.com/kubling-community/dbvirt-samples.git
+```
+
+### Run latest community edition locally
+
+```shell copy
+$ docker run --rm -d --name kubling \
+    -e ENABLE_WEB_CONSOLE=true \
+    -e DESCRIPTOR_BUNDLE=/dbvirt-samples/empty/empty-descriptor-bundle.zip \
+    -e APP_CONFIG=/dbvirt-samples/empty/app-config.yaml \
+    -p 35432:35432 -p 35482:35482 -p 8282:8282 \
+    -v ~/dbvirt-samples:/dbvirt-samples \
+    kubling/dbvirt-ce:latest
+```
+
+### Configure
+[Go to the console](http://localhost:8282/console "target=_blank")
+
+</Steps>

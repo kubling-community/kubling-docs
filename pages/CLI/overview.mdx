@@ -1,0 +1,107 @@
+import { Callout } from 'nextra/components'
+
+## CLI
+The Kubling CLI (Command Line Interface) is a single, statically compiled, dependency-free executable, named `kdv`. 
+
+The main goal of the CLI is to facilitate common tasks required when configuring instances. 
+It is designed to be easily embedded into pipelines, as well as into developers' environments.
+
+### A note on its size
+Although Kubling is not a heavy application (its OCI Image is \<120MB), and its Community Edition (CE) version includes nearly all the features needed during 
+development—making it a perfect fit for local development environments—certain tasks like testing can be challenging and time-consuming 
+if every small change to a Script Module requires restarting a test container.
+
+On the other hand, CLI tools and packages are typically small, often just a few KB in size, especially in the Linux ecosystem. 
+However, the first thing you'll notice is that `kdv` is relatively large compared to other CLI tools. 
+
+This is because `kdv` contains roughly half of the packages and dependencies used by the server itself, 
+including the Query Engine, Data Sources layer, including translators and adapters, and the JavaScript interpreter.
+
+The reason for embedding all these packages into the CLI is that we have created a special test command, which helps you write and execute integration tests declaratively. 
+This is part of our effort to integrate with popular IDEs like Visual Studio Code.
+
+<Callout type="info">
+  We are planning to release a smaller version without testing related commands.
+  See our [roadmap](/roadmap) for more information.
+</Callout>
+
+## Distribution
+For local development environments we recommend using the binary file whose distribution channel is still under development.
+
+In pipelines, workflows or in case you prefer using containers, you can [find them here](https://hub.docker.com/r/kubling/dbvirt-cli/tags).
+
+## Commands
+
+### &bull; `bundle`
+It aggregates various utilities for working with bundle files, like Modules.
+
+#### Subcommands
+#### &rarr; `genmod`
+Generates a JavaScript Module file.
+
+| <div style={{width: "120px"}}>Name</div> | Type         | Description                                                               | Default Value |
+|------------------------------------------|--------------|---------------------------------------------------------------------------|---------------|
+| Directory Path                           | Parameter(0) | Path to the root of the directory containing Module's code.               |               |
+| -o, --output                             | Option       | Full file name of the generated bundle zip file.                          |               |
+| -p, --parse                              | Option       | When enabled, all JavaScript files are parsed before bundle is generated. | `false`       |
+
+Sample usage:
+```sh
+kdv bundle genmod /dbvirt-samples/azure/modules/delegate -o /dbvirt-samples/azure/modules/azure-module-bundle.zip --parse
+```
+
+### &bull; `test`
+Utilities for performing tests.
+
+#### Subcommands
+#### &rarr; `integration`
+Runs an Integration test plan.
+
+| Name         | Type         | Description                    | Default Value |
+|--------------|--------------|--------------------------------|---------------|
+| File Path    | Parameter(0) | Test plan manifest file path.  |               |
+
+Sample usage:
+```sh
+kdv test integration /dbvirt-samples/appmodel/integration-test-plan.yaml
+```
+
+More about the test framework in the [next section](/CLI/test-framework).
+
+### &bull; `cert`
+Utilities for working with Kubling Server and Client certificates.
+
+#### Subcommands
+#### &rarr; `create`
+Creates a pair of certificate stores to use in Server and Client.
+
+KetStore type used during generation is `PKCS12`, whereas for the digital signature, the `SHA512withRSA` encryption is used.
+
+| <div style={{width: "120px"}}>Name</div> | Type   | Description                                                     | Default Value   |
+|------------------------------------------|--------|-----------------------------------------------------------------|-----------------|
+| -v, --validity                           | Option | SERVER and CLIENT certificate store validity expressed in days. | 180             |
+| -s, --server                             | Option | Full file name of the generated SERVER certificate store.       | ./server.ks     |
+| -c, --client                             | Option | Full file name of the generated CLIENT certificate store.       | ./client.ks     |
+| -p, --clientPass                         | Option | CLIENT certificate store password.                              | (Random String) |
+| -x, --serverPass                         | Option | SERVER certificate store password.                              | (Random String) |
+| -o, --overwrite                          | Option | Overwrite store files if they already exist.                    | `false`         |
+
+Sample usage:
+```sh
+kdv cert create -s /certs/server.ks -c /certs/client.ks -x myserverpass -p myclientpass -o
+```
+
+## Using the containerized version
+The general usage, assuming you use Docker, is as follows:
+```sh
+docker run --rm -v [/your/project/path]:[/path/in/container] kubling/dbvirt-cli:latest [command] [subcommand] [params] [options]
+```
+
+- `[/your/project/path]`: Any system's directory that contains one or several Kubling project (like modules), needed by the command.
+- `[path/in/container]`: The mount point inside the container.
+- `command`: The `kdv` command to be executed, along with its subcommand, parameters and options.
+
+Sample usage:
+```sh copy
+docker run --rm -v /root/dbvirt-samples/:/dbvirt-samples/ kubling/dbvirt-cli:latest bundle genmod /dbvirt-samples/azure/modules/delegate -o /dbvirt-samples/azure/modules/delegate/azure-module-bundle.zip
+```
