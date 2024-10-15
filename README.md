@@ -1,8 +1,8 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: light)" srcset="./public/img/log.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="./public/img/log-white.svg">
-    <img alt="Kubling logo" src="./public/img/log.svg" height="100">
+    <source media="(prefers-color-scheme: light)" srcset="./public/img/logo.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="./public/img/logo-white.svg">
+    <img alt="Kubling logo" src="./public/img/logo.svg" height="100">
   </picture>
 </div>
 <br>
