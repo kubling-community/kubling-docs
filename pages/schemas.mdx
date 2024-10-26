@@ -758,7 +758,7 @@ Applies to the following Data Source types:
 
 ```yaml
 type: "object"
-id: "schema:kubling:model:vdb:sources:KubernetesSourceConfig"
+id: "schema:kubling:dbvirt:model:vdb:sources:KubernetesSourceConfig"
 properties:
   contextVariables:
     type: "object"
@@ -772,6 +772,15 @@ properties:
   masterUrl:
     type: "string"
     description: "Kubernetes cluster API URL. Only used when configFile is not present."
+  blankNamespaceStrategy:
+    type: "string"
+    description: "Sets how the module will behave in case of the query received does\
+      \ not specify a namespace.If none specified, the absence of a namespace in the\
+      \ query will fall to the 'default' namespace, as the kubectl does."
+    enum:
+    - "DEFAULT"
+    - "ALL"
+    - "FAIL"
 ```
 
 ## Script Document Data Source Configuration

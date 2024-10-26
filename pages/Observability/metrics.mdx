@@ -1,4 +1,5 @@
 import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # Metrics
 
@@ -152,46 +153,46 @@ Provides information about currently **active** HTTP requests.
 ## Engine related metrics
 These metrics come with without any tags by default. You can specify yours in the `metricsCommonTags` attribute of the [Main application configuration](/schemas#main-application-configuration).
 
-### `kubling.engine.sql.sessions.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.sessions.active` <Tag description={"Gauge"} />
 Provides the number of current active SQL Sessions (Native & PG transports).
 
-### `kubling.engine.sql.plan.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.plan.active` <Tag description={"Gauge"} />
 Number of current active SQL atomic plans. Atomic plans are effective work items within the DQP, that is, once the DQP identified the Data Sources involved in the query.
 
-### `kubling.engine.sql.plan.enqueued.current` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.plan.enqueued.current` <Tag description={"Gauge"} />
 Number of current Jobs (queries sent by any valid session) waiting for a free thread to process the plan.
 
-### `kubling.engine.sql.plan.enqueued_time.max` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.plan.enqueued_time.max` <Tag description={"Gauge"} />
 The maximum time a plan spent waiting in the queue for a free thread during the current execution.
 
-### `kubling.engine.sql.threads.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.threads.active` <Tag description={"Gauge"} />
 Number of current active SQL related threads, like DQP's plan processing. Take into account that one query may trigger multiple threads, one per atomic plan.
 
-### `kubling.engine.sql.jobs.total` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.jobs.total` <Tag description={"Gauge"} />
 Number of total submitted SQL Jobs.
 
-### `kubling.engine.sql.jobs.completed` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.jobs.completed` <Tag description={"Gauge"} />
 Number of total completed SQL Jobs.
 
-### `kubling.engine.sql.jobs.enqueued` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.jobs.enqueued` <Tag description={"Gauge"} />
 Number of current enqueued SQL Jobs.
 
-### `kubling.engine.sql.jobs.max` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.jobs.max` <Tag description={"Gauge"} />
 Maximum number of SQL jobs running in parallel during the current execution.
 
-### `kubling.engine.sql.jobs.enqueued.max` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.engine.sql.jobs.enqueued.max` <Tag description={"Gauge"} />
 Maximum number of SQL jobs enqueued during the current execution.
 
-### `kubling.js.threads.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.js.threads.active` <Tag description={"Gauge"} />
 Provides the number of current active JavaScript context threads.
 
 ### `kubling.js.executions` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Counter</span>
 Provides the number of total JavaScript context threads claimed during current execution.
 
-### `kubling.js.auth.thread.active` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Gauge</span>
+### `kubling.js.auth.thread.active` <Tag description={"Gauge"} />
 Provides the number of current active JavaScript Auth* context threads. Same measurement as `kubling.js.threads.active`.
 
-### `kubling.js.auth.executions` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Counter</span>
+### `kubling.js.auth.executions` <Tag description={"Counter"} />
 Provides the number of total JavaScript Auth* context threads claimed during current execution. Same measurement as `kubling.js.executions`.
 
 ## Prometheus

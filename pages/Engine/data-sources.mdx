@@ -1,4 +1,5 @@
 import { Callout, Steps } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # Data Sources
 
@@ -113,6 +114,41 @@ Sample config in VDB file:
 
 [Check here](/schemas#kubernetes-data-source-configuration) the Kubernetes Data Source configuration spec.
 
+### The importance of blank namespace strategy <Tag description={"v24.5.2+"} />
+
+In Kubernetes, resources can be divided into two main groups: namespaced and non-namespaced resources. For the first group, it is mandatory to place the resource within a namespace, whereas the second group consists of cluster-wide or node-wide resources.
+
+This type of design introduces certain challenges to Kubling's DQP. The first challenge is how to behave when querying namespaced resources without specifying a namespace.
+
+For example, the following query:
+```sql
+SELECT * from DEPLOYMENT
+```
+
+ Could mean two things to the user:
+1. **Return all cluster deployments** or...
+2. **Return deployments in the default namespace**, because if I needed specific namespaces or all, I would explicitly specify that in the query.
+
+The second challenge is how to weigh queries (often referred to as node cardinality) when choosing option 2, mentioned above. 
+The query planner is designed in a way that makes decisions based on internal statistics, which may sometimes yield unpredictable results when APIs are design as Kubernetes'.
+
+Let's use the following query as an example:
+```sql
+SELECT * from DEPLOYMENT dp
+JOIN NAMESPACE AS ns ON dp.metadata__namespace = ns.metadata__name 
+```
+
+In certain circumstances, the DQP may decide, based on internal statistics (or the lack thereof), that fetching all deployments and all namespaces in parallel, 
+then evaluating them in memory to return only those that matches criteria `dp.metadata__namespace = ns.metadata__name`, even rewriting the criteria as `IN`, instead of equals, 
+is cheaper than fetching all namespaces and then iterating and fetching deployments one by one.
+
+If this happens and option 2 is selected, the result will likely include deployments from the default namespace, which is not what the query is clearly trying to retrieve.
+
+As a conclusion, if you're planning to use `JOINS`, and to avoid unpredictable results, we suggest opting for **option 1**, which can be configured via `blankNamespaceStrategy` in
+the Kubernetes Data Source configuration.
+
+### DDL
+
 Kubling comes with a built-in, statically compiled module for Kubernetes that uses, by default, a DDL files with all the supported tables.
 Please note that it has only a few synthetic `TABLES`, therefore, in case you need a much more specialized or even reduced version, please use the
 following as a starting point.
@@ -169,8 +205,8 @@ CREATE FOREIGN TABLE NODE_CONDITIONS
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
     metadata__namespace string OPTIONS(synthetic_type 'parent'),
 
-    lastTransitionTime string,
-    lastUpdateTime string,
+    lastTransitionTime timestamp,
+    lastUpdateTime timestamp,
     message string,
     reason string,
     status string,
@@ -272,6 +308,7 @@ CREATE FOREIGN TABLE DEPLOYMENT
     schema string OPTIONS(val_constant '{{ schema.name }}'),
     metadata__name string,
     metadata__namespace string,
+    metadata__uid string,
     metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
     spec__template__spec__containers json OPTIONS(parser_format 'asJsonPretty'),
     spec__selector__matchLabels json OPTIONS(parser_format 'asJsonPretty'),
@@ -295,9 +332,10 @@ CREATE FOREIGN TABLE DEPLOYMENT_CONDITIONS
     schema string OPTIONS(val_constant '{{ schema.name }}'),
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
     metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__uid string OPTIONS(synthetic_type 'parent'),
 
-    lastTransitionTime string,
-    lastUpdateTime string,
+    lastTransitionTime timestamp,
+    lastUpdateTime timestamp,
     message string,
     reason string,
     status string,
@@ -315,6 +353,7 @@ CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
     metadata__namespace string OPTIONS(synthetic_type 'parent'),
     metadata__labels string OPTIONS(updatable false, synthetic_type 'parent'),
+    metadata__uid string OPTIONS(synthetic_type 'parent'),
 
     image string NOT NULL,
     name string NOT NULL,
@@ -337,6 +376,7 @@ CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER_VOLS
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
     metadata__namespace string OPTIONS(synthetic_type 'parent'),
     metadata__labels string OPTIONS(synthetic_type 'parent'),
+    metadata__uid string OPTIONS(synthetic_type 'parent'),
     containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name'),
     containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image'),
 
@@ -375,7 +415,7 @@ CREATE FOREIGN TABLE PERSISTENT_VOLUME
     spec__volumeMode string,
     spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
 
-    status__lastPhaseTransitionTime string,
+    status__lastPhaseTransitionTime timestamp,
     status__message string,
     status__phase string,
     status__reason string,
@@ -720,10 +760,10 @@ CREATE FOREIGN TABLE EVENT
 
     action string,
     deprecatedCount integer,
-    deprecatedFirstTimestamp string,
-    deprecatedLastTimestamp string,
+    deprecatedFirstTimestamp timestamp,
+    deprecatedLastTimestamp timestamp,
     deprecatedSource json OPTIONS(parser_format 'asJsonPretty'),
-    eventTime json OPTIONS(parser_format 'asJsonPretty'),
+    eventTime timestamp,
     note string,
     reason string,
     regarding json OPTIONS(parser_format 'asJsonPretty'),
@@ -840,7 +880,7 @@ CREATE FOREIGN TABLE HORIZONTAL_POD_AUTOSCALER
     status__currentMetrics json OPTIONS(parser_format 'asJsonPretty'),
     status__currentReplicas integer,
     status__desiredReplicas integer,
-    status__lastScaleTime string,
+    status__lastScaleTime timestamp,
     status__observedGeneration long,
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
@@ -991,12 +1031,12 @@ CREATE FOREIGN TABLE JOB
 
     status__active integer,
     status__completedIndexes string,
-    status__completionTime string,
+    status__completionTime timestamp,
     status__conditions json OPTIONS(parser_format 'asJsonPretty'),
     status__failed integer,
     status__failedIndexes string,
     status__ready integer,
-    status__startTime string,
+    status__startTime timestamp,
     status__succeeded integer,
     status__terminating integer,
     status__uncountedTerminatedPods json OPTIONS(parser_format 'asJsonPretty'),
@@ -1028,8 +1068,8 @@ CREATE FOREIGN TABLE CRON_JOB
     spec__timeZone string,
 
     status__active json OPTIONS(parser_format 'asJsonPretty'),
-    status__lastScheduleTime string,
-    status__lastSuccessfulTime string,
+    status__lastScheduleTime timestamp,
+    status__lastSuccessfulTime timestamp,
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
     PRIMARY KEY(identifier),
@@ -1241,11 +1281,11 @@ CREATE FOREIGN TABLE LEASE
     metadata__namespace string,
     metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
 
-    spec__acquireTime string,
+    spec__acquireTime timestamp,
     spec__holderIdentity string,
     spec__leaseDurationSeconds integer,
     spec__leaseTransitions integer,
-    spec__renewTime string,
+    spec__renewTime timestamp,
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
     PRIMARY KEY(identifier),
@@ -1283,7 +1323,6 @@ OPTIONS(updatable true,
         supports_idempotency false,
         tags 'kubernetes;{{ schema.properties.cluster_name }};crd;customresourcedefinition');
 ```
-
 </details>
 
 ## Script Document Data Source (`SCRIPT_DOCUMENT_JS`)

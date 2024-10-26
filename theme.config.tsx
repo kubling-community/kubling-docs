@@ -4,6 +4,11 @@ import Image from "next/image";
 import { useRouter } from 'next/router';
 
 const config: DocsThemeConfig = {
+  head: (
+    <>
+      <link rel="icon" href="/img/favicon.png" />
+    </>
+  ),
   logo: (
     <picture>
       <Image
@@ -33,7 +38,7 @@ const config: DocsThemeConfig = {
         titleTemplate: '%s – Kubling Docs'
       }
     }
-  }  
+  }
 }
 
 export default config

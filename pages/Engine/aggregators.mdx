@@ -1,0 +1,62 @@
+# Aggregators
+
+The **aggregator** is a special `schema` type that enables automatic view creation based on other data sources. 
+This feature simplifies querying across multiple sources by aggregating data into views, which are easier to manage.
+
+Consider a scenario where we have several Kubernetes clusters, each defined as a data source within our VDB (Virtual Database). 
+If we want to know, for example, which cluster a specific deployment is running on, one approach is to write a query that joins tables from all relevant schemas. 
+However, this process becomes increasingly complex when managing dozens of clusters.
+
+Relational databases address such scenarios with `VIEWs`, and Kubling follows the same pattern. A `VIEW` is a virtual table constructed from the result of a query, 
+which can be defined in DDL. But in our Kubernetes example, where each cluster has its own schema, it’s unclear where to define a `VIEW` that spans all clusters.
+
+This is where **aggregators** come in. They automatically generate views from tables across multiple `schemas`, streamlining multi-cluster data queries.
+
+Example:
+```yaml
+aggregatorSchemaModels:
+  - name: "k8s"
+    schemas:
+      - "k8s_1"
+      - "k8s_2"
+    tables:
+      - name: "DEPLOYMENT"
+        options:
+          updatable: false
+      - name: "NAMESPACE"
+        options:
+          updatable: false
+      - name: "DEPLOYMENT_CONDITIONS"
+        options:
+          updatable: false
+      - name: "DEPLOYMENT_CONTAINER"
+        options:
+          updatable: false
+      - name: "DEPLOYMENT_CONTAINER_VOLS"
+        options:
+          updatable: false
+```
+
+This configuration creates a new `SCHEMA` called `k8s` in the `VDB`. 
+The tables in this schema, such as `DEPLOYMENT` and `NAMESPACE`, are actually `VIEWs` that aggregate data from the `k8s_1` and `k8s_2` schemas using a `UNION ALL`.
+
+## Primary Keys
+When using aggregators, be cautious when selecting the primary key for your `SCHEMA` definitions, as key duplication may occur.
+
+If a data source does not provide a globally unique key, you should use the Kubling `val_pk` directive while considering the aggregation implications.
+
+For instance, in Kubernetes, if you have only one cluster, it may not be necessary to create primary keys that concatenate the cluster name. 
+However, if you plan to add more clusters in the future, you should construct the primary key to include a cluster identifier, as shown below:
+```sql
+...
+identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name'),
+PRIMARY KEY(identifier),
+...
+```
+
+## Errors or empty results
+Since `VIEWS` in the aggregator context rely on `UNION ALL` (which includes duplicates) to merge results, 
+the query planner (DQP) evaluates costs differently compared to standard queries. 
+In the case of Kubernetes data sources, this behavior might be influenced by the `blankNamespaceStrategy` configuration.
+
+For more information on `blankNamespaceStrategy`, check out the detailed explanation [here](/Engine/data-sources#the-importance-of-blank-namespace-strategy-).
