@@ -13,26 +13,23 @@ We are currently developing a new Data Source for GraphQL, which is expected to 
 Many of the existing Script modules that do not require manual interception will likely be transitioned to GraphQL. 
 Since the new Data Source will be statically compiled, it will offer performance comparable to that of the Kubernetes Data Source, ensuring both efficiency and scalability.
 
+**Nov-24 Update:** Initial tests revealed the complexity of creating a GraphQL Data Source, as APIs do not typically adhere to a standard for schema generation, 
+complicating query formation. We will soon decide whether to continue with this approach or to let users implement it within Script Modules.
+
 ## Support all DDL options in non-document data sources <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
 When we initially implemented support for traditional RDBMS and other NoSQL databases, we focused on a straightforward, 1:1 schema import. 
 However, we've recently identified use cases where users need to generate new schemas based on existing data source schemas, incorporating new fields and transformations.
 
 We plan to develop a new Query Processor's interceptor meta-adapter, transparent to the user, to enhance DDL capabilities across all non-document data sources.
 
-## Support Couchbase Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} />
-We will support Couchbase, possibly with some limitations, in the next release.
-
-## Support Cassandra Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} />
-We will support Cassandra, possibly with some limitations, in the next release.
+## Support for ElasticSearch Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} />
+We are currently evaluating the feasibility of supporting ElasticSearch as a data source without importing specific client libraries, in order to avoid increasing the binary size.
 
 ## File Logs <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
 We plan to support saving logs in files, with the ability to define some rolling strategy.
 
 ## Log Routers <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} />
 We are analyzing whether to support routing logs, based on a predefined criteria, to custom script functions.
-
-## Cache <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
-We are analyzing how to implement configurable local cache strategy in data sources, with performant invalidation mechanism.
 
 ## Transaction support on `SCRIPT_DOCUMENT_JS` and `KUBERNETES` Data Sources <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} />
 We are analyzing whether it is possible to implement transactions without breaking these DS principles.
@@ -50,3 +47,9 @@ or if the `ddlFilePath` property should support schemes like `module:` and/or `b
 
 ## Upgrade Hibernate dialect to version 7 <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"Low Prio"} txtFont={"font-gilroyBold"} />
 We currently support up to version `6.1.7`, and we are planning to jump directly to version `7`.
+
+## Support Couchbase Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"Low Prio"} txtFont={"font-gilroyBold"} />
+We will support Couchbase, possibly with some limitations, in ~~the next~~ a future release.
+
+## Support Cassandra Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"Low Prio"} txtFont={"font-gilroyBold"} />
+We will support Cassandra, possibly with some limitations, in ~~the next~~ a future release.

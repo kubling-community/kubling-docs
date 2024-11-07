@@ -46,6 +46,19 @@ Understanding DQP is particularly important for grasping how Kubling's Document 
 These modules rely on DQP principles to handle the parsing and processing of semi-structured data like `JSON` and `YAML`, 
 ensuring the efficiency and scalability of query execution within the Engine.
 
+### Buffers
+In Kubling, buffers are essential for managing memory and disk storage for temporary data used during query processing.
+
+When the Distributed Query Processor (DQP) fetches information from multiple sources, each intermediate result is treated 
+as temporary and may undergo pre-sorting, pre-aggregation, and other transformations before being merged into the final result. 
+When these temporary result sets are large, they can consume substantial memory, potentially impacting instance performance.
+
+To address this, the buffer manager coordinates resource access and transparently spills data to disk as needed, 
+ensuring that queries can handle large datasets without exhausting memory.
+
+By default, Kubling buffers use a combination of memory and disk. 
+However, for testing or short-lived instances, disk storage can be disabled, allowing all operations to be handled entirely in memory.
+
 ## SQL Query
 When a new SQL query is received from an active session, it is first parsed into a command, which contains the necessary metadata to construct a logical execution plan.
 

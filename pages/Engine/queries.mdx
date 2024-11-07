@@ -1,4 +1,5 @@
 import { Callout, Steps } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # Queries
 
@@ -421,6 +422,41 @@ The `0` index is considered to be before the start of the string.
 <Callout>
   Options that are specified on the type, such as length, precision, scale, etc., are effectively ignored - the Engine is simply converting from one object type to another.<br/>
 </Callout>
+
+### Document Functions <Tag description={"v24.5.3+"} />
+
+| Function                           | Description                                                                                                                                                                                                                                                                         |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `jsonParse(value, skipValidation)` | Parses a `value` (`CLOB` or `BLOB`) and returns a `json` object. `skipValidation` indicates whether pre-parsing validation of `value` should be skipped.                                                                                                                            |
+| `jsonObject(c1, c2, ..., cn)`      | Returns a `json` object based on a list of columns. The resulting object contains fields in the form of `column_name: column_value`.                                                                                                                                                |
+| `yamlAsJSON(value)`                | Converts `value` (`CLOB`), which is expected to be a valid YAML document, into a `json` object.                                                                                                                                                                                     |
+| `jsonPath(value, path)`            | Evaluates a [JsonPath](https://datatracker.ietf.org/doc/rfc9535/) expression on `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed. |
+| `jsonJq(value, query)`             | Applies a [jq](https://jqlang.github.io/jq/) query to `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed.                           |
+| `jsonPathAsString(value, path)`    | Same as `jsonPath` but returns a `string` instead of a `json` object.                                                                                                                                                                                                               |
+| `jsonJqAsString(value, query)`     | Same as `jsonJq` but returns a `string` instead of a `json` object.                                                                                                                                                                                                                |
+
+#### Query Planner Limitations on `WHERE` Clauses with `json` Objects
+
+As of version `v24.5.3`, the query planner is not yet optimized to perform efficient comparisons on `json` objects in the `WHERE` clause, even when the value expression is within a type conversion function.
+Consider the following example:
+```sql
+SELECT * 
+FROM 
+	kube.EVENT 
+WHERE 
+	convert(jsonPath(regarding, '$.uid'), string) = '7e613d43'
+```
+
+Assuming that such a `uid` exists, we expect the query planner to drop the entire query due to its current limitations in creating an optimized node based on `json` objects.
+
+For these cases, you should use `jsonPathAsString` or `jsonJqAsString` instead, as shown below:
+```sql
+SELECT * 
+FROM 
+	kube.EVENT 
+WHERE 
+	jsonPathAsString(regarding, '$.uid') = '7e613d43'
+```
 
 ### Choice functions
 

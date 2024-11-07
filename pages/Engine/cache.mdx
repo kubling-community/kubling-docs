@@ -1,0 +1,156 @@
+import Tag from '../../component/Tag'
+import { Callout } from 'nextra/components'
+
+# Cache <Tag description={"v24.5.3+"} />
+
+Kubling includes a caching mechanism that stores query results in memory. 
+When the engine receives the same query again, it can retrieve results directly from memory instead of sending the query to the Adapter. 
+This significantly enhances performance by reducing query processing time and resource usage.
+
+## Considerations before activating Cache
+
+In regular databases and other standalone systems, caching is straightforward because the cached data can be easily invalidated; 
+a single entry point manages access to the data.
+
+However, in Kubling, things work differently. Kubling doesn’t store data locally; instead, it retrieves data from remote sources. 
+This means that Kubling is generally not the sole interface interacting with the data.
+
+For instance, imagine you’re using GitHub as a data source in Kubling with caching enabled. 
+You fetch all repositories in your organization, and that result is cached locally. One minute later, 
+a colleague accesses GitHub directly through the web console and manually creates a new repository. As a result, your local cache now holds outdated information.
+
+For these reasons, caching should only be enabled if:
+- Kubling **is** the sole interface interacting with the data.
+- An efficient invalidation informer mechanism can be designed.
+
+## Configuration
+At the Engine level, caching is always enabled and used internally to retrieve system information efficiently.
+However, through the [Application configuration](/schemas#main-application-configuration), 
+you can adjust certain settings to control cache behavior:
+
+- `sessionScoped`: Indicates whether the cache entries are scoped to individual sessions. When set to false, the cache is shared across all sessions. Default is false.
+- `maxEntries`: Maximum number of entries allowed in the cache, used when `maxMemorySizeMB` is not defined. Default is 1024.
+- `maxMemorySizeMB`: Maximum allowed memory size for this cache. By default, the Engine ignores this setting and limits the cache solely by `maxEntries`. 
+However, when enabled, the Engine estimates the memory size of each cache entry, which may significantly impact cache performance. 
+Use this option only when strict memory constraints are necessary.
+
+### Data Source Level (aka Schema)
+In each data source, caching can be enabled or disabled and the TTL specified:
+```yaml
+- name: kube1
+    dataSourceType: KUBERNETES
+    properties:
+    cluster_name: kube1
+    configObject:
+    contextVariables: {}
+    configFile: //kube1-kubernetes.json
+    blankNamespaceStrategy: ALL
+    cache:
+        enabled: true
+        ttlSeconds: 43200
+    schema:
+    type: PHYSICAL
+    properties:
+        cluster_name: kube1
+    cacheDefaultStrategy: CACHE
+    ddlFilePaths:
+        - //kube1-kubernetes.ddl
+```
+
+`ttlSeconds` specifies how long a single cache entry remains in the cache before it is evicted. By default, entries have a lifespan of 43,200 seconds (12 hours).
+
+### Table level
+
+In some cases, finer cache control is necessary, such as enabling or disabling caching on a [per-table basis](/Engine/DDL#table-directives). 
+When caching is enabled at the data source level, you can specify at the table level whether to include or exclude a specific table from caching 
+by using a table-specific directive:
+
+```sql
+CREATE FOREIGN TABLE EVENT
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    ...
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(cache 'disabled',
+        ...);
+```
+
+On the other hand, at the data source level, `cacheDefaultStrategy` defines the default caching behavior when nothing is specified at the table level. 
+Let's look at all possible combinations:
+
+| Data Source (Schema) Level | Table Level     | Caches Table Results? |
+|----------------------------|-----------------|:---------------------:|
+| `CACHE`                    | unspecified     |          Yes          |
+| `CACHE`                    | `enabled`       |          Yes          |
+| `CACHE`                    | `disabled`      |          No           |
+| `CACHE`                    | `schemaDefault` |          Yes          |
+| `NO_CACHE`                 | unspecified     |          No           |
+| `NO_CACHE`                 | `enabled`       |          Yes          |
+| `NO_CACHE`                 | `disabled`      |          No           |
+| `NO_CACHE`                 | `schemaDefault` |          No           |
+
+## Eviction
+Eviction is the process of removing entries from the cache to keep it within a specified memory limit.
+
+Kubling supports both time-based and size-based eviction mechanisms, which can be used individually or combined. 
+Size-based eviction can further be configured by either the number of elements or by memory usage, as described below.
+
+### Time-based
+Time-based eviction occurs when an entry's TTL (Time-To-Live) expires. 
+The default TTL is configured at the Data Source level via the `ttlSeconds` parameter but can be overridden on a per-table basis using the cache_ttl directive, 
+as explained in the [Table Directives section](/Engine/DDL#table-directives).
+
+```sql
+CREATE FOREIGN TABLE EVENT
+(
+    ...
+)
+OPTIONS(cache 'enables',
+        cache_ttl '60');
+```
+
+### Size-based
+
+The maximum allowed memory size for cache is configured at the [application level](/schemas#main-application-configuration) via the `cache.maxMemorySizeMB` property. 
+When memory is restricted, the Engine estimates the actual memory required to allocate each cache entry 
+by sampling the result set and analyzing approximately one-third of the total rows.
+
+Once the maximum allowed memory is reached and a new entry is about to be added, the Cache selects the best candidates for eviction. 
+It prioritizes entries that have not been used recently or frequently, using a [Window TinyLFU policy](https://arxiv.org/pdf/1512.00727) 
+to free up space for new entries.
+
+<Callout type="warning">
+  Calculating memory size can significantly impact cache performance. Use size-based eviction only when strict memory constraints are necessary.
+</Callout>
+
+## Invalidation
+
+Cache invalidation occurs when an entry is no longer valid. In our context, this can happen due to:
+- A CUD (Create, Update, Delete) operation on a `TABLE` with cached entries.
+- Changes in the Data Source that the Kubling instance is unaware of, as explained above.
+
+### CUD
+The cache has an associated table that maintains the relationship between system objects (`TABLE`s) and cache entries. 
+When a CUD (Create, Update, Delete) operation is received, the cache identifies all related entries associated with the affected `TABLE`s and removes them.
+
+### Endpoint
+If changes occur outside of Kubling, you can keep the cache consistent by invalidating entries through an HTTP endpoint.
+
+The endpoint can be enabled via the `cache.enableInvalidateEndpoint` option in the [application configuration](/schemas#main-application-configuration).
+
+Two endpoints are available for invalidation:
+- `DELETE http[s]://[address]:8282/api/v1/cache/vdb/[vdb]/table/[schema].[table]` — invalidates entries only for the specified Virtual Database.
+- `DELETE http[s]://[address]:8282/api/v1/cache/table/[schema].[table]` — invalidates entries across all Virtual Databases.
+
+Here, `[schema].[table]` represents the fully qualified name of the `TABLE` object for which associated cache entries will be invalidated.
+
+Examples:
+- `DELETE http://localhost:8282/api/v1/cache/table/github.GITHUB_CODE_REPO`
+- `DELETE http://localhost:8282/api/v1/cache/vdb/GitHubVDB/table/github.GITHUB_CODE_REPO`

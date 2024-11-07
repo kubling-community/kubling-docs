@@ -18,15 +18,15 @@ For more information about template parser, [please see this](Engine/template).
 ## Main application configuration
 ```yaml
 type: "object"
-id: "schema:kubling:config:app:Application"
+id: "schema:kubling:dbvirt:config:app:Application"
 properties:
   transports:
     type: "object"
-    id: "schema:kubling:config:app:Transports"
+    id: "schema:kubling:dbvirt:config:app:Transports"
     properties:
       pgProtocol:
         type: "object"
-        id: "schema:kubling:config:app:Transport"
+        id: "schema:kubling:dbvirt:config:app:Transport"
         properties:
           bindAddress:
             type: "string"
@@ -40,7 +40,7 @@ properties:
               \ SSL configuration)."
           sslConfig:
             type: "object"
-            id: "schema:kubling:config:app:SSLConfig"
+            id: "schema:kubling:dbvirt:config:app:SSLConfig"
             properties:
               storeType:
                 type: "string"
@@ -58,27 +58,68 @@ properties:
                   \ certificates were generated with Kubling CLI)."
       nativeProtocol:
         type: "object"
-        $ref: "schema:kubling:config:app:Transport"
+        $ref: "schema:kubling:dbvirt:config:app:Transport"
   management:
     type: "object"
-    id: "schema:kubling:config:app:Management"
+    id: "schema:kubling:dbvirt:config:app:Management"
     properties:
       enableRestartEndpoint:
         type: "boolean"
   vdb:
     type: "object"
-    id: "schema:kubling:config:app:VirtualDatabase"
+    id: "schema:kubling:dbvirt:config:app:VirtualDatabase"
     properties:
       descriptorBundle:
         type: "string"
   console:
     type: "object"
-    id: "schema:kubling:config:app:Console"
+    id: "schema:kubling:dbvirt:config:app:Console"
     properties:
       moduleRepoBaseURI:
         type: "string"
         description: "URL of the repository used to resolve modules. Used also when\
           \ resolving URI with 'kbl' scheme."
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:config:app:EngineCacheProperties"
+    properties:
+      sessionScoped:
+        type: "boolean"
+        description: "Indicates whether the cache entries are scoped to individual\
+          \ sessions. When set to false, the cache is shared across all sessions.\
+          \ Default is false."
+      maxEntries:
+        type: "integer"
+        description: "Maximum number of entries allowed in the cache, used when maxMemorySizeMB\
+          \ is not defined. Default is 1024."
+      maxMemorySizeMB:
+        type: "integer"
+        description: "Maximum allowed memory size for this cache. By default, the\
+          \ Engine ignores this setting and limits the cache solely by maxEntries.\
+          \ However, when enabled, the Engine estimates the memory size of each cache\
+          \ entry, which may significantly impact cache performance. Use this option\
+          \ only when strict memory constraints are necessary."
+      enableInvalidateEndpoint:
+        type: "boolean"
+        description: "Enables the endpoint to invalidate the cache for specified table\
+          \ when set to true. Default is false."
+  buffer:
+    type: "object"
+    id: "schema:kubling:dbvirt:config:app:BufferConfig"
+    properties:
+      useDisk:
+        type: "boolean"
+        description: "When enabled, the Engine uses also disk storage for the buffer\
+          \ instead of memory only. Default is true."
+      encrypt:
+        type: "boolean"
+        description: "Specifies whether the buffer should be encrypted. Default is\
+          \ true."
+      directory:
+        type: "string"
+        description: "Directory for buffer storage. If useDisk is activated and directory\
+          \ not specified, the engine will use the system-defined temporary directory\
+          \ path."
   maxConcurrentJSContexts:
     type: "integer"
     description: "Maximum allowed concurrent script contexts for query resolution."
@@ -167,7 +208,7 @@ actionTemplatesFunctionModule:
 ## Virtual Database information file (located inside the descriptor bundle)
 ```yaml
 type: "object"
-id: "schema:kubling:model:vdb:VirtualDatabase"
+id: "schema:kubling:dbvirt:model:vdb:VirtualDatabase"
 properties:
   name:
     type: "string"
@@ -183,7 +224,7 @@ properties:
     description: "List of VDB Data Sources."
     items:
       type: "object"
-      id: "schema:kubling:model:vdb:DataSource"
+      id: "schema:kubling:dbvirt:model:vdb:DataSource"
       properties:
         name:
           type: "string"
@@ -198,7 +239,7 @@ properties:
           - "H2"
           - "MYSQL"
           - "POSTGRESQL"
-          - "KUBLING_DBVIRT"
+          - "KUBLING"
           - "KUBERNETES"
         properties:
           type: "object"
@@ -223,7 +264,7 @@ properties:
             \ is located inside the module, path must start with 'module:'."
         schema:
           type: "object"
-          id: "schema:kubling:model:vdb:DataSourceSchema"
+          id: "schema:kubling:dbvirt:model:vdb:DataSourceSchema"
           description: "Schema configuration."
           properties:
             name:
@@ -242,6 +283,15 @@ properties:
               description: "Additional properties injected to template contexts."
               additionalProperties:
                 type: "string"
+            cacheDefaultStrategy:
+              type: "string"
+              description: "Defines the default caching strategy for the schema. When\
+                \ set to CACHE, all tables are cached except those explicitly marked\
+                \ otherwise. When set to NO_CACHE, all tables are skipped from caching\
+                \ except those explicitly marked for caching. Default CACHE."
+              enum:
+              - "CACHE"
+              - "NO_CACHE"
             ddl:
               type: "string"
               description: "Content of the DDL used to generate the schema's tables."
@@ -258,7 +308,7 @@ properties:
     description: "List of schema aggregators."
     items:
       type: "object"
-      id: "schema:kubling:model:vdb:AggregatorSchemaModel"
+      id: "schema:kubling:dbvirt:model:vdb:AggregatorSchemaModel"
       properties:
         name:
           type: "string"
@@ -273,7 +323,7 @@ properties:
           description: "List of tables of the schemas to be aggregated."
           items:
             type: "object"
-            id: "schema:kubling:model:vdb:AggregatorSchemaTable"
+            id: "schema:kubling:dbvirt:model:vdb:AggregatorSchemaTable"
             properties:
               name:
                 type: "string"
@@ -290,7 +340,7 @@ properties:
     description: "List of RBAC data roles."
     items:
       type: "object"
-      id: "schema:kubling:model:vdb:rbac:RBACDataRole"
+      id: "schema:kubling:dbvirt:model:vdb:rbac:RBACDataRole"
       properties:
         name:
           type: "string"
@@ -313,7 +363,7 @@ properties:
           description: "List of granted/denied permissions."
           items:
             type: "object"
-            id: "schema:kubling:model:vdb:rbac:RBACPermission"
+            id: "schema:kubling:dbvirt:model:vdb:rbac:RBACPermission"
             properties:
               resource:
                 type: "string"
@@ -353,134 +403,6 @@ properties:
           description: "List of specific schemas where to apply Role's permissions."
           items:
             type: "string"
-```
-
-### Sample
-```yaml
----
-name: "App"
-version: "{{ vdb_version }}"
-
-dataSources:
-  - name: "app_db"
-    dataSourceType: "POSTGRESQL"
-    config: "bundle:datasource/psql-datasource.yaml"
-    translatorConfig: "bundle:translator/base-translator-config.yaml"
-    schema:
-      type: "PHYSICAL"
-      properties:
-        'importer.useFullSchemaName': 'false'
-        'importer.useCatalogName': 'false'
-        'importer.schemaName': 'public'
-
-  - name: "k8s_1"
-    dataSourceType: "KUBERNETES"
-    config: "bundle:datasource/k8s-cluster1-datasource.yaml"
-    translatorConfig: "bundle:translator/base-translator-config.yaml"
-    schema:
-      type: "PHYSICAL"
-      properties:
-        cluster_name: "k8s_cluster_1"
-        kubernetes_api_url: {{ kubernetes_cluster_1_api_url }}
-      ddlFilePaths:
-        - "bundle:k8s.ddl"
-
-  - name: "k8s_2"
-    dataSourceType: "KUBERNETES"
-    config: "bundle:datasource/k8s-cluster2-datasource.yaml"
-    translatorConfig: "bundle:translator/base-translator-config.yaml"
-    schema:
-      type: "PHYSICAL"
-      properties:
-        cluster_name: "k8s_cluster_2"
-        kubernetes_api_url: {{ kubernetes_cluster_2_api_url }}
-      ddlFilePaths:
-        - "bundle:k8s.ddl"
-
-  - name: "app_delegate"
-    dataSourceType: "SCRIPT_DOCUMENT_JS"
-    config: "bundle:datasource/js-datasource.yaml"
-    translatorConfig: "bundle:translator/base-translator-config.yaml"
-    schema:
-      type: "PHYSICAL"
-      ddl: |
-        CREATE FOREIGN TABLE CODE_REPO
-                  ( 
-                    identifier string OPTIONS(val_pk 'org+name' ),
-                    org string not null, 
-                    owner__login string, 
-                    id integer,
-                    node_id string,
-                    name string not null,
-                    full_name string, 
-                    description string, 
-                    private boolean, 
-                    visibility string, 
-                    html_url string,
-                    owner json OPTIONS(parser_format 'asJsonPretty'),                  
-                    PRIMARY KEY(identifier)
-              ) OPTIONS(updatable true);
-
-aggregatorSchemaModels:
-  - name: "k8s"
-    schemas:
-      - "k8s_1"
-      - "k8s_2"
-    tables:
-      - name: "DEPLOYMENT"
-        options:
-          updatable: false
-      - name: "NAMESPACE"
-        options:
-          updatable: false
-      - name: "DEPLOYMENT_CONDITIONS"
-        options:
-          updatable: false
-      - name: "DEPLOYMENT_CONTAINER"
-        options:
-          updatable: false
-      - name: "DEPLOYMENT_CONTAINER_VOLS"
-        options:
-          updatable: false
-
-rbacDataRoles:
-  - name: "full_control"
-    description: "RBAC with full control"
-    allowCreateTemporaryTables: true
-    roleNameMappings:
-      - "ROLE_FULL"
-    permissions:
-      - resource: "k8s_1.DEPLOYMENT"
-        resourceType: TABLE
-        allowCreate: true
-        allowRead: true
-        allowUpdate: true
-        allowDelete: true
-      - resource: "k8s_2.DEPLOYMENT"
-        resourceType: TABLE
-        allowCreate: true
-        allowRead: true
-        allowUpdate: true
-        allowDelete: true
-
-  - name: "only_read"
-    description: "RBAC with only read access"
-    allowCreateTemporaryTables: true
-    roleNameMappings:
-      - "ROLE_ONLY_READ"
-    permissions:
-      - resource: "k8s_1.DEPLOYMENT"
-        resourceType: TABLE
-        allowCreate: false
-        allowRead: true
-        allowUpdate: false
-        allowDelete: false
-      - resource: "k8s_2.DEPLOYMENT"
-        resourceType: TABLE
-        allowCreate: false
-        allowRead: true
-        allowUpdate: false
-        allowDelete: false  
 ```
 
 ## Script Module bundle information file (`bundle-script-info.yaml`)
@@ -700,7 +622,7 @@ Applies to the following Data Source types:
 
 ```yaml
 type: "object"
-id: "schema:kubling:model:vdb:sources:BaseDatabaseSourceConfig"
+id: "schema:kubling:dbvirt:model:vdb:sources:BaseDatabaseSourceConfig"
 properties:
   dataSourceName:
     type: "string"
@@ -738,6 +660,18 @@ properties:
       \ Once reached, the connection is closed and removed from the pool. In case\
       \ of pool size is less than minConnectionPoolSize after the removal, a new fresh\
       \ connection is created.Default: 14400000ms (4 hours)"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
   ddl:
     type: "string"
     description: "Allows to run a DDL in the REMOTE data source once the connection\
@@ -781,6 +715,18 @@ properties:
     - "DEFAULT"
     - "ALL"
     - "FAIL"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
 ```
 
 ## Script Document Data Source Configuration
@@ -791,7 +737,7 @@ Applies to the following Data Source types:
 
 ```yaml
 type: "object"
-id: "schema:kubling:model:vdb:sources:script:ScriptingSourceConfig"
+id: "schema:kubling:dbvirt:model:vdb:sources:script:ScriptingSourceConfig"
 properties:
   contextVariables:
     type: "object"
@@ -806,11 +752,23 @@ properties:
       type: "string"
   module:
     type: "object"
-    id: "schema:kubling:translation:scripting:base:model:Module"
+    id: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
     properties:
       zipFilePath:
         type: "string"
         description: "URI of the module bundle."
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
 ```
 
 # Endpoints

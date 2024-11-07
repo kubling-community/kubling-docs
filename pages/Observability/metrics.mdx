@@ -151,7 +151,6 @@ Provides information about currently **active** HTTP requests.
 </details>
 
 ## Engine related metrics
-These metrics come with without any tags by default. You can specify yours in the `metricsCommonTags` attribute of the [Main application configuration](/schemas#main-application-configuration).
 
 ### `kubling.engine.sql.sessions.active` <Tag description={"Gauge"} />
 Provides the number of current active SQL Sessions (Native & PG transports).
@@ -183,6 +182,8 @@ Maximum number of SQL jobs running in parallel during the current execution.
 ### `kubling.engine.sql.jobs.enqueued.max` <Tag description={"Gauge"} />
 Maximum number of SQL jobs enqueued during the current execution.
 
+## JavaScript related metrics
+
 ### `kubling.js.threads.active` <Tag description={"Gauge"} />
 Provides the number of current active JavaScript context threads.
 
@@ -194,6 +195,27 @@ Provides the number of current active JavaScript Auth* context threads. Same mea
 
 ### `kubling.js.auth.executions` <Tag description={"Counter"} />
 Provides the number of total JavaScript Auth* context threads claimed during current execution. Same measurement as `kubling.js.executions`.
+
+## Cache related metrics <Tag description={"v24.5.3+"} />
+
+### `kubling.cache.request.count` <Tag description={"Counter"} />
+Number of times the Engine requested for a Cache.
+
+### `kubling.cache.entries.current` <Tag description={"Gauge"} />
+Current cached result sets.
+
+### `kubling.cache.hit.count` <Tag description={"Counter"} />
+Number of times the Engine requested for a Cache and lookup methods have returned a cached value.
+
+### `kubling.cache.hit.ratio` <Tag description={"Gauge"} />
+Ratio of cache requests which were hits.
+
+### `kubling.cache.mem.usage` <Tag description={"Gauge"} />
+Total memory usage in Megabytes.
+
+<Callout type='info'>
+    Metrics come with without any tags by default. You can specify yours in the `metricsCommonTags` attribute of the [Main application configuration](/schemas#main-application-configuration).
+</Callout>
 
 ## Prometheus
 The metrics mentioned above are automatically adapted to [Prometheus format](https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md).<br/>
