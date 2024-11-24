@@ -8,18 +8,18 @@ and correctness when a query is executed across multiple Data Sourcess or nodes 
 allowing parallel processing and eventually combining the results.
 
 Kubling supports both stateful and stateless Data Sources, which introduces complexity in implementing transaction management for stateless Data Sources. 
-This challenge is further amplified when a Data Source is implemented programmatically, such as with [Script Document Data Sources](/Engine/data-sources#script-document-data-source-script_document_js).
+This challenge is further amplified when a Data Source is implemented programmatically, such as with [Script Document Data Sources](/Engine/ds/script-doc).
 
 To address this complexity, **Kubling defines transaction capabilities at the Data Source level**, 
 allowing for flexibility based on the specific requirements and behaviors of each Data Source type.
 
-| Data Source                                                                                 | Supports Transactions |
-|:--------------------------------------------------------------------------------------------|:---------------------:|
-| [`EMBEDDED_INMEM`](/Engine/data-sources#embedded-inmemory-data-source-embedded_inmem)       |           ✔️           |
-| [`POSTGRESQL`](/Engine/data-sources#postgresql-data-source-postgresql)                      |           ✔️           |
-| [`MYSQL`](/Engine/data-sources#mysql-data-source-mysql)                                     |           ✔️           |
-| [`KUBERNETES`](/Engine/data-sources#kubernetes-data-source-kubernetes)                      |           ❌           |
-| [`SCRIPT_DOCUMENT_JS`](/Engine/data-sources#script-document-data-source-script_document_js) |           ❌           |
+| Data Source                                                                  | Supports Transactions |
+|:-----------------------------------------------------------------------------|:---------------------:|
+| [`EMBEDDED_INMEM`](/Engine/ds/embedded#inmemory-data-source-embedded_inmem)  |           ✔️           |
+| [`POSTGRESQL`](/Engine/ds/db-data-sources#postgresql-data-source-postgresql) |           ✔️           |
+| [`MYSQL`](/Engine/ds/db-data-sources#mysql-data-source-mysql)                |           ✔️           |
+| [`KUBERNETES`](/Engine/ds/k8s)                                               |           ❌           |
+| [`SCRIPT_DOCUMENT_JS`](/Engine/ds/script-doc)                                |           ❌           |
 
 <Callout type="info">
   We are working on transaction support, using compensation mechanism, for `SCRIPT_DOCUMENT_JS` Data Sources, which is still in Lab mode.<br/>

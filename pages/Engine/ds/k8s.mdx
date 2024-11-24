@@ -1,100 +1,7 @@
-import { Callout, Steps } from 'nextra/components'
-import Tag from '../../component/Tag'
+import Tag from '../../../component/Tag'
+import { Callout } from 'nextra/components'
 
-# Data Sources
-
-Kubling Data Source Adapters are divided into three major types:
-- **Database Data Source:**<br/>
-This adapter allows connections to external databases using built-in connectors and drivers. Kubling queries are automatically 
-translated into the appropriate query language that the target database can process. With this type of data source, you can either:
-    - Automatically import schemas and tables from the remote database, generating virtual schemas based on metadata retrieved from the source, or
-    - Manually define `FOREIGN` tables using SQL-like DDL to customize the data model.
-
-- **Kubernetes Data Source:**<br/>
-A specialized adapter designed to connect with Kubernetes clusters. It leverages a built-in module to interact with the cluster, 
-providing seamless access to Kubernetes-native data and resources.
-
-- **Script Document Data Source:**<br/>
-This adapter is used to manage semi-structured documents, such as `JSON` and `YAML` files. 
-Data fetching and operations on these documents are handled through scripts, such as JavaScript, allowing flexible manipulation of external APIs as data sources.
-
-For more information, please have a look at the [architecture.](/Concepts/architecture)
-
-### Documents
-Some data sources, primarily those that exchange information with an API in `JSON` format, are referred to as `document` data sources troughtout this documentation.<br/>
-The term comes from the original way of naming databases that store semi-structured objects, like Elasticsearch and MongoDB.
-
-Kubling engine has the ability to manipulate documents, and to transform CRUD operations into changes in the documents.
-
-## Embedded InMemory Data Source (`EMBEDDED_INMEM`)
-This Data Source creates an in-memory embedded database that operates entirely within system memory.<br/>
-Initially added to Kubling as an internal feature for conducting heavy testing without needing an external database instance, 
-it has since proven useful based on user feedback. 
-It can also be employed for various operational tasks such as storing instance-related information, caching data, managing temporary tables, or synchronizing scripts.
-
-### Configuration
-Uses the [Standard DB Data Source Configuration.](/schemas#standard-db-data-source-configuration)
-
-Sample config in VDB file:
-```yaml
-- name: my_embedded
-  dataSourceType: EMBEDDED_INMEM
-  configObject:
-    dataSourceName: my_embedded
-    databaseName: my_embedded
-    userName: sa
-    token: sa
-    maxConnectionPoolSize: 5
-    minConnectionPoolSize: 1
-    maxConnectionIdleMilliseconds: 7200000
-    maxConnectionLifeTimeMilliseconds: 14400000
-    ddlFilePaths:
-    - /path/to/some.ddl
-  translatorConfig: /path/to/some-config.yaml
-  schema:
-    type: PHYSICAL
-    properties:
-    importer.useCatalogName: "false"
-    importer.useFullSchemaName: "false"
-    importer.schemaName: PUBLIC
-```
-
-Kubling uses an adapted version of the popular H2 DB Engine, so please refer to [their documentation](https://github.com/h2database/h2database) to get info about the supported grammar
-and other limitations.
-
-<Callout>
-  In this Data Source DDLs have a special meaning, since they're used to create the in-memory table schema, therefore they are not [standard Kubling DDL](/Engine/DDL).<br/>
-  After creation and setup, the Engine imports schemas automatically, so there is not option of controlling the `FOREIGN` tables manually like in other Data Sources.
-</Callout>
-
-## PostgreSQL Data Source (`POSTGRESQL`)
-A Database Data Source that translates and adapts queriers to `POSTGRESQL`.
-
-### Configuration
-Uses the [Standard DB Data Source Configuration.](/schemas#standard-db-data-source-configuration)
-
-Sample config in VDB file:
-```yaml
-- name: "app_db"
-  dataSourceType: "POSTGRESQL"
-  config: "bundle:datasource/psql-datasource.yaml"
-  translatorConfig: "bundle:translator/base-translator-config.yaml"
-  schema:
-    type: "PHYSICAL"
-    properties:
-      'importer.useFullSchemaName': 'false'
-      'importer.useCatalogName': 'false'
-      'importer.schemaName': 'public'
-```
-
-When no DDL is defined and there are `importer` properties, the engine automatically creates all the `FOREIGN` tables that match the import strategy.<br/>
-In this specific sample all the `TABLES` of the schema `PUBLIC` will have a local Kubling `TABLE`.
-
-
-## MySQL Data Source (`MYSQL`)
-Configuration is exactly the same as `POSTGRESQL` (above). Only difference is that `dataSourceType` must have the value `MYSQL`.
-
-## Kubernetes Data Source (`KUBERNETES`)
+# Kubernetes Data Source (`KUBERNETES`)
 
 This Data Source allows to interact with Kubernetes cluster resources as if they were just `TABLES`.
 
@@ -269,6 +176,8 @@ CREATE FOREIGN TABLE POD_CONTAINER
     name string NOT NULL,
     command json,
     volumeMounts json,
+    resources__requests json,
+    resources__limits json,
     identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
     PRIMARY KEY(identifier),
     UNIQUE(metadata__namespace, metadata__name, name)
@@ -1325,39 +1234,21 @@ OPTIONS(updatable true,
 ```
 </details>
 
-## Script Document Data Source (`SCRIPT_DOCUMENT_JS`)
+## Specific `TABLE` directives
+Following directives work only in Document Data Sources (like this one)
+| Directive                     | Type    | Options    | Description                                                                                                                                                                                                       |
+|-------------------------------|---------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `synthetic_parent`            | String  | Any        | Parent `TABLE`. Must include schema name.                                                                                                                                                                         |
+| `synthetic_path`              | String  | Any        | Name of the parent `TABLE` field (array) used to ungroup the content                                                                                                                                              |
+| `synthetic_allow_bulk_insert` | Boolean | True/False | Indicates whether an INSERT operation tolerates multiple entries in the `synthetic_path` or must be strictly one.                                                                                                 |
+| `supports_idempotency`        | Boolean | True/False | Indicates whether the upstream API supports idempotence.<br/>When `false` the QP verifies whether the operation changed the original record/document before applying.<br/>If omitted, the default value is `true` |
 
-A Data Source that handles `JSON` and `YAML` documents and delegates the final processing steps to JavaScript.
+---
 
-As explained [here](/Engine/script-context-members#script-data-source) the adapter exchanges `JSON` documents with your JavaScript, via bound objects.<br/>
-Therefore, your scripts do not have to deal with the document build, since that happens at adapter level, so your scripts have only the logic to interact with other
-systems, which in most cases means calling its API.
+## Specific field directives
+| Directive                | Type   | Options                                                                                 | Description                                                                                                                                                                                                           |
+|--------------------------|--------|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `synthetic_type`         | String | `parent`, `parent_array_key`                                                            | Type of the synthetic field.<br/>`parent` indicates that exists in and is connected to the parent entity.<br/>`parent_array_key` indicates that the field is used to locate specific elements within `synthetic_path` |
+| `synthetic_parent_field` | String | Any                                                                                     | Indicates that the related parent field name is not the same as defined in the synthetic entity field. Used mostly when field names overlap.                                                                          |
+| `parser_format`          | String | {`parser_format 'option'`}<br/>Options:<br/> `asJsonPretty`, `asYaml`, `asKeyValueList` | Applies a new format to the value, without altering it.                                                                                                                                                               |
 
-When the engine receives, for example, and `UPDATE` query, the documents that match the criteria are returned by calling your `resultSetScript`, then, based on the
-type of table being updated, the engine updates the document/s and calls the script defined as `updateScript`.
-
-<Callout>
-It is important to note that the `resultSetScript` must do its **best effort** to return documents that match the criteria, or `WHERE` clause, however when the
-system does not have specific filter mechanisms or it is complex to implement, your script can return documents not matching the criteria, since the result set
-is further inspected by the engine before returning the rows.
-</Callout>
-
-Sample config in VDB file:
-```yaml
-- name: github
-  dataSourceType: SCRIPT_DOCUMENT_JS
-  configObject:
-    module:
-      zipFilePath: kbl://github/0.0.1
-  translatorConfig: module:translator-config.yaml
-  schema:
-    type: PHYSICAL
-    ddlFilePaths:
-      - module:github.ddl
-```
-
-In the sample above, `zipFilePath` uses the `kbl` URL `scheme` that points to the Module repository configured in the [Main application configuration](/schemas#main-application-configuration),
-under `moduleRepoBaseURI`. By default, it points to `https://repo.kubling.com`.
-
-`translatorConfig` and `schema.ddlFilePaths` point to files inside the module, that is why they use the special `module:` prefix.
-For more information please see [Virtual Database information file](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle).

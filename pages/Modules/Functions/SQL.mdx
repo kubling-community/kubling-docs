@@ -30,6 +30,19 @@ That is why it is highly recommended to keep them separate in directories.
   See [roadmap](/roadmap) for more info about it.  
 </Callout>
 
+## Naming Functions and Resolution
+When a function module is referenced in the [descriptor bundle](/schemas#descriptor-bundle-information-file-bundle-infoyaml), it must have an associated module name, which is part of the fully qualified function name.
+
+If the function name is unique across all modules, you can call the function without using the module name. However, if the function name is duplicated, you must use the module name. Otherwise, the function resolution process will fail due to an ambiguous name.
+
+The fully qualified function name follows the format:  
+`[module-name].[function-name]<params...>`
+
+Example:
+```sql
+... OPTIONS(call_func 'azure_mod.az_sql_get_rg<id>')
+```
+
 ## Function script
 Kubling does not evaluate functions the same way it evaluates Delegate scripts, in the sense that in functions only the function code is loaded and evaluated,
 not the whole script file, and the following limitations apply:<br/>
@@ -41,17 +54,17 @@ Let's break down the following example:
 ```js
 function sql_get_rg(args) {
     if ((args.value === null) || (args.value === undefined)) return null;
-    return args.value.split("/")[4];
+    return args.value.id.split("/")[4];
 }
 ```
 
-That simple functions receives an Azure ID, and returns the Resource Group, which is located in the fourth position of the FQN.
+That simple functions receives an Azure ID (column `id`), and returns the Resource Group, which is located in the fourth position of the FQN.
 
 The argument passed to functions is always one `args`, which is a KV with three members:
-- `value`: the document field OR the column value specified in the Directive, by enclosing it in &lt;&gt;.
-- `column`: the name of the column, always referring to the TABLE column name this function in being applied to. When used with a different column name, 
+- `value`: An object whose members are the parameter column names. Its general form is `args.value.[col_name]`
+- `column`: The name of the column, always referring to the TABLE column name this function in being applied to. When used with a different column name, 
 such as `sql_get_rg<SOME>`, the column will not take that name and will always remain associated with the original field to which this function is applied.
-- `datatype`: column's data type.
+- `datatype`: Column's data type.
 
 The function can be used, for example, when defining a `TABLE`, as follows:
 ```sql

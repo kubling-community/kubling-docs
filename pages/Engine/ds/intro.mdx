@@ -1,0 +1,28 @@
+# Data Sources
+
+Kubling Data Source Adapters are divided into four major types:
+
+- **Database Data Source:**<br/>
+This adapter allows connections to external databases using built-in connectors and drivers. Kubling queries are automatically 
+translated into the appropriate query language that the target database can process. With this type of data source, you can either:
+    - Automatically import schemas and tables from the remote database, generating virtual schemas based on metadata retrieved from the source (called passtrough), or
+    - Manually define `FOREIGN` tables using SQL-like DDL to customize the data model.
+
+- **Kubernetes Data Source:**<br/>
+A specialized adapter designed to connect with Kubernetes clusters. It leverages a built-in module to interact with the cluster, 
+providing seamless access to Kubernetes-native data and resources.
+
+- **Script Document Data Source:**<br/>
+This adapter is used to manage semi-structured documents, such as `JSON` and `YAML` files. 
+Data fetching and operations on these documents are handled through scripts, such as JavaScript, allowing flexible manipulation of external APIs as data sources.
+
+- **Embedded Data Source:**<br/>
+This adapter creates an internal, lightweight database engine that is automatically added as a data source. 
+
+For more information, please have a look at the [architecture.](/Concepts/architecture)
+
+### Documents
+Some data sources, primarily those that exchange information with an API in `JSON` format, are referred to as `document` data sources troughtout this documentation.<br/>
+The term comes from the original way of naming databases that store semi-structured objects, like Elasticsearch and MongoDB.
+
+Kubling engine has the ability to manipulate documents, and to transform CRUD operations into changes in the documents.

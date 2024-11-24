@@ -13,13 +13,17 @@ These endpoints logic are defined using `YAML` files, parsed as [templates](/tem
 
 Endpoints are divided into two different types: Queries and Actions.
 
+<Callout type="info">
+  The examples below assume that the functions are part of a module named `mymod`.
+</Callout>
+
 ## Queries
 Allow to dynamically expose services that return a collection of rows using a SQL query.<br/>
 Let's break down the definition of an endpoint using the following sample:
 
 ```yaml showLineNumbers copy
 {% set vdb = "k8s" %}
-{% set tables = getTablesByTags(vdb=_context.vdb, schema="all", tags="kubernetes;deployment") %}
+{% set tables = mymod__getTablesByTags(vdb=_context.vdb, schema="all", tags="kubernetes;deployment") %}
 ---
 
 type: sqlDirect
@@ -84,8 +88,8 @@ Let's use the following sample:
 ```yaml showLineNumbers copy
 # ********* SECTION 1 *********
 {% set vdb = "App" %}
-{% set componentName = get_k8s_component_info(_context.vdb, _context.component_id) %}
-{% set clusterSchema = find_best_cluster_for_deploy(_context.vdb, _context.component_id, _context.env) %}
+{% set componentName = mymod__get_k8s_component_info(_context.vdb, _context.component_id) %}
+{% set clusterSchema = mymod__find_best_cluster_for_deploy(_context.vdb, _context.component_id, _context.env) %}
 {% set selectorUUID = uuid() %}
 ---
 
@@ -129,7 +133,7 @@ operations:
     type: "insert"
     virtualDatabase: {{ vdb }}
     entity: "{{ clusterSchema }}.NAMESPACE"
-    skipWhenTrue: {{ ns_exists(_context.vdb, _context.clusterSchema, _context.component_id) }}
+    skipWhenTrue: {{ mymod__ns_exists(_context.vdb, _context.clusterSchema, _context.component_id) }}
     valueAssignments:
       - field: "metadata__name"
         value: "{{ component_id }}"
@@ -213,8 +217,8 @@ To simplify understanding, we can break the action down into three sections, as 
 
 ### Section 1 (Header)
 This section contains the initial variables required in the subsequent sections.<br/>
-`get_k8s_component_info` and `find_best_cluster_for_deploy` are [user-defined template functions](/Modules/Functions/Template). 
-The function `find_best_cluster_for_deploy` is particularly important because it returns the name of the optimal cluster schema 
+`mymod__get_k8s_component_info` and `mymod__find_best_cluster_for_deploy` are [user-defined template functions](/Modules/Functions/Template). 
+The function `mymod__find_best_cluster_for_deploy` is particularly important because it returns the name of the optimal cluster schema 
 where a component should be deployed, based on the rules defined within the function itself.
 
 
@@ -233,7 +237,7 @@ In this particular section, let's review operation by operation.
 
 #### `namespace_insert`
 This operation creates a new namespace in the selected Kubernetes cluster. 
-Although the operation is idempotent, the user-defined template function `ns_exists`, which returns a `boolean` indicating whether the namespace already exists, 
+Although the operation is idempotent, the user-defined template function `mymod__ns_exists`, which returns a `boolean` indicating whether the namespace already exists, 
 is used to determine if the action should be skipped via the `skipWhenTrue` attribute.
 
 The `valueAssignments` section specifies the list of fields and their respective values, which is translated into a standard SQL `INSERT` statement in the format: 
@@ -309,7 +313,7 @@ operations:
     type: "insert"
     virtualDatabase: {{ vdb }}
     entity: "{{ clusterSchema }}.NAMESPACE"
-    skipWhenTrue: {{ ns_exists(_context.vdb, _context.clusterSchema, _context.component_id) }}
+    skipWhenTrue: {{ mymod__ns_exists(_context.vdb, _context.clusterSchema, _context.component_id) }}
     valueAssignments:
       - field: "metadata__name"
         value: "{{ component_id }}"

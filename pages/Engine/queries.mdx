@@ -405,12 +405,14 @@ The `0` index is considered to be before the start of the string.
 | `RPAD(input string x, pad length y)` | Pad input `string` x with spaces on the right to the length of y. | x `string`, y `integer`, returns `string` |
 | `RPAD(x, y, z)` | Pad input `string` x on the right to the length of y using character z. | x `string`, y `string`, z character, returns `string` |
 | `RTRIM(x)` | Right trim x of blank chars. | x `string`, returns `string` |
+| ``TRIM([[LEADING\|TRAILING\|BOTH] [x] FROM] y)`` | Trim the leading, trailing, or both ends of a `string` y of character x. If `LEADING`/`TRAILING`/`BOTH` is not specified, `BOTH` is used. If no trim character x is specified, then a blank space is used. | x `character`, y `string` |
 | `SPACE(x)` | Repeats the space character x number of times | x `integer`, returns `string` |
 | `SUBSTRING(x, y)` | Gets substring of x, from position y to the end of x | x `string`, returns `integer` |
 | `SUBSTRING(x, y, z)` | Gets substring of x from position y with length z | x `string`, y `integer`, z `integer`, returns `integer` |
-| `TRIM([[LEADING|TRAILING|BOTH] [x] FROM] y)` | Trim the leading, trailing, or both ends of a `string` y of character x. If `LEADING`/`TRAILING`/`BOTH` is not specified, `BOTH` is used. If no trim character x is specified, then a blank space is used. | x character, y `string` |
 | `UCASE(x)` | Uppercase | x `string`, returns `integer` |
 | `UNESCAPE(x)` | Unescaped of x. Possible escape sequences are `\b` - backspace, `\t` - tab, `\n` - line feed, `\f` - form feed, `\r` - carriage return. `\uXXXX`, where `X` is a hex value, can be used to specify any unicode character. `\XXX`, where `X` is an octal digit, can be used to specify an octal `byte` value. If any other character appears after an escape character, that character will appear in the output and the escape character will be ignored. | x `string`, returns `string` |
+| `REPLACE(x, y, z)` | Replace all occurrences of a given `string` with another. | `x`, `y`, `z` `string`, returns `string` |
+| `REGEXP_REPLACE(str, pattern, sub [, flags])` | Replace one or more occurrences of `pattern` with `sub` in `str`. Flags:<br/>`g`: Replaces all occurrences, not just the first.<br/>`m`: Match over multiple lines.<br/>`i`: Match without case sensitivity. | `str`, `pattern`, `sub` `string`, returns `string` |
 
 ### Type Conversion Functions
 

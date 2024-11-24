@@ -1,0 +1,117 @@
+import { Callout, Steps } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Introduction to Database Data Sources
+When a new Database is added to the list of data sources, and no DDL is defined, the Kubling engine treats that data source as _passthrough_ (also called _direct_),
+which has several implications on how the engine parses and resolves queries.
+
+## Passtrough
+Objects loaded in this mode come directly from the metadata read from the remote source during engine initialization. `SCHEMAs` and `TABLEs` are still
+created in Kubling but serve only as a 1:1 mirror of the original `TABLEs` identified in the source.
+
+This mode is useful when:
+- A connection is needed to join existing information with `TABLEs` defined in Kubling.
+- The source does not support complex custom functions, like Kubling’s, and some transformations need to be applied **during query** via functions.
+- Reducing load on the source, such as networking and cache storage, is beneficial.
+
+### Queries
+For query resolution in _passthrough_ mode, the engine pushes down as much as possible to the source, including functions and subqueries, relying on the
+source's implementation. 
+
+As a result, the query the source receives is almost identical to the one Kubling received.
+
+In regular mode, however, the DQP resolves the AST differently. Subqueries may be resolved as independent units, resulting in multiple queries being sent to the data source.
+<br/>
+
+## Operations in Regular Mode (non _passthrough_)
+When defining a `TABLE` in the DDL that enriches the original schema, CUD (Create, Update, Delete) operations are translated into a set of 
+commands the data source can understand, particularly when the fields referenced in the commands are generated (i.e., they do not exist in the source).
+
+Imagine we have a PostgreSQL instance with the following table:
+```sql
+CREATE TABLE itops.app_component (
+	identifier varchar(36) NOT NULL,
+	application_identifier varchar(255) NOT NULL,
+	"name" varchar(255) NOT NULL,
+	CONSTRAINT app_component_pkey PRIMARY KEY (identifier)
+);
+CREATE INDEX idx_app_component_search ON itops.app_component USING btree (name, application_identifier);
+```
+
+And we import it into Kubling as:
+```sql
+CREATE FOREIGN TABLE app_component
+(
+  -- matches with source 
+  identifier string,
+  application_identifier string,
+  name string,
+
+  -- extended fields
+  ext_rnd string OPTIONS(call_func 'get_random<>'),
+  ext_name string OPTIONS(call_func 'just_print_field<name>'),
+  ext_combined string OPTIONS(call_func 'combine<identifier, name>'),
+  n_identifier string NOT NULL OPTIONS(val_pk 'identifier+name' ),
+  PRIMARY KEY(n_identifier),
+  UNIQUE(identifier)        
+) 
+OPTIONS(updatable true, name_in_source 'itops.app_component');
+```
+
+Extended fields, as well as generated primary key (`val_pk`), are not pushed to the source since they exist only within Kubling's boundaries.
+
+However, they can still be used in the `WHERE` clause of `UPDATE` and `DELETE` operations. 
+To identify the rows affected by these operations, the engine first fetches the rows matching the criteria (similar to a `SELECT`). 
+It determines the appropriate strategy for this process as follows:
+
+- `primary_key`: Used when the `TABLE` defines a primary key (PK) and the PK does not contain any generated fields.
+- `unique_key`: Used when the `TABLE` defines a `UNIQUE` constraint and the fields involved do not include any generated fields.
+- `brute_force`: A fallback option used when neither of the above strategies is applicable. This requires either:
+  - `allowBruteForceOperations` to be enabled at the Data Source level, or
+  - `allow_brute_force` to be enabled at the TABLE level.
+
+<Callout type='info'>
+  Defining a `TABLE` with the directive `name_in_source` is similar to naming the table using the full name. However, for the latter, when querying, you must enclose the name in quotes,
+  like `SELECT * FROM pg."itops.app_component"`.
+</Callout>
+
+---
+
+# Specific `TABLE` directives
+Following directives work only in Database Data Sources
+| Directive           | Type    | Options    | Description                                                                                                                                     |
+|---------------------|---------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `name_in_source`    | String  | Any        | Indicates how the `TABLE` is named in the source, if it differs from Kubling's `TABLE`.                                                         |
+| `allow_brute_force` | Boolean | True/False | Overrides the data source's decision to use brute force when the engine cannot find a way to identify affected rows in an `UPDATE` or `DELETE`. |
+
+---
+
+# Available Data Sources
+
+## PostgreSQL Data Source (`POSTGRESQL`)
+A Database Data Source that translates and adapts queriers to `POSTGRESQL`.
+
+### Configuration
+Uses the [Standard DB Data Source Configuration.](/schemas#standard-db-data-source-configuration)
+
+Sample config in VDB file:
+```yaml
+- name: "app_db"
+  dataSourceType: "POSTGRESQL"
+  config: "bundle:datasource/psql-datasource.yaml"
+  translatorConfig: "bundle:translator/base-translator-config.yaml"
+  schema:
+    type: "PHYSICAL"
+    properties:
+      'importer.useFullSchemaName': 'false'
+      'importer.useCatalogName': 'false'
+      'importer.schemaName': 'public'
+```
+
+When no DDL is defined and there are `importer` properties, the engine automatically creates all the `FOREIGN` tables that match the import strategy.<br/>
+In this specific sample all the `TABLES` of the schema `PUBLIC` will have a local Kubling `TABLE`.
+
+
+## MySQL Data Source (`MYSQL`)
+Configuration is exactly the same as `POSTGRESQL` (above). Only difference is that `dataSourceType` must have the value `MYSQL`.
+

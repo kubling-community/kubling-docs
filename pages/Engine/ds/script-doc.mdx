@@ -1,0 +1,56 @@
+import { Callout } from 'nextra/components'
+
+## Script Document Data Source (`SCRIPT_DOCUMENT_JS`)
+
+A Data Source that handles `JSON` and `YAML` documents and delegates the final processing steps to JavaScript.
+
+As explained [here](/Engine/script-context-members#script-data-source) the adapter exchanges `JSON` documents with your JavaScript, via bound objects.<br/>
+Therefore, your scripts do not have to deal with the document build, since that happens at adapter level, so your scripts have only the logic to interact with other
+systems, which in most cases means calling its API.
+
+When the engine receives, for example, and `UPDATE` query, the documents that match the criteria are returned by calling your `resultSetScript`, then, based on the
+type of table being updated, the engine updates the document/s and calls the script defined as `updateScript`.
+
+<Callout>
+It is important to note that the `resultSetScript` must do its **best effort** to return documents that match the criteria, or `WHERE` clause, however when the
+system does not have specific filter mechanisms or it is complex to implement, your script can return documents not matching the criteria, since the result set
+is further inspected by the engine before returning the rows.
+</Callout>
+
+Sample config in VDB file:
+```yaml
+- name: github
+  dataSourceType: SCRIPT_DOCUMENT_JS
+  configObject:
+    module:
+      zipFilePath: kbl://github/0.0.1
+  translatorConfig: module:translator-config.yaml
+  schema:
+    type: PHYSICAL
+    ddlFilePaths:
+      - module:github.ddl
+```
+
+In the sample above, `zipFilePath` uses the `kbl` URL `scheme` that points to the Module repository configured in the [Main application configuration](/schemas#main-application-configuration),
+under `moduleRepoBaseURI`. By default, it points to `https://repo.kubling.com`.
+
+`translatorConfig` and `schema.ddlFilePaths` point to files inside the module, that is why they use the special `module:` prefix.
+For more information please see [Virtual Database information file](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle).
+
+## Specific `TABLE` directives
+Following directives work only in Document Data Sources (like this one)
+| Directive                     | Type    | Options    | Description                                                                                                                                                                                                       |
+|-------------------------------|---------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `synthetic_parent`            | String  | Any        | Parent `TABLE`. Must include schema name.                                                                                                                                                                         |
+| `synthetic_path`              | String  | Any        | Name of the parent `TABLE` field (array) used to ungroup the content                                                                                                                                              |
+| `synthetic_allow_bulk_insert` | Boolean | True/False | Indicates whether an INSERT operation tolerates multiple entries in the `synthetic_path` or must be strictly one.                                                                                                 |
+| `supports_idempotency`        | Boolean | True/False | Indicates whether the upstream API supports idempotence.<br/>When `false` the QP verifies whether the operation changed the original record/document before applying.<br/>If omitted, the default value is `true` |
+
+<br/>
+
+## Specific field directives
+| Directive                | Type   | Options                                                                                 | Description                                                                                                                                                                                                           |
+|--------------------------|--------|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `synthetic_type`         | String | `parent`, `parent_array_key`                                                            | Type of the synthetic field.<br/>`parent` indicates that exists in and is connected to the parent entity.<br/>`parent_array_key` indicates that the field is used to locate specific elements within `synthetic_path` |
+| `synthetic_parent_field` | String | Any                                                                                     | Indicates that the related parent field name is not the same as defined in the synthetic entity field. Used mostly when field names overlap.                                                                          |
+| `parser_format`          | String | {`parser_format 'option'`}<br/>Options:<br/> `asJsonPretty`, `asYaml`, `asKeyValueList` | Applies a new format to the value, without altering it.                                                                                                                                                               |

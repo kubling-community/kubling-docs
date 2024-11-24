@@ -27,6 +27,18 @@ That is why it is highly recommended to keep them separate in directories.
 In the example above, there is a common function `enclose_string_param.js` that can be applied to any template file, whereas those inside `atlassian` directory will
 only make sense in DDL, configuration and endpoints related with Jira, Confluence, etc.
 
+## Naming Functions and Resolution
+
+When a function module is referenced in the [descriptor bundle](/schemas#descriptor-bundle-information-file-bundle-infoyaml), 
+it must have an associated module name, which becomes part of the fully qualified function name.
+
+Unlike SQL functions, template functions always require the module name to be included in the function name. 
+This is because the template function name resolver does not access functions hierarchically but instead prefixes the module name to the function name during function registration.
+
+As a result, functions are called using the format:  
+`[module]__[function]`,  
+where the double underscore `__` serves as the separator between the module name and the function name as registered in the bundle module (see below).
+
 ## Function script
 Kubling does not evaluate functions the same way it evaluates Delegate scripts, in the sense that in functions only the function code is loaded and evaluated,
 not the whole script file, and the following limitations apply:<br/>
@@ -62,11 +74,11 @@ function(args) {
 
 As you can see, `args` is just an object whose members are the the parameters listed for the function.
 
-Example of function call with a single param:
+Example of a function call with a single parameter, assuming the function is part of a module named `mymod`:
 ```yaml
 ...
 - field: "some_field"
-  value: {{ enclose_string_param(_context.myVar) }}
+  value: {{ mymod__enclose_string_param(_context.myVar) }}
 ```
 
 The following function requires two parameters, as it constructs a different username based on a combination of the owner's email and accountId:

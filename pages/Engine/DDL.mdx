@@ -77,35 +77,32 @@ OPTIONS(updatable true,
 
 <Callout type='warning'>
   Following options work ony in document data sources. However, we are implementing them also in non-document Adapters, like `POSTGRESQL`.<br/>
-  You can follow the progress in  [roadmap section.](/roadmap#support-all-ddl-options-in-non-document-data-sources-analysis-high-prio)
+  You can follow the progress in [roadmap section.](/roadmap#support-all-ddl-options-in-non-document-data-sources-analysis-high-prio)
 </Callout>
 
 *Options* is the mechanism used by the Engine to pass meta-information from the `TABLE` definition to the query processor (QP).<br/>
 Internally, each listed `OPTION` but `tags` is referred as `DIRECTIVE` since, as mentioned before, it can change the behavior of the QP
 
-## `TABLE` Directives
+## Common `TABLE` Directives
 
-| Directive                     | Type    | Options                                                                  | Description                                                                                                                                                                                                       |
-|-------------------------------|---------|--------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `updatable`                   | Boolean | True/False                                                               | Indicates whether the QP allows `INSERT`, `UPDATE` and `DELETE` operations on this `TABLE`                                                                                                                        |
-| `synthetic_parent`            | String  | Any                                                                      | Parent `TABLE`. Must include schema name.                                                                                                                                                                         |
-| `synthetic_path`              | String  | Any                                                                      | Name of the parent `TABLE` field (array) used to ungroup the content                                                                                                                                              |
-| `synthetic_allow_bulk_insert` | Boolean | True/False                                                               | Indicates whether an INSERT operation tolerates multiple entries in the `synthetic_path` or must be strictly one.                                                                                                 |
-| `supports_idempotency`        | Boolean | True/False                                                               | Indicates whether the upstream API supports idempotence.<br/>When `false` the QP verifies whether the operation changed the original record/document before applying.<br/>If omitted, the default value is `true` |
-| `tags`                        | String  | Any                                                                      | Defines tags for the `TABLE`, which can be used to get `TABLE`s based on tags criteria.                                                                                                                           |
-| `cache`                       | String  | {`cache 'option'`}<br/>Options:<br/> `enabled`, `disabled`, `schemaDefault` | Defines the cache behavior for this `TABLE` when caching is enabled at the data source level.                                                                                                                     |
+| Directive   | Type    | Options                                                                     | Description                                                                                   |
+|-------------|---------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| `updatable` | Boolean | True/False                                                                  | Indicates whether the QP allows `INSERT`, `UPDATE` and `DELETE` operations on this `TABLE`    |
+| `tags`      | String  | Any                                                                         | Defines tags for the `TABLE`, which can be used to get `TABLE`s based on tags criteria.       |
+| `cache`     | String  | {`cache 'option'`}<br/>Options:<br/> `enabled`, `disabled`, `schemaDefault` | Defines the cache behavior for this `TABLE` when caching is enabled at the data source level. |
 
-## Field `DIRECTIVES`
+## Common Field Directives
 
-| Directive                | Type   | Options                                                                              | Description                                                                                                                                                                                                           |
-|--------------------------|--------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `synthetic_type`         | String | `parent`, `parent_array_key`                                                         | Type of the synthetic field.<br/>`parent` indicates that exists in and is connected to the parent entity.<br/>`parent_array_key` indicates that the field is used to locate specific elements within `synthetic_path` |
-| `synthetic_parent_field` | String | Any                                                                                  | Indicates that the related parent field name is not the same as defined in the synthetic entity field. Used mostly when field names overlap.                                                                          |
-| `val_constant`           | String | Any                                                                                  | Defines a constant field value.                                                                                                                                                                                       |
-| `val_variable`           | String | Any                                                                                  | The value of the field is get from the properties. [More information.](/Engine/properties)                                                                                                                            |
-| `val_pk`                 | String | [field+field+...]                                                                    | Creates a calculated `PK` based on a field set.<br/>Since the value is not stored anywhere, when filtering using this field, the QP replaces the `WHERE` section by the original list of field's values.              |
-| `call_func`              | String | {`call_func 'fn_name<field, field,...>'`}                                            | Calls a function (built-in or [user-defined](/Modules/Functions/SQL)) to get the field value.<br/>Function parameters can be other's fields values.                                                                   |
-| `parser_format`          | String | {`parser_format 'option'`}<br/>Options:<br/> `asJsonPretty`, `asYaml`, `asKeyValueList` | Applies a new format to the value, without altering it.                                                                                                                                                               |
+| Directive      | Type   | Options                                   | Description                                                                                                                                                                                              |
+|----------------|--------|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `val_constant` | String | Any                                       | Defines a constant field value.                                                                                                                                                                          |
+| `val_variable` | String | Any                                       | The value of the field is get from the properties. [More information.](/Engine/properties)                                                                                                               |
+| `val_pk`       | String | [field+field+...]                         | Creates a calculated `PK` based on a field set.<br/>Since the value is not stored anywhere, when filtering using this field, the QP replaces the `WHERE` section by the original list of field's values. |
+| `call_func`    | String | {`call_func 'fn_name<field, field,...>'`} | Calls a function (built-in or [user-defined](/Modules/Functions/SQL)) to get the field value.<br/>Function parameters can be other's fields values.                                                      |
+
+<Callout type='info'>
+  Specific directives are listed in each [data source documentation](/Engine/ds/intro).
+</Callout>
 
 ### Schema post-precessing in Document data sources
 

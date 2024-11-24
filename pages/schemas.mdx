@@ -187,12 +187,16 @@ properties:
     type: "string"
     description: "Directory with query descriptor files, relative to this bundle info\
       \ location inside the module."
-  actionTemplatesFunctionModule:
-    type: "object"
-    $ref: "schema:kubling:translation:scripting:base:model:Module"
-  sqlFunctionModule:
-    type: "object"
-    $ref: "schema:kubling:translation:scripting:base:model:Module"
+  actionTemplatesFunctionModules:
+    type: "array"
+    items:
+      type: "object"
+      $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+  sqlFunctionModules:
+    type: "array"
+    items:
+      type: "object"
+      $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
 ```
 
 ### Sample
@@ -672,6 +676,10 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
+  allowBruteForceOperations:
+    type: "boolean"
+    description: "Allows the engine to perform Update and Delete operations using\
+      \ all fields as a fallback when no other way to identify rows is available."
   ddl:
     type: "string"
     description: "Allows to run a DDL in the REMOTE data source once the connection\

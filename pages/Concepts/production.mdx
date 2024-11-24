@@ -1,0 +1,21 @@
+# Production Instances
+
+When deploying Kubling in production, consider the following best practices:
+
+- Treat your instances as **immutable**, meaning no internal aspects of the instance should be changed once it is running.
+- **Disable** the embedded web console.
+- **Disable** the restart endpoint.
+- Enable only the transports that you know will be actively used.
+- **Enable communication security** by generating certificates (ideally through an automated pipeline). Certificates should have a maximum validity of 180 days.
+- Mount a **separate volume for the buffer** and configure the buffer directory to point to that volume.
+- **Never disable buffer encryption** when using disk storage.
+- **Monitor your instances** by collecting or sending metrics from Kubling instances to your monitoring system.
+
+---
+
+## Upgrading Versions
+
+When upgrading to a new Kubling version, always run all your tests before upgrading the production environment. Use the latest CLI version to perform these tests.
+
+This is critical because the CLI shares certain Engine components, and any changes are released together (CLI and Engine).
+If your code requires adaptations to the newer version, you can identify them by carefully inspecting the test outputs.

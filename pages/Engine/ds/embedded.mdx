@@ -1,0 +1,42 @@
+import { Callout } from 'nextra/components'
+
+## InMemory Data Source (`EMBEDDED_INMEM`)
+This Data Source creates an in-memory embedded database that operates entirely within system memory.<br/>
+Initially added to Kubling as an internal feature for conducting heavy testing without needing an external database instance, 
+it has since proven useful based on user feedback. 
+It can also be employed for various operational tasks such as storing instance-related information, caching data, managing temporary tables, or synchronizing scripts.
+
+### Configuration
+Uses the [Standard DB Data Source Configuration.](/schemas#standard-db-data-source-configuration)
+
+Sample config in VDB file:
+```yaml
+- name: my_embedded
+  dataSourceType: EMBEDDED_INMEM
+  configObject:
+    dataSourceName: my_embedded
+    databaseName: my_embedded
+    userName: sa
+    token: sa
+    maxConnectionPoolSize: 5
+    minConnectionPoolSize: 1
+    maxConnectionIdleMilliseconds: 7200000
+    maxConnectionLifeTimeMilliseconds: 14400000
+    ddlFilePaths:
+    - /path/to/some.ddl
+  translatorConfig: /path/to/some-config.yaml
+  schema:
+    type: PHYSICAL
+    properties:
+    importer.useCatalogName: "false"
+    importer.useFullSchemaName: "false"
+    importer.schemaName: PUBLIC
+```
+
+Kubling uses an adapted version of the popular H2 DB Engine, so please refer to [their documentation](https://github.com/h2database/h2database) to get info about the supported grammar
+and other limitations.
+
+<Callout>
+  In this Data Source DDLs have a special meaning, since they're used to create the in-memory table schema, therefore they are not [standard Kubling DDL](/Engine/DDL).<br/>
+  After creation and setup, the Engine imports schemas automatically, so there is not option of controlling the `FOREIGN` tables manually like in other Data Sources.
+</Callout>

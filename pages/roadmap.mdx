@@ -16,12 +16,6 @@ Since the new Data Source will be statically compiled, it will offer performance
 **Nov-24 Update:** Initial tests revealed the complexity of creating a GraphQL Data Source, as APIs do not typically adhere to a standard for schema generation, 
 complicating query formation. We will soon decide whether to continue with this approach or to let users implement it within Script Modules.
 
-## Support all DDL options in non-document data sources <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
-When we initially implemented support for traditional RDBMS and other NoSQL databases, we focused on a straightforward, 1:1 schema import. 
-However, we've recently identified use cases where users need to generate new schemas based on existing data source schemas, incorporating new fields and transformations.
-
-We plan to develop a new Query Processor's interceptor meta-adapter, transparent to the user, to enhance DDL capabilities across all non-document data sources.
-
 ## Support for ElasticSearch Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} />
 We are currently evaluating the feasibility of supporting ElasticSearch as a data source without importing specific client libraries, in order to avoid increasing the binary size.
 
