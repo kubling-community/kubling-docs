@@ -161,8 +161,8 @@ Number of current active SQL atomic plans. Atomic plans are effective work items
 ### `kubling.engine.sql.plan.enqueued.current` <Tag description={"Gauge"} />
 Number of current Jobs (queries sent by any valid session) waiting for a free thread to process the plan.
 
-### `kubling.engine.sql.plan.enqueued_time.max` <Tag description={"Gauge"} />
-The maximum time a plan spent waiting in the queue for a free thread during the current execution.
+### `kubling.engine.sql.plan.enqueued.max` <Tag description={"Gauge"} /> <Tag description={"v24.5.5+"} />
+The maximum number of execution plans that were in the queue, waiting for a free thread, at any point during the current execution.
 
 ### `kubling.engine.sql.threads.active` <Tag description={"Gauge"} />
 Number of current active SQL related threads, like DQP's plan processing. Take into account that one query may trigger multiple threads, one per atomic plan.

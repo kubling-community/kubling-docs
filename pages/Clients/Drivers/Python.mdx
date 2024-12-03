@@ -2,7 +2,9 @@
 
 Since Kubling does not provide a Python driver for native protocol, PostgreSQL protocol must be used instead.
 
-For python we do recommend the lightweight, pure-Python [pg8000](https://github.com/tlocke/pg8000/tree/main) driver.
+## pg8000
+
+For Python, we recommend the lightweight, pure-Python [pg8000](https://github.com/tlocke/pg8000/tree/main) driver.
 
 Example:
 ```python
@@ -30,3 +32,8 @@ for allCols in allRows:
 cur.close()
 conn.close()
 ```
+## SQLAlchemy
+
+For more robust Python applications, we recommend using the Kubling [SQLAlchemy dialect](https://pypi.org/project/kubling-sqlalchemy).
+
+For additional information about the dialect, please visit [this repository](https://github.com/kubling-community/kubling-sqlalchemy).

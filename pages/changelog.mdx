@@ -1,5 +1,9 @@
 # Product changelog
 
+## v24.5.5
+- Introduced a new system schema called `SYSMETRICS`, which includes a table named `METRICS` for retrieving the engine's metrics values.
+- Removed the metric `kubling.engine.sql.plan.enqueued_time.max` and replaced it with `kubling.engine.sql.plan.enqueued.max`.
+
 ## v24.5.4
 - Implemented the distinction between `passthrough` and regular access in Database data sources. Therefore, you can now extend schemas also in these type of data sources. [Learn more](/Engine/ds/db-data-sources).
 - Added support for parameter lists in SQL functions.
