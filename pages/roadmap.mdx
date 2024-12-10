@@ -8,6 +8,11 @@ This is why we’re sharing our high-level roadmap with you.
 
 Please keep in mind that we only list features here that might directly impact you, and not all of them will necessarily be implemented.
 
+## Support SQL Functions from Modules in Queries <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
+Currently, SQL functions defined in [modules](/Modules/Functions/SQL) are only used to transform data at definition time (DDL). They cannot yet be invoked during query execution.
+We are actively working on a mechanism that will enable these functions to be used directly in regular query execution.
+
+
 ## Create a new GraphQL Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
 We are currently developing a new Data Source for GraphQL, which is expected to make a significant impact. 
 Many of the existing Script modules that do not require manual interception will likely be transitioned to GraphQL. 

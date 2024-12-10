@@ -1,0 +1,46 @@
+import { Steps, Callout } from 'nextra/components'
+
+# Kubling Metrics Dashboard
+
+This is a simple dashboard showcasing metrics from Kubling itself.
+
+Since Kubling does not store the history of metric values and only provides the current values, this example leverages TimescaleDB to maintain a historical record. 
+TimescaleDB is configured as a data source in Kubling, and a scheduled script writes Kubling metrics into TimescaleDB every 30 seconds.
+
+Superset is then configured with Kubling as its only data source. Superset pulls the history of metrics stored in TimescaleDB through Kubling, 
+enabling rich visualization and analysis of historical metric data.
+
+<Steps>
+
+### Clone our samples repository
+
+```shell copy
+git clone https://github.com/kubling-community/kubling-dashboard-examples.git
+```
+
+### Navigate to the example directory
+```shell copy
+cd kubling-metrics
+```
+
+### Run it!
+
+```shell copy
+sh run-compose.sh
+```
+
+### Superset
+[Go to the console](http://localhost:8088 "target=_blank")
+
+### Login
+Use `admin`/`admin` to log into Superset.
+
+### Open Pre-Configured Dashboard
+In the top menu, click on `Dashboards` and then select `Kubling Monitoring`.
+
+</Steps>
+
+<Callout type="info">
+  When collecting metrics, Superset establishes a new connection to Kubling for each chart. 
+  As a result, you will notice the `kubling.login.total` metric increasing each time the dashboard is refreshed. This behavior is normal.
+</Callout>

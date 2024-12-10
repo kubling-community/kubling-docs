@@ -156,7 +156,7 @@ propertiesFilePath: {{ PROPS_FILE }}
 ## Descriptor bundle information file (`bundle-info.yaml`)
 ```yaml
 type: "object"
-id: "schema:kubling:model:vdb:BundleInfo"
+id: "schema:kubling:dbvirt:model:vdb:BundleInfo"
 properties:
   virtualDatabases:
     type: "array"
@@ -166,7 +166,7 @@ properties:
       type: "string"
   authentication:
     type: "object"
-    id: "schema:kubling:model:vdb:Authentication"
+    id: "schema:kubling:dbvirt:model:vdb:Authentication"
     properties:
       scriptFilePath:
         type: "string"
@@ -174,11 +174,29 @@ properties:
           \ location inside the module."
       module:
         type: "object"
-        id: "schema:kubling:translation:scripting:base:model:Module"
+        id: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
         properties:
+          name:
+            type: "string"
           zipFilePath:
             type: "string"
             description: "URI of the module bundle."
+  scheduledScripts:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:model:vdb:DescriptorScheduledScript"
+      properties:
+        cron:
+          type: "string"
+          description: "CRON expression."
+        scriptFilePath:
+          type: "string"
+          description: "Path to the script, relative to this bundle info location\
+            \ inside the module."
+        module:
+          type: "object"
+          $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
   actionsDirectory:
     type: "string"
     description: "Directory with action descriptor files, relative to this bundle\

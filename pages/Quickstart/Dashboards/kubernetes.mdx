@@ -1,0 +1,45 @@
+import { Steps } from 'nextra/components'
+
+# Multicluster Kubernetes Dashboard
+
+This Dashboard demonstrates how to monitor multiple Kubernetes clusters in an aggregated manner using logic in queries to extract relevant information and present it in simplified tables.
+
+<Steps>
+
+### Clone our Samples Repository
+
+```shell copy
+git clone https://github.com/kubling-community/kubling-dashboard-examples.git
+```
+
+### Navigate to the Example Directory
+```shell copy
+cd k8s-multicluster-metrics
+```
+
+### Kubernetes Configuration
+
+- Edit the file `kube_cluster_1.yaml` and add the [kubeconfig content](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/).
+- Repeat this process for `kube_cluster_2.yaml` if you have additional clusters to configure.
+- To add more clusters, create additional files like `kube_cluster_[n].yaml` and configure them accordingly.
+
+### VDB Configuration
+- Open `descriptor/vdb/DashboardVDB.yaml` and ensure the list of `KUBERNETES` data sources matches the configuration files edited or created in the previous step.
+
+### Run it!
+
+```shell copy
+sh run-compose.sh
+```
+
+### Superset
+[Go to the console](http://localhost:8088 "target=_blank")
+
+### Login
+Use `admin`/`admin` to log into Superset.
+
+### Open Pre-Configured Dashboards
+- In the top menu, click on `Dashboards` and select `Kubernetes Monitoring` to view the current clusters' statuses.
+- Alternatively, select `Kubernetes Time Series` to view two simple time series charts showing the historical data of reserved CPU cores and memory.
+
+</Steps>

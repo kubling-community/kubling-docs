@@ -148,6 +148,7 @@ CREATE FOREIGN TABLE POD
     metadata__name string,
     metadata__namespace string,
     metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
     spec__activeDeadlineSeconds long,
     spec__affinity json,
     spec__containers json OPTIONS(parser_format 'asJsonPretty'),
@@ -156,6 +157,19 @@ CREATE FOREIGN TABLE POD
     spec__tolerations json OPTIONS(parser_format 'asJsonPretty'),
     spec__volumes json OPTIONS(parser_format 'asJsonPretty'),
     spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+
+    status__message string,
+    status__nominatedNodeName string,
+    status__phase string,
+    status__podIP string,
+    status__reason string,
+    status__startTime timestamp,
+    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__containerStatuses json OPTIONS(parser_format 'asJsonPretty'),
+    status__initContainerStatuses json OPTIONS(parser_format 'asJsonPretty'),
+    status__ephemeralContainerStatuses json OPTIONS(parser_format 'asJsonPretty'),
+    status__resourceClaimStatuses json OPTIONS(parser_format 'asJsonPretty'),
+
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
     PRIMARY KEY(identifier),
     UNIQUE(clusterName, metadata__namespace, metadata__name)
@@ -170,7 +184,8 @@ CREATE FOREIGN TABLE POD_CONTAINER
     schema string OPTIONS(val_constant '{{ schema.name }}'),
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
     metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels string OPTIONS(updatable false, synthetic_type 'parent'),
+    metadata__labels json OPTIONS(synthetic_type 'parent'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
 
     image string NOT NULL,
     name string NOT NULL,
@@ -178,8 +193,6 @@ CREATE FOREIGN TABLE POD_CONTAINER
     volumeMounts json,
     resources__requests json,
     resources__limits json,
-    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
-    PRIMARY KEY(identifier),
     UNIQUE(metadata__namespace, metadata__name, name)
 )
   OPTIONS(updatable true,
@@ -188,20 +201,41 @@ CREATE FOREIGN TABLE POD_CONTAINER
         synthetic_allow_bulk_insert false,
         tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container');
 
+CREATE FOREIGN TABLE POD_STATUS_CONDITION
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels json OPTIONS(synthetic_type 'parent'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+
+    lastTransitionTime timestamp,
+    status string,
+    type string
+
+)
+OPTIONS(updatable false,
+        synthetic_parent '{{ schema.name }}.POD',
+        synthetic_path 'status__conditions',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;status');
+
 CREATE FOREIGN TABLE POD_CONTAINER_VOLS
 (
     clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
     schema string OPTIONS(val_constant '{{ schema.name }}'),
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
     metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels string OPTIONS(synthetic_type 'parent'),
+    metadata__labels json OPTIONS(synthetic_type 'parent'),
     containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name'),
     containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
 
     mountPath string NOT NULL,
     name string NOT NULL,
     readOnly boolean,
-    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+containerName+name' ),
+    identifier string OPTIONS(val_pk 'pod_identifier+containerName+name'),
     PRIMARY KEY(identifier),
     UNIQUE(metadata__namespace, metadata__name, containerName, name)
 )
@@ -210,6 +244,97 @@ CREATE FOREIGN TABLE POD_CONTAINER_VOLS
         synthetic_path 'volumeMounts',
         synthetic_allow_bulk_insert false,
         tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;vols');
+
+CREATE FOREIGN TABLE POD_CONTAINER_STATUS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels json OPTIONS(synthetic_type 'parent'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+
+    name string,
+    ready boolean,
+    started boolean,
+    restartCount integer,
+    allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
+    containerID string,
+    image string,
+    imageID string,
+    lastState json OPTIONS(parser_format 'asJsonPretty'),
+    state json OPTIONS(parser_format 'asJsonPretty'),
+    resources json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    PRIMARY KEY(identifier)
+)
+OPTIONS(updatable false,
+        synthetic_parent '{{ schema.name }}.POD',
+        synthetic_path 'status__containerStatuses',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status');
+
+CREATE FOREIGN TABLE POD_EPHEMERAL_CONTAINER_STATUS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels json OPTIONS(synthetic_type 'parent'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+
+    name string,
+    ready boolean,
+    started boolean,
+    restartCount integer,
+    allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
+    containerID string,
+    image string,
+    imageID string,
+    lastState json OPTIONS(parser_format 'asJsonPretty'),
+    state json OPTIONS(parser_format 'asJsonPretty'),
+    resources json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    PRIMARY KEY(identifier)
+)
+OPTIONS(updatable false,
+        synthetic_parent '{{ schema.name }}.POD',
+        synthetic_path 'status__ephemeralContainerStatuses',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status;ephemeral');
+
+CREATE FOREIGN TABLE POD_INIT_CONTAINER_STATUS
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    metadata__labels json OPTIONS(synthetic_type 'parent'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+
+    name string,
+    ready boolean,
+    started boolean,
+    restartCount integer,
+    allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
+    containerID string,
+    image string,
+    imageID string,
+    lastState json OPTIONS(parser_format 'asJsonPretty'),
+    state json OPTIONS(parser_format 'asJsonPretty'),
+    resources json OPTIONS(parser_format 'asJsonPretty'),
+
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    PRIMARY KEY(identifier)
+)
+OPTIONS(updatable false,
+        synthetic_parent '{{ schema.name }}.POD',
+        synthetic_path 'status__initContainerStatuses',
+        synthetic_allow_bulk_insert false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status;init');
+
 
 CREATE FOREIGN TABLE DEPLOYMENT
 (
@@ -415,6 +540,34 @@ OPTIONS(updatable true,
         supports_idempotency false,
         tags 'kubernetes;{{ schema.properties.cluster_name }};statefulset');
 
+CREATE FOREIGN TABLE SERVICE
+(
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
+    schema string OPTIONS(val_constant '{{ schema.name }}'),
+    metadata__name string,
+    metadata__namespace string,
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+
+    spec__clusterIP string,
+    spec__clusterIPs json,
+    spec__externalIPs json,
+    spec__externalName string,
+    spec__healthCheckNodePort integer,
+    spec__loadBalancerClass string,
+    spec__loadBalancerIP string,
+    spec__ports json OPTIONS(parser_format 'asJsonPretty'),
+    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__type string,
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    PRIMARY KEY(identifier),
+
+    UNIQUE(clusterName, metadata__namespace, metadata__name)
+)
+OPTIONS(updatable true,
+        supports_idempotency false,
+        tags 'kubernetes;{{ schema.properties.cluster_name }};service');
+
 CREATE FOREIGN TABLE NETWORK_INGRESS
 (
     clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
@@ -533,6 +686,7 @@ CREATE FOREIGN TABLE SECRET
     metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
 
     stringData json OPTIONS(parser_format 'asJsonPretty'),
+    data json OPTIONS(parser_format 'asJsonPretty'),
     immutable boolean,
     type string,
 
@@ -552,19 +706,19 @@ CREATE FOREIGN TABLE CERTIFICATE
     metadata__name string,
     metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
 
-    expirationSeconds integer,
-    extra json OPTIONS(parser_format 'asJsonPretty'),
-    groups json,
-    request string,
-    signerName string,
-    uid string,
-    usages json,
-    username string,
+    spec__expirationSeconds integer,
+    spec__extra json OPTIONS(parser_format 'asJsonPretty'),
+    spec__groups json,
+    spec__request string,
+    spec__signerName string,
+    spec__uid string,
+    spec__usages json,
+    spec__username string,
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+uid' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
     PRIMARY KEY(identifier),
 
-    UNIQUE(clusterName, uid)
+    UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
@@ -666,13 +820,14 @@ CREATE FOREIGN TABLE EVENT
     metadata__name string,
     metadata__namespace string,
     metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    metadata__creationTimestamp timestamp,
 
     action string,
     deprecatedCount integer,
     deprecatedFirstTimestamp timestamp,
     deprecatedLastTimestamp timestamp,
     deprecatedSource json OPTIONS(parser_format 'asJsonPretty'),
-    eventTime timestamp,
+    eventTime json,
     note string,
     reason string,
     regarding json OPTIONS(parser_format 'asJsonPretty'),
