@@ -1,0 +1,293 @@
+# SYS Schema
+
+The `SYS` schema provides system-level information and actions in the virtual database.
+
+## Tables/Views
+
+### SYS.Columns
+
+This table supplies information about all the elements (columns, tags, attributes, etc.) in the virtual database.
+
+| Column Name         | Type      | Description                                                                                             |
+|---------------------|-----------|---------------------------------------------------------------------------------------------------------|
+| `VDBName`           | `string`  | VDB name                                                                                                |
+| `SchemaName`        | `string`  | Schema name                                                                                             |
+| `TableName`         | `string`  | Table name                                                                                              |
+| `Name`              | `string`  | Element name (not qualified)                                                                            |
+| `Position`          | `integer` | Position in group (1-based)                                                                             |
+| `NameInSource`      | `string`  | Name of the element in the source                                                                       |
+| `DataType`          | `string`  | Runtime data type name                                                                                  |
+| `Scale`             | `integer` | Number of digits after the decimal point                                                                |
+| `ElementLength`     | `integer` | Element length (mostly used for strings)                                                                |
+| `sLengthFixed`      | `boolean` | Whether the length is fixed or variable                                                                 |
+| `SupportsSelect`    | `boolean` | Element can be used in `SELECT`                                                                         |
+| `SupportsUpdates`   | `boolean` | Values can be inserted or updated in the element                                                        |
+| `IsCaseSensitive`   | `boolean` | Element is case-sensitive                                                                               |
+| `IsSigned`          | `boolean` | Element is a signed numeric value                                                                       |
+| `IsCurrency`        | `boolean` | Element represents a monetary value                                                                     |
+| `IsAutoIncremented` | `boolean` | Element is auto-incremented in the source                                                               |
+| `NullType`          | `string`  | Nullability: `"Nullable"`, `"No Nulls"`, `"Unknown"`                                                    |
+| `MinRange`          | `string`  | Minimum value                                                                                           |
+| `MaxRange`          | `string`  | Maximum value                                                                                           |
+| `DistinctCount`     | `integer` | Distinct value count; `-1` can indicate unknown                                                         |
+| `NullCount`         | `integer` | Null value count; `-1` can indicate unknown                                                             |
+| `SearchType`        | `string`  | Searchability: `"Searchable"`, `"All Except Like"`, `"Like Only"`, `"Unsearchable"`                     |
+| `Format`            | `string`  | Format of string value                                                                                  |
+| `DefaultValue`      | `string`  | Default value                                                                                           |
+| `JavaClass`         | `string`  | Java class that will be returned                                                                        |
+| `Precision`         | `integer` | Number of digits in numeric value                                                                       |
+| `CharOctetLength`   | `integer` | Measure of return value size                                                                            |
+| `Radix`             | `integer` | Radix for numeric values                                                                                |
+| `GroupUpperName`    | `string`  | Upper-case full group name                                                                              |
+| `UpperName`         | `string`  | Upper-case element name                                                                                 |
+| `UID`               | `string`  | Element unique ID                                                                                       |
+| `Description`       | `string`  | Description                                                                                             |
+| `TableUID`          | `string`  | Parent Table unique ID                                                                                  |
+| `TypeName`          | `string`  | The type name, which may be a domain name                                                               |
+| `TypeCode`          | `integer` | JDBC SQL type code                                                                                      |
+| `ColumnSize`        | `string`  | If numeric, the precision; if character, the length; if date/time, the string length of a literal value |
+
+---
+
+### SYS.DataTypes
+
+This table supplies information about data types.
+
+| Column Name         | Type      | Description                                                                         |
+|---------------------|-----------|-------------------------------------------------------------------------------------|
+| `Name`              | `string`  | Type or domain name                                                                 |
+| `IsStandard`        | `boolean` | True if the type is basic                                                           |
+| `Type`              | `string`  | One of `Basic`, `UserDefined`, `ResultSet`, `Domain`                                |
+| `TypeName`          | `string`  | Design-time type name                                                               |
+| `JavaClass`         | `string`  | Java class returned for this type                                                   |
+| `Scale`             | `integer` | Max scale of this type                                                              |
+| `TypeLength`        | `integer` | Max length of this type                                                             |
+| `NullType`          | `string`  | Nullability: `"Nullable"`, `"No Nulls"`, `"Unknown"`                                |
+| `IsSigned`          | `boolean` | Indicates if numeric values are signed                                              |
+| `IsAutoIncremented` | `boolean` | Indicates if values are auto-incremented                                            |
+| `IsCaseSensitive`   | `boolean` | Indicates if values are case-sensitive                                              |
+| `Precision`         | `integer` | Max precision of this type                                                          |
+| `Radix`             | `integer` | Radix of this type                                                                  |
+| `SearchType`        | `string`  | Searchability: `"Searchable"`, `"All Except Like"`, `"Like Only"`, `"Unsearchable"` |
+| `UID`               | `string`  | Data type unique ID                                                                 |
+| `RuntimeType`       | `string`  | Runtime data type name                                                              |
+| `BaseType`          | `string`  | Base type                                                                           |
+| `Description`       | `string`  | Description of type                                                                 |
+| `TypeCode`          | `integer` | JDBC SQL type code                                                                  |
+| `Literal_Prefix`    | `string`  | Literal prefix                                                                      |
+| `Literal_Suffix`    | `string`  | Literal suffix                                                                      |
+
+---
+
+### SYS.KeyColumns
+
+This table supplies information about the columns referenced by a key.
+
+| Column Name  | Type      | Description                                         |
+|--------------|-----------|-----------------------------------------------------|
+| `VDBName`    | `string`  | VDB name                                            |
+| `SchemaName` | `string`  | Schema name                                         |
+| `TableName`  | `string`  | Table name                                          |
+| `Name`       | `string`  | Element name                                        |
+| `KeyName`    | `string`  | Key name                                            |
+| `KeyType`    | `string`  | Key type: `"Primary"`, `"Foreign"`, `"Unique"`, etc |
+| `RefKeyUID`  | `string`  | Referenced key UID                                  |
+| `UID`        | `string`  | Key UID                                             |
+| `Position`   | `integer` | Position in key                                     |
+| `TableUID`   | `string`  | Parent Table unique ID                              |
+
+
+---
+
+### SYS.Keys
+
+This table supplies information about primary, foreign, and unique keys.
+
+| Column Name    | Type      | Description                                            |
+|----------------|-----------|--------------------------------------------------------|
+| `VDBName`      | `string`  | VDB name                                               |
+| `SchemaName`   | `string`  | Schema name                                            |
+| `Table Name`   | `string`  | Table name                                             |
+| `Name`         | `string`  | Key name                                               |
+| `Description`  | `string`  | Description                                            |
+| `NameInSource` | `string`  | Name of key in source system                           |
+| `Type`         | `string`  | Type of key: `"Primary"`, `"Foreign"`, `"Unique"`, etc |
+| `IsIndexed`    | `boolean` | `True` if key is indexed                               |
+| `RefKeyUID`    | `string`  | Referenced key UID (if foreign key)                    |
+| `RefTableUID`  | `string`  | Referenced key table UID (if foreign key)              |
+| `RefSchemaUID` | `string`  | Referenced key table schema UID (if foreign key)       |
+| `UID`          | `string`  | Key unique ID                                          |
+| `TableUID`     | `string`  | Key Table unique ID                                    |
+| `SchemaUID`    | `string`  | Key Table Schema unique ID                             |
+| `ColPositions` | `short[]` | Array of column positions within the key table         |
+
+
+---
+
+### SYS.ProcedureParams
+
+This table supplies information on procedure parameters.
+
+| Column Name     | Type      | Description                                                                                                  |
+|-----------------|-----------|--------------------------------------------------------------------------------------------------------------|
+| `VDBName`       | `string`  | VDB name                                                                                                     |
+| `SchemaName`    | `string`  | Schema name                                                                                                  |
+| `ProcedureName` | `string`  | Procedure name                                                                                               |
+| `Name`          | `string`  | Parameter name                                                                                               |
+| `DataType`      | `string`  | Runtime data type name                                                                                       |
+| `Position`      | `integer` | Position in procedure args                                                                                   |
+| `Type`          | `string`  | Parameter direction: `"In"`, `"Out"`, `"InOut"`, `"ResultSet"`, `"ReturnValue"`                              |
+| `Optional`      | `boolean` | `True` if the parameter is optional                                                                          |
+| `Precision`     | `integer` | Precision of parameter                                                                                       |
+| `TypeLength`    | `integer` | Length of parameter value                                                                                    |
+| `Scale`         | `integer` | Scale of parameter                                                                                           |
+| `Radix`         | `integer` | Radix of parameter                                                                                           |
+| `NullType`      | `string`  | Nullability: `"Nullable"`, `"No Nulls"`, `"Unknown"`                                                         |
+| `Description`   | `string`  | Description of parameter                                                                                     |
+| `TypeName`      | `string`  | The type name, which may be a domain name                                                                    |
+| `TypeCode`      | `integer` | JDBC SQL type code                                                                                           |
+| `ColumnSize`    | `string`  | If numeric, the precision; if character, the length; and if date/time, the string length of a literal value. |
+| `DefaultValue`  | `string`  | Default value                                                                                                |
+
+
+---
+
+### SYS.Procedures
+
+This table supplies information about the procedures in the virtual database.
+
+| Column Name      | Type      | Description                                  |
+|------------------|-----------|----------------------------------------------|
+| `VDBName`        | `string`  | VDB name                                     |
+| `SchemaName`     | `string`  | Schema name                                  |
+| `Name`           | `string`  | Procedure name                               |
+| `NameInSource`   | `string`  | Procedure name in source system              |
+| `ReturnsResults` | `boolean` | `True` if the procedure returns a result set |
+| `UID`            | `string`  | Procedure unique identifier (UID)            |
+| `Description`    | `string`  | Description of the procedure                 |
+| `SchemaUID`      | `string`  | Parent schema unique identifier (UID)        |
+
+---
+
+### SYS.FunctionParams
+
+This table supplies information on function parameters.
+
+| Column Name    | Type      | Description                                                                     |
+|----------------|-----------|---------------------------------------------------------------------------------|
+| `VDBName`      | `string`  | VDB name                                                                        |
+| `SchemaName`   | `string`  | Schema name                                                                     |
+| `FunctionName` | `string`  | Function name                                                                   |
+| `FunctionUID`  | `string`  | Function unique identifier (UID)                                                |
+| `Name`         | `string`  | Parameter name                                                                  |
+| `DataType`     | `string`  | Runtime data type name                                                          |
+| `Position`     | `integer` | Position in procedure arguments                                                 |
+| `Type`         | `string`  | Parameter direction: `"In"`, `"Out"`, `"InOut"`, `"ResultSet"`, `"ReturnValue"` |
+| `Precision`    | `integer` | Precision of parameter                                                          |
+| `TypeLength`   | `integer` | Length of parameter value                                                       |
+| `Scale`        | `integer` | Scale of parameter                                                              |
+| `Radix`        | `integer` | Radix of parameter                                                              |
+| `NullType`     | `string`  | Nullability: `"Nullable"`, `"No Nulls"`, `"Unknown"`                            |
+| `Description`  | `string`  | Description of parameter                                                        |
+| `TypeName`     | `string`  | The type name, which may be a domain name                                       |
+| `TypeCode`     | `integer` | JDBC SQL type code                                                              |
+| `ColumnSize`   | `string`  | Numeric: precision; Character: length; Date/Time: literal length                |
+
+---
+
+### SYS.Functions
+
+This table supplies information about the functions in the virtual database.
+
+| Column Name    | Type      | Description                                  |
+|----------------|-----------|----------------------------------------------|
+| `VDBName`      | `string`  | VDB name                                     |
+| `SchemaName`   | `string`  | Schema name                                  |
+| `Name`         | `string`  | Function name                                |
+| `NameInSource` | `string`  | Function name in source system               |
+| `UID`          | `string`  | Function unique identifier (UID)             |
+| `Description`  | `string`  | Description                                  |
+| `IsVarArgs`    | `boolean` | Does the function accept variable arguments? |
+
+---
+
+### SYS.Properties
+
+This table supplies user-defined properties on all objects based on metamodel extensions. 
+Normally, this table is empty if no metamodel extensions are being used.
+
+| Column Name  | Type    | Description              |
+|--------------|---------|--------------------------|
+| `Name`       | `string`| Extension property name  |
+| `Value`      | `string`| Extension property value |
+| `UID`        | `string`| Key unique ID            |
+| `ClobValue`  | `clob`  | Clob Value               |
+
+### SYS.ReferenceKeyColumns
+
+This table supplies information about column's key reference.
+
+| Column Name     | Type      | Description     |
+|-----------------|-----------|-----------------|
+| `PKTABLE_CAT`   | `string`  | VDB name        |
+| `PKTABLE_SCHEM` | `string`  | Schema name     |
+| `PKTABLE_NAME`  | `string`  | Table/View name |
+| `PKCOLUMN_NAME` | `string`  | Column name     |
+| `FKTABLE_CAT`   | `string`  | VDB name        |
+| `FKTABLE_SCHEM` | `string`  | Schema name     |
+| `FKTABLE_NAME`  | `string`  | Table/View name |
+| `FKCOLUMN_NAME` | `string`  | Column name     |
+| `KEY_SEQ`       | `short`   | Key Sequence    |
+| `UPDATE_RULE`   | `integer` | Update Rule     |
+| `DELETE_RULE`   | `integer` | Delete Rule     |
+| `FK_NAME`       | `string`  | FK name         |
+| `PK_NAME`       | `string`  | PK name         |
+| `DEFERRABILITY` | `integer` | Deferrability   |
+
+### SYS.Schemas
+
+This table supplies information about all the schemas in the virtual database, including the system schema itself (System).
+
+| Column Name           | Type      | Description                                                             |
+|-----------------------|-----------|-------------------------------------------------------------------------|
+| `VDBName`             | `string`  | VDB name                                                                |
+| `Name`                | `string`  | Schema name                                                             |
+| `IsPhysical`          | `boolean` | True if this represents a source                                        |
+| `UID`                 | `string`  | Unique ID                                                               |
+| `Description`         | `string`  | Description                                                             |
+| `PrimaryMetamodelURI` | `string`  | URI for the primary metamodel describing the model used for this schema |
+
+---
+
+### SYS.Tables
+
+This table supplies information about all the groups (tables, views, documents, and so forth) in the virtual database.
+
+| Column Name       | Type      | Description                             |
+|-------------------|-----------|-----------------------------------------|
+| `VDBName`         | `string`  | VDB name                                |
+| `SchemaName`      | `string`  | Schema Name                             |
+| `Name`            | `string`  | Short group name                        |
+| `Type`            | `string`  | Table type (Table, View, Document, …)   |
+| `NameInSource`    | `string`  | Name of this group in the source        |
+| `IsPhysical`      | `boolean` | True if this is a source table          |
+| `SupportsUpdates` | `boolean` | True if group can be updated            |
+| `UID`             | `string`  | Group unique ID                         |
+| `Cardinality`     | `integer` | Approximate number of rows in the group |
+| `Description`     | `string`  | Description                             |
+| `IsSystem`        | `boolean` | True if in system table                 |
+| `SchemaUID`       | `string`  | Parent Schema unique ID                 |
+
+---
+
+### SYS.VirtualDatabases
+
+This table supplies information about the currently connected virtual database, of which there is always exactly one (in the context of a connection).
+
+| Column Name        | Type        | Description                              |
+|--------------------|-------------|------------------------------------------|
+| `Name`             | `string`    | The name of the VDB                      |
+| `Version`          | `string`    | The version of the VDB                   |
+| `Description`      | `string`    | The description of the VDB               |
+| `LoadingTimestamp` | `timestamp` | The timestamp loading began              |
+| `ActiveTimestamp`  | `timestamp` | The timestamp when the VDB became active |

@@ -425,6 +425,49 @@ The `0` index is considered to be before the start of the string.
   Options that are specified on the type, such as length, precision, scale, etc., are effectively ignored - the Engine is simply converting from one object type to another.<br/>
 </Callout>
 
+### Data and Time Functions
+
+| Function                        | Description                                                                                                                     | Datatype Constraint                          |
+|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|
+| `CURDATE()` / `CURRENT_DATE()`  | Return current date - same value for all invocations in the user command.                                                     | Returns `date`                              |
+| `CURTIME()`                     | Return current time - same value for all invocations in the user command. See also `CURRENT_TIME`.                            | Returns `time`                              |
+| `NOW()`                         | Return current timestamp (date and time with millisecond precision) - same value for all invocations in the user command.     | Returns `timestamp`                         |
+| `CURRENT_TIME[(precision)]`     | Return current time. The precision argument is ignored, behaving the same as `CURTIME()` without a precision argument.        | Returns `time`                              |
+| `CURRENT_TIMESTAMP[(precision)]`| Return current timestamp with millisecond precision. Behaves like `NOW()` without a precision argument.                       | Returns `timestamp`                         |
+| `DAYNAME(x)`                    | Return name of day in the default locale.                                                                                     | `x` in {`date`, `timestamp`}, returns `string` |
+| `DAYOFMONTH(x)`                 | Return day of the month.                                                                                                      | `x` in {`date`, `timestamp`}, returns `integer` |
+| `DAYOFWEEK(x)`                  | Return day of the week (Sunday=1, Saturday=7).                                                                                | `x` in {`date`, `timestamp`}, returns `integer` |
+| `DAYOFYEAR(x)`                  | Return day number in the year.                                                                                                | `x` in {`date`, `timestamp`}, returns `integer` |
+| `EPOCH(x)`                      | Return seconds since the Unix epoch with microsecond precision.                                                               | `x` in {`date`, `timestamp`}, returns `double`  |
+| `EXTRACT(FIELD FROM x)`         | Return the specified `FIELD` from the date value `x`. Fields include `YEAR`, `MONTH`, `DAYOFMONTH`, `HOUR`, `MINUTE`, `SECOND`, `EPOCH`, etc. | `x` in {`date`, `time`, `timestamp`}, returns `integer` or `double` |
+| `FORMATDATE(x, y)`              | Format the date `x` using the format `y`.                                                                                     | `x` is `date`, `y` is `string`, returns `string` |
+| `FORMATTIME(x, y)`              | Format the time `x` using the format `y`.                                                                                     | `x` is `time`, `y` is `string`, returns `string` |
+| `FORMATTIMESTAMP(x, y)`         | Format the timestamp `x` using the format `y`.                                                                                | `x` is `timestamp`, `y` is `string`, returns `string` |
+| `FROM_MILLIS(millis)`           | Return the `timestamp` value for the given milliseconds.                                                                      | Long UTC timestamp in milliseconds          |
+| `FROM_UNIXTIME(unix_timestamp)` | Return the Unix timestamp as a `string` in the default format `yyyy/mm/dd hh:mm:ss`.                                          | Long Unix timestamp (in seconds)            |
+| `HOUR(x)`                       | Return hour (in 24-hour format).                                                                                              | `x` in {`time`, `timestamp`}, returns `integer` |
+| `MINUTE(x)`                     | Return minute.                                                                                                                | `x` in {`time`, `timestamp`}, returns `integer` |
+| `MODIFYTIMEZONE(timestamp, startTimeZone, endTimeZone)` | Return a timestamp adjusted for the difference between `startTimeZone` and `endTimeZone`.                                  | Strings for time zones, returns `timestamp` |
+| `MONTH(x)`                      | Return month.                                                                                                                 | `x` in {`date`, `timestamp`}, returns `integer` |
+| `MONTHNAME(x)`                  | Return name of the month in the default locale.                                                                               | `x` in {`date`, `timestamp`}, returns `string` |
+| `PARSEDATE(x, y)`               | Parse date from `x` using format `y`.                                                                                         | `x`, `y` are `string`, returns `date`        |
+| `PARSETIME(x, y)`               | Parse time from `x` using format `y`.                                                                                         | `x`, `y` are `string`, returns `time`        |
+| `PARSETIMESTAMP(x, y)`          | Parse timestamp from `x` using format `y`.                                                                                    | `x`, `y` are `string`, returns `timestamp`   |
+| `QUARTER(x)`                    | Return the quarter.                                                                                                           | `x` in {`date`, `timestamp`}, returns `integer` |
+| `SECOND(x)`                     | Return seconds.                                                                                                               | `x` in {`time`, `timestamp`}, returns `integer` |
+| `TIMESTAMPCREATE(date, time)`   | Create a timestamp from a `date` and a `time`.                                                                                | `date` is `date`, `time` is `time`, returns `timestamp` |
+| `TO_MILLIS(timestamp)`          | Return the UTC timestamp in milliseconds.                                                                                     | Timestamp value                              |
+| `UNIX_TIMESTAMP(unix_timestamp)`| Return the Unix timestamp (in seconds).                                                                                       | `unix_timestamp` as `string`, returns `long` |
+| `WEEK(x)`                       | Return the week of the year (1-53).                                                                                           | `x` in {`date`, `timestamp`}, returns `integer` |
+| `YEAR(x)`                       | Return the four-digit year.                                                                                                   | `x` in {`date`, `timestamp`}, returns `integer` |
+
+### Decode Functions
+| Function                    | Description                                                                                                                                                                                                                                                                                                                         | Datatype Constraint                             |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| `DECODESTRING(x, y [, z])`  | Decode column `x` using a string of value pairs `y` with an optional delimiter `z` and return the decoded column as a string. If a delimiter is not specified, a comma (`,`) is used. `y` has the format `SearchDelimResultDelimSearchDelimResult[DelimDefault]`. Returns `Default` if specified, or `x` if there are no matches.   | All parameters and return type are `string`.    |
+| `DECODEINTEGER(x, y [, z])` | Decode column `x` using a string of value pairs `y` with an optional delimiter `z` and return the decoded column as an integer. If a delimiter is not specified, a comma (`,`) is used. `y` has the format `SearchDelimResultDelimSearchDelimResult[DelimDefault]`. Returns `Default` if specified, or `x` if there are no matches. | All parameters are `string`; returns `integer`. |
+
+
 ### Document Functions <Tag description={"v24.5.3+"} />
 
 | Function                           | Description                                                                                                                                                                                                                                                                         |

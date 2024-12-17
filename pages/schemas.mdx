@@ -430,36 +430,36 @@ properties:
 ## Script Module bundle information file (`bundle-script-info.yaml`)
 ```yaml
 type: "object"
-id: "schema:kubling:translation:scripting:base:model:ScriptingBundleInfo"
+id: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptingBundleInfo"
 properties:
   initScript:
     type: "object"
-    id: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+    id: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
     properties:
       submodule:
         type: "string"
         description: "DEPRECATED"
       scriptFilePath:
         type: "string"
-        description: "Path to the script, relative to this bundle info location inside\
-          \ the module."
+        description: "Relative path to the script, based on the location of this bundle\
+          \ info within the module."
   resultSetScript:
     type: "object"
-    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
   insertScript:
     type: "object"
-    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
   updateScript:
     type: "object"
-    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
   deleteScript:
     type: "object"
-    $ref: "schema:kubling:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
   scheduledScripts:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:translation:scripting:base:model:ScheduledScript"
+      id: "schema:kubling:dbvirt:translation:scripting:base:model:ScheduledScript"
       properties:
         cron:
           type: "string"
@@ -469,14 +469,14 @@ properties:
           description: "DEPRECATED"
         scriptFilePath:
           type: "string"
-          description: "Path to the script, relative to this bundle info location\
-            \ inside the module."
+          description: "Relative path to the script, based on the location of this\
+            \ bundle info within the module."
   contextVariables:
     type: "array"
     description: "List of variables used by the module."
     items:
       type: "object"
-      id: "schema:kubling:translation:scripting:base:model:BundleContextVariable"
+      id: "schema:kubling:dbvirt:translation:scripting:base:model:BundleContextVariable"
       properties:
         name:
           type: "string"
@@ -500,12 +500,12 @@ properties:
     type: "string"
   innerDDLFilePath:
     type: "string"
-    description: "Path to the DDL file, relative to this bundle info location inside\
-      \ the module."
+    description: "Relative path to the DDL file, based on the location of this bundle\
+      \ info within the module."
   innerTranslatorConfigFilePath:
     type: "string"
-    description: "Path to the translator configuration file, relative to this bundle\
-      \ info location inside the module."
+    description: "Relative path to the translator configuration file, based on the\
+      \ location of this bundle info within the module."
 ```
 
 ### Sample
@@ -531,7 +531,7 @@ contextVariables:
 ## SQL Function Module bundle information file (`bundle-sql-function-info.yaml`)
 ```yaml
 type: "object"
-id: "schema:kubling:model:sql:function:SQLFunctionBundleInfo"
+id: "schema:kubling:dbvirt:model:sql:function:SQLFunctionBundleInfo"
 properties:
   partitions:
     type: "integer"
@@ -552,34 +552,94 @@ properties:
     description: "Maximum wait time in milliseconds the thread will wait in the queue\
       \ for a Script context from the pool. Once reached, an error is thrown if no\
       \ available context.Default: 10000ms (10s)"
-  functions:
+  queryFunctions:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:model:sql:function:SQLFunctionDefinition"
+      id: "schema:kubling:dbvirt:model:sql:function:SQLQueryFunctionDefinition"
       properties:
         name:
           type: "string"
           description: "Function name."
+        description:
+          type: "string"
+          description: "Function description."
         scriptFilePath:
           type: "string"
-          description: "Path to the function script, relative to this bundle info\
-            \ location inside the module."
+          description: "Relative path to the function script, based on the location\
+            \ of this bundle info within the module."
+        parameters:
+          type: "object"
+          description: "A list of function parameters represented as a key-value,\
+            \ where each entry consists of a parameter name and its corresponding\
+            \ type."
+          additionalProperties:
+            type: "string"
+        returnType:
+          type: "string"
+          description: "Specifies the Kubling data type returned by the function.\
+            \ The engine will attempt to convert the script function's return type\
+            \ into a valid Kubling data type. Note that this conversion might fail\
+            \ if the types are incompatible."
+        aggregationFunction:
+          type: "boolean"
+          description: "Indicates whether the function is an aggregation function,\
+            \ which receives an array of values and returns a single summarized value."
+        isDeterministic:
+          type: "boolean"
+          description: "Indicates whether the function returns the same value for\
+            \ the same parameter values. Deterministic functions are eligible for\
+            \ caching, which can significantly improve performance."
+  DDLFunctions:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:model:sql:function:SQLDDLFunctionDefinition"
+      properties:
+        name:
+          type: "string"
+          description: "Function name."
+        description:
+          type: "string"
+          description: "Function description."
+        scriptFilePath:
+          type: "string"
+          description: "Relative path to the function script, based on the location\
+            \ of this bundle info within the module."
 ```
 
 ### Sample
 ```yaml
 minContexts: 5
 maxContexts: 10
-functions:
-  - name: "az_sql_get_rg"
-    scriptFilePath: "fn/azure/sql_get_rg.js"
+
+DDLFunctions:
+  - name: "az_ddl_get_rg"
+    description: "Extracts the resource group name from a given Azure resource ID."
+    scriptFilePath: "fn/azure/ddl/az_ddl_get_rg.js"
+
+queryFunctions:
+  - name: "az_get_rg"
+    description: "Extracts the resource group name from a given Azure resource ID."
+    scriptFilePath: "fn/azure/query/sql_get_rg.js"
+    parameters:
+      id: string
+    returnType: string
+    isDeterministic: true
+
+  - name: "az_simple_agg"
+    description: "Some simple aggregation function."
+    scriptFilePath: "fn/azure/query/az_simple_agg.js"
+    parameters:
+      aggIt: string
+    returnType: integer
+    aggregationFunction: true
 ```
 
 ## Template Function Module bundle information file (`bundle-function-info.yaml`)
 ```yaml
 type: "object"
-id: "schema:kubling:model:template:function:TemplateFunctionDefinition"
+id: "schema:kubling:dbvirt:model:template:function:TemplateFunctionDefinition"
 properties:
   name:
     type: "string"
@@ -591,8 +651,8 @@ properties:
       type: "string"
   scriptFilePath:
     type: "string"
-    description: "Path to the function script, relative to this bundle info location\
-      \ inside the module."
+    description: "Relative path to the function script, based on the location of this\
+      \ bundle info within the module."
   partitions:
     type: "integer"
     description: "Internal Script contexts pool partitions. Default: 2"
@@ -637,7 +697,7 @@ functions:
 ## Standard DB Data Source Configuration
 Applies to the following Data Source types:
 
-- `KUBLING_DBVIRT`
+- `KUBLING`
 - `EMBEDDED_INMEM`
 - `MYSQL`
 - `POSTGRESQL`
@@ -709,6 +769,86 @@ properties:
     items:
       type: "string"
 ```
+
+## Portable Local Data Source Configuration
+
+Applies to the following Data Source types:
+
+- `PORTABLE_LOCAL`
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:PortableLocalSourceConfig"
+properties:
+  dataSourceName:
+    type: "string"
+    description: "Internal Engine data source name."
+  serverAddress:
+    type: "string"
+    description: "Address of the remote data source."
+  serverPort:
+    type: "integer"
+    description: "Port where the remote data source is listening for connections."
+  databaseName:
+    type: "string"
+    description: "Remote Data Base name."
+  userName:
+    type: "string"
+    description: "Username used to establish the connection."
+  token:
+    type: "string"
+    description: "Token or password used to establish the connection."
+  maxConnectionPoolSize:
+    type: "integer"
+    description: "Maximum number of connections the Engine will open. Default: 5"
+  minConnectionPoolSize:
+    type: "integer"
+    description: "Minimum number of connections the Engine will keep open. Default:\
+      \ 1"
+  maxConnectionIdleMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool without\
+      \ being used. Once reached, the connection is closed and removed from the pool.Default:\
+      \ 7200000ms (2 hours)"
+  maxConnectionLifeTimeMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool.\
+      \ Once reached, the connection is closed and removed from the pool. In case\
+      \ of pool size is less than minConnectionPoolSize after the removal, a new fresh\
+      \ connection is created.Default: 14400000ms (4 hours)"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  allowBruteForceOperations:
+    type: "boolean"
+    description: "Allows the engine to perform Update and Delete operations using\
+      \ all fields as a fallback when no other way to identify rows is available."
+  filePath:
+    type: "string"
+    description: "Path to file where to store the database."
+  filePassword:
+    type: "string"
+  ddl:
+    type: "string"
+    description: "Allows to run a DDL in the REMOTE data source once the connection\
+      \ is established."
+  ddlFilePaths:
+    type: "array"
+    description: "Allows to run multiple DDL, loaded from external file paths, in\
+      \ the REMOTE data source once the connection is established."
+    items:
+      type: "string"
+```
+
 
 ## Kubernetes Data Source Configuration
 

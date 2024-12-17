@@ -1,7 +1,7 @@
 import { Callout, FileTree } from 'nextra/components'
 
 # SQL Functions Bundle Module
-This module contains functions that can be called in SQL contexts, like DDL.
+This module contains functions that can be called in DDL and Query SQL contexts.
 
 Having all functions grouped in modules makes it easier to manage than putting them in each Script Bundle Module.
 
@@ -11,26 +11,93 @@ Let's see first the recommended internal directory and file organization:
   <FileTree.File name="bundle-sql-function-info.yaml" />  
   <FileTree.Folder name="fn">
     <FileTree.Folder name="azure">
-        <FileTree.File name="sql_get_rg_from_id.js" />
-        <FileTree.File name="sql_get_subscription_from_id.js" />
+        <FileTree.Folder name="ddl">
+          <FileTree.File name="ddl_get_rg_from_id.js" />
+          <FileTree.File name="ddl_get_subscription_from_id.js" />
+        </FileTree.Folder>
+        <FileTree.Folder name="query">
+          <FileTree.File name="sql_get_rg_from_id.js" />
+          <FileTree.File name="sql_transform_id.js" />
+          <FileTree.Folder name="aggregation">
+            <FileTree.File name="sql_agg_just_count.js" />
+            <FileTree.File name="sql_agg_by_disk_size.js" />
+          </FileTree.Folder> 
+        </FileTree.Folder>        
     </FileTree.Folder>    
   </FileTree.Folder>
 </FileTree>
 
-## 📄 `bundle-sql-function-info.yaml`
-This is the only file whose location must be the root directory of the module.
-See here the [schema](/schemas#sql-function-module-bundle-information-file-bundle-sql-function-infoyaml) of the file.
+## DDL and SQL functions
+Functions are divided into two main categories, DDL and SQL. 
 
-## 📂 Platform-related functions directories
-Ideally, a functions module should contain all the necessary functions for all the Data Sources. 
-That is why it is highly recommended to keep them separate in directories.
+Kubling does not evaluate functions the same way it evaluates Delegate scripts, in the sense that in functions only the function code is loaded and evaluated,
+not the whole script file, and the following limitations apply:<br/>
+- `import` is not supported.
+- Calling other functions is not supported.
 
-<Callout type='info'>
-  We are considering adding the ability to also define SQL functions within Script Bundle Modules.<br/>
-  See [roadmap](/roadmap) for more info about it.  
-</Callout>
+---
 
-## Naming Functions and Resolution
+### DDL Functions
+
+**DDL functions** are defined at the field level within the `TABLE` definition in the DDL, making them an integral part of the `SCHEMA`.
+
+These functions are used to transform field values during query execution.
+
+#### Example:
+```sql
+CREATE FOREIGN TABLE STORAGE_ACCOUNT
+   (
+     resourceGroup string OPTIONS(call_func 'az_ddl_get_rg<id>'),
+     ...
+   )  
+```
+
+Internally, these functions are referred to as "transformation functions" because they take a set of field values as input and generate a new, transformed value.
+
+#### Key Characteristics:
+- **Dependency**:  
+  DDL functions are dependent on other field values that must be fetched before the function is executed. This dependency adds complexity to their resolution.
+
+- **Query Resolution**:  
+  In most cases, DDL functions are resolved dynamically during each query performed against the `TABLE`. However, the actual resolution process depends on the **DQP** (Distributed Query Planner) and the specific execution plan.
+
+
+#### DDL Function Script
+
+Let's break down the following example:
+
+```js
+function sql_get_rg(args) {
+    if ((args.value === null) || (args.value === undefined)) return null;
+    return args.value.id.split("/")[4];
+}
+```
+
+This simple function receives an Azure ID (column `id`) and returns the Resource Group, which is located at the fourth position of the Fully Qualified Name (FQN).
+
+#### Arguments
+
+DDL function scripts always receive a single `args` object, which is a key-value (KV) structure with the following members:
+
+- **`value`**:  
+  An object containing the parameter column names as its members. Its general form is `args.value.[col_name]`.
+
+- **`column`**:  
+  The name of the column to which the function is applied. This always refers to the `TABLE` column name.  
+  > Note: When used with a different column name, such as `sql_get_rg<SOME>`, the `column` value will remain associated with the original field where the function is applied.
+
+- **`datatype`**:  
+  The data type of the column to which the function is applied.
+
+#### Example Explanation
+
+- `args.value.id` provides the `id` column value.
+- The function splits the Azure FQN (`id`) by `/` and returns the element at index `4`, which corresponds to the Resource Group.
+- If the `id` is `null` or `undefined`, the function returns `null` to ensure robustness.
+
+This structure ensures that DDL functions are flexible and can handle a wide range of transformations dynamically during query execution.
+
+#### Naming DDL Functions and Resolution
 When a function module is referenced in the [descriptor bundle](/schemas#descriptor-bundle-information-file-bundle-infoyaml), it must have an associated module name, which is part of the fully qualified function name.
 
 If the function name is unique across all modules, you can call the function without using the module name. However, if the function name is duplicated, you must use the module name. Otherwise, the function resolution process will fail due to an ambiguous name.
@@ -43,58 +110,145 @@ Example:
 ... OPTIONS(call_func 'azure_mod.az_sql_get_rg<id>')
 ```
 
-## Function script
-Kubling does not evaluate functions the same way it evaluates Delegate scripts, in the sense that in functions only the function code is loaded and evaluated,
-not the whole script file, and the following limitations apply:<br/>
-- `import` is not supported.
-- Calling other functions is not supported.
+---
+
+### SQL Functions
+
+**SQL functions** are first-class functions registered in the engine as User-Defined Functions (UDFs). They can be invoked within regular queries, just like any built-in SQL function.
+
+#### Example:
+```sql
+SELECT sql_transform_id(id) FROM app_delegate.STORAGE_ACCOUNT;
+```
+
+#### SQL Function Script
 
 Let's break down the following example:
 
 ```js
-function sql_get_rg(args) {
-    if ((args.value === null) || (args.value === undefined)) return null;
-    return args.value.id.split("/")[4];
+function sql_get_rg({ id }) {
+    return id.split("/")[4];
 }
 ```
 
-That simple functions receives an Azure ID (column `id`), and returns the Resource Group, which is located in the fourth position of the FQN.
+#### How It Works:
+- The function receives a key-value (KV) `object` where the keys correspond to the parameters defined in the function signature ([see below](#-bundle-sql-function-infoyaml)).
+- The engine injects values into the function based on their position in the query.
 
-The argument passed to functions is always one `args`, which is a KV with three members:
-- `value`: An object whose members are the parameter column names. Its general form is `args.value.[col_name]`
-- `column`: The name of the column, always referring to the TABLE column name this function in being applied to. When used with a different column name, 
-such as `sql_get_rg<SOME>`, the column will not take that name and will always remain associated with the original field to which this function is applied.
-- `datatype`: Column's data type.
-
-The function can be used, for example, when defining a `TABLE`, as follows:
+#### Example Query and Parameter Mapping:
 ```sql
-CREATE FOREIGN TABLE AZ_STORAGE_ACCOUNT
-(
-    subscription string OPTIONS(val_constant '{{ schema.properties.azure_subscription }}'),
-    resourceGroup string OPTIONS(call_func 'az_sql_get_rg<id>'),
-    sku json OPTIONS(parser_format 'asJsonPretty'),
-    kind string,
-    "identity" string,
-    properties json OPTIONS(parser_format 'asJsonPretty'),
-    tags json OPTIONS(parser_format 'asJsonPretty'),
-    location string,
-    "id" string,
-    name string,
-    type string,
-    properties__provisioningState string,
-    properties__accessTier string,
-    PRIMARY KEY(id)
-)
-OPTIONS(updatable true,
-        supports_idempotency false,
-        tags 'azure;{{ schema.properties.azure_subscription }};storage;account');
+SELECT sql_transform_id(id, primaryLocation) FROM app_delegate.STORAGE_ACCOUNT;
+```
+The `id` and `primaryLocation` parameters are injected into the function based on their positions in the function signature.
+
+#### Example Signature:
+```yaml
+- name: "sql_get_rg"
+  parameters:
+    id: string
+    primaryLocation: string
+  ...
 ```
 
-In which case `resourceGroup` will contain the value returned by the function.
+Here, the `sql_get_rg` function is defined with two parameters:
+1. **`id`**: A `string` representing the resource ID.
+2. **`primaryLocation`**: A `string` representing the location parameter.
+
+This allows the engine to map query arguments to the function's parameters dynamically.
+
+---
+
+### SQL Aggregation Functions
+
+An **aggregation function** performs a calculation on a set of values and returns a single aggregated value, such as the well-known `SUM`, `AVG`, `MAX`, and `MIN`. These functions typically operate over grouped rows when a `GROUP BY` clause is used.
+
+Aggregation functions are similar to regular SQL functions, differing primarily in the parameters they receive.
+
+#### Example:
+
+```js
+function sql_agg_just_count(values = []) {
+    return values.length;
+}
+```
+
+The function receives a single parameter, `values`, which is an array of all values to be aggregated.
+
+#### Invocation:
+
+The aggregation function can be invoked as follows:
+
+```sql
+SELECT sql_agg_just_count(id) FROM app_delegate.STORAGE_ACCOUNT;
+```
+
+The `id` column is passed as an array to the `sql_agg_just_count` function, which calculates the count of `id` values within the specified grouping or overall dataset.
+
+---
+
+## 📄 `bundle-sql-function-info.yaml`
+This is the only file whose location must be the root directory of the module.
+See here the [schema](/schemas#sql-function-module-bundle-information-file-bundle-sql-function-infoyaml) of the file.
+
+DDL Functions example:
+```yaml
+DDLFunctions:
+  - name: "az_ddl_get_rg"
+    description: "Extracts the resource group name from a given Azure resource ID."
+    scriptFilePath: "fn/azure/ddl/az_ddl_get_rg.js"
+```
+
+Query Functions example:
+```yaml
+queryFunctions:
+  - name: "az_get_rg"
+    description: "Extracts the resource group name from a given Azure resource ID."
+    scriptFilePath: "fn/azure/query/sql_get_rg.js"
+    parameters:
+      id: string
+    returnType: string
+    isDeterministic: true
+```
+
+Query Aggregation Functions example:
+```yaml
+queryFunctions:
+  - name: "az_simple_agg"
+    description: "Some simple aggregation function."
+    scriptFilePath: "fn/azure/query/az_simple_agg.js"
+    parameters:
+      aggIt: string
+    returnType: integer
+    aggregationFunction: true
+```
+
+## 📂 Platform-related functions directories
+Ideally, a functions module should contain all the necessary functions for all the Data Sources. 
+That is why it is highly recommended to keep them separate in directories.
+
+---
+
 
 ### Performance
-Bear in mind that functions have a limited number of contexts, configurable via `partitions`, `minContexts` and `maxContexts` in `bundle-sql-function-info.yaml` configuration file,
-and each context can execute one function at a time. If the Engine receives a `SELECT resourceGroup FROM AZ_STORAGE_ACCOUNT` that returns, let's say, 100 rows,
-the `sql_get_rg` will be called, as you guessed, 100 times, likely generating queues. 
 
-Therefore, it is important to keep functions as simple as possible, with basic transformations, and to avoid putting a lot of logic into them.
+Keep in mind that functions have a limited number of execution contexts, which are configurable via the `partitions`, `minContexts`, and `maxContexts` parameters in the `bundle-sql-function-info.yaml` configuration file. Each context can execute only one function at a time.
+
+#### Example:
+Consider the DDL function defined earlier. If the engine processes a query like:
+```sql
+SELECT resourceGroup FROM AZ_STORAGE_ACCOUNT;
+```
+and the query returns 100 rows, the `az_ddl_get_rg` function will be called 100 times—once for each row. This can potentially generate queues, especially if there are not enough contexts available.
+
+#### Best Practices:
+To ensure optimal performance:
+1. **Keep Functions Simple**:  
+   Functions should focus on basic transformations to minimize execution time.
+   
+2. **Avoid Heavy Logic**:  
+   Avoid placing complex or resource-intensive logic in functions, as it can slow down query execution and increase the likelihood of queuing.
+
+3. **Tune Contexts**:  
+   Properly configure the `partitions`, `minContexts`, and `maxContexts` parameters to balance available resources and function execution demand.
+
+By following these guidelines, you can reduce bottlenecks and ensure smoother query execution.

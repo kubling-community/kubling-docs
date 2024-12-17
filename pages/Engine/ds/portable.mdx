@@ -1,0 +1,56 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+## Portable Local Data Source (`PORTABLE_LOCAL`) <Tag description={"v24.5.7+"} />
+
+This data source is based on the **H2 database engine**. It creates a **single-file, locally-stored database**.
+
+The primary goal of this data source is to create lightweight, portable databases for storing **small amounts of information** that:
+
+- Must persist across Kubling engine shutdowns.
+- Can be shared with other Kubling instances or tools.
+
+H2 was chosen over Kubling's internal small database engine (used for metadata storage) because it provides greater flexibility:
+
+- You can open H2 databases using a wide variety of third-party tools.
+- Accessing data does not depend on Kubling, making it easier to extract or view stored information independently.
+- It allows you to treat this data source as any other regular remote data source.
+
+[Check here](/schemas#portable-local-data-source-configuration) for the Portable Local Data Source configuration specification.
+
+Sample configuration in VDB file:
+```yaml
+- name: mydb
+  dataSourceType: PORTABLE_LOCAL
+  configObject:
+      dataSourceName: mydb-portable
+      databaseName: mydb-portable
+      userName: sa
+      token: [REDACTED]
+      maxConnectionPoolSize: 5
+      minConnectionPoolSize: 1
+      maxConnectionIdleMilliseconds: 7200000
+      maxConnectionLifeTimeMilliseconds: 14400000
+      cache:
+        enabled: false
+        ttlSeconds: 43200
+      allowBruteForceOperations: false
+      filePath: /some/path
+      filePassword: [REDACTED]
+      DDL: |
+        CREATE TABLE IF NOT EXISTS MyTable...
+  schema:
+      type: PHYSICAL
+      properties:
+        importer.schemaName: PUBLIC
+        importer.useFullSchemaName: "false"
+        importer.useCatalogName: "false"
+        cacheDefaultStrategy: CACHE
+```
+
+### Limitations
+As this data source is based on H2, some limitations apply. For more information, check [H2's official documentation](https://www.h2database.com/html/advanced.html#limits_limitations).
+
+<Callout type='warning'>
+  As per our test results, and to maintain optimal performance, we recommend keeping this data source under 1GB in size.
+</Callout>

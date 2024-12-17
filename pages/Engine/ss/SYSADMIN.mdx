@@ -1,0 +1,138 @@
+# SYSADMIN Schema
+
+The `SYSADMIN` schema provides administrative information and actions for managing and monitoring the virtual database.
+
+## Key Features:
+- Access information about usage, materialized views, virtual database resources, triggers, stored procedures, and active sessions.
+- Perform administrative tasks such as refreshing materialized views, setting metadata properties, and canceling or terminating sessions and transactions.
+
+## Tables and Views
+
+### SYSADMIN.Usage
+This table supplies information about how views and procedures are defined.
+
+| Column Name        | Type   | Description                                                                                       |
+|--------------------|--------|---------------------------------------------------------------------------------------------------|
+| VDBName            | string | VDB name                                                                                        |
+| UID                | string | Object UID                                                                                     |
+| object_type        | string | Type of object (e.g., StoredProcedure, ForeignProcedure, Table, View, Column, etc.)             |
+| Name               | string | Object Name or parent name                                                                      |
+| ElementName        | string | Name of column or parameter (may be null for table/procedure).                                  |
+| Uses_UID           | string | Used object UID                                                                                 |
+| Uses_object_type   | string | Used object type                                                                                |
+| Uses_SchemaName    | string | Used object schema                                                                              |
+| Uses_Name          | string | Used object name or parent name                                                                 |
+| Uses_ElementName   | string | Used column or parameter name (may be null for table/procedure-level dependency).               |
+
+**Examples**:
+- **Find all incoming usage**:
+  ```sql
+  WITH im_using AS (
+      SELECT 0 AS level, uid, Uses_UID, Uses_Name, Uses_Object_Type, Uses_ElementName
+      FROM usage
+      WHERE uid = (SELECT uid FROM sys.tables WHERE name='table name' AND schemaName='schema name')
+      UNION ALL
+      SELECT level + 1, usage.uid, usage.Uses_UID, usage.Uses_Name, usage.Uses_Object_Type, usage.Uses_ElementName
+      FROM usage, im_using
+      WHERE level < 10 AND usage.uid = im_using.Uses_UID
+  )
+  SELECT * FROM im_using;
+
+- **Find all outgoing usage**:
+```sql
+  WITH uses_me AS (
+      SELECT 0 AS level, uid, Uses_UID, Name, Object_Type, ElementName
+      FROM usage
+      WHERE uses_uid = (SELECT uid FROM sys.tables WHERE name='table name' AND schemaName='schema name')
+      UNION ALL
+      SELECT level + 1, usage.uid, usage.Uses_UID, usage.Name, usage.Object_Type, usage.ElementName
+      FROM usage, uses_me
+      WHERE level < 10 AND usage.uses_uid = uses_me.UID
+  )
+  SELECT * FROM uses_me;
+```
+
+### SYSADMIN.MatViews
+Provides information about all materialized views in the virtual database.
+
+| Column Name      | Type      | Description                                                                                          |
+|------------------|-----------|------------------------------------------------------------------------------------------------------|
+| VDBName          | string    | VDB name                                                                                             |
+| SchemaName       | string    | Schema Name                                                                                          |
+| Name             | string    | Short group name                                                                                     |
+| TargetSchemaName | string    | Name of the materialized table schema (null for internal materialization).                           |
+| TargetName       | string    | Name of the materialized table.                                                                      |
+| Valid            | boolean   | True if the materialized table is currently valid (null for external materialization).               |
+| LoadState        | boolean   | Load state: `NEEDS_LOADING`, `LOADING`, `LOADED`, `FAILED_LOAD` (null for external materialization). |
+| Updated          | timestamp | Timestamp of the last full refresh (null for external materialization).                              |
+| Cardinality      | integer   | Number of rows in the materialized view table (null for external materialization).                   |
+
+Example:
+```sql
+SELECT * FROM SYSADMIN.MatViews;
+```
+
+### SYSADMIN.VDBResources
+Provides the current VDB contents.
+
+| Column Name   | Type   | Description                       |
+|---------------|--------|-----------------------------------|
+| resourcePath  | string | Path to the contents.            |
+| contents      | blob   | Contents as a blob.              |
+
+Example:
+```sql
+SELECT * FROM SYSADMIN.VDBResources;
+```
+
+### SYSADMIN.Triggers
+Provides the triggers in the virtual database.
+
+| Column Name  | Type   | Description                     |
+|--------------|--------|---------------------------------|
+| VDBName      | string | VDB name                        |
+| SchemaName   | string | Schema Name                     |
+| TableName    | string | Table name                      |
+| Name         | string | Trigger name                    |
+| TriggerType  | string | Trigger Type                    |
+| TriggerEvent | string | Triggering Event                |
+| Status       | string | Is Enabled                      |
+| Body         | clob   | Trigger Action (FOR EACH ROW …) |
+| TableUID     | string | Table Unique ID                 |
+
+Example:
+```sql
+SELECT * FROM SYSADMIN.Triggers;
+```
+
+### SYSADMIN.Views
+Provides the views in the virtual database.
+
+| Column Name   | Type   | Description            |
+|---------------|--------|------------------------|
+| VDBName       | string | VDB name              |
+| SchemaName    | string | Schema Name           |
+| Name          | string | View name             |
+| Body          | clob   | View Definition Body  |
+| UID           | string | Table Unique ID       |
+
+Example:
+```sql
+SELECT * FROM SYSADMIN.Views;
+```
+
+### SYSADMIN.StoredProcedures
+Provides the stored procedures in the virtual database.
+
+| Column Name   | Type   | Description                  |
+|---------------|--------|------------------------------|
+| VDBName       | string | VDB name                    |
+| SchemaName    | string | Schema Name                 |
+| Name          | string | Procedure name              |
+| Body          | clob   | Procedure Definition Body   |
+| UID           | string | Unique ID                  |
+
+Example:
+```sql
+SELECT * FROM SYSADMIN.StoredProcedures;
+```
