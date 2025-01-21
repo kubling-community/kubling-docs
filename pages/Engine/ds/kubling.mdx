@@ -2,7 +2,10 @@ import { Callout } from 'nextra/components'
 
 # Kubling Data Source (`KUBLING`)
 
-A Kubling instance can act as a data source for another Kubling instance, enabling the creation of a data mesh with a focus on decentralization.
+A Kubling instance can serve as a data source for another Kubling instance, facilitating the creation of a decentralized data mesh.
+
+This data source falls under the **database data source** category, meaning it supports features like **passthrough mode** and **additional column configuration**, 
+similar to other [database sources](/Engine/ds/db-data-sources).
 
 ### When to Use Independent Kubling Instances
 - **Handling Large Data Volumes**:  
@@ -10,9 +13,6 @@ A Kubling instance can act as a data source for another Kubling instance, enabli
 
 - **Decentralized Management**:  
   Decentralization allows independent teams to manage their own data domains while maintaining interoperability across the organization.
-
-### Configuration
-A Kubling data source is configured like any other regular Database data source. For details, see [this guide](/Engine/ds/db-data-sources).
 
 <Callout type='info'>
   When multiple Kubling instances are connected to each other as data sources, they form a mesh, which should not be confused with a cluster. 

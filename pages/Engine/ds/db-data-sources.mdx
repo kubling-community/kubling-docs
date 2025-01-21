@@ -2,7 +2,7 @@ import { Callout, Steps } from 'nextra/components'
 import Tag from '../../../component/Tag'
 
 # Introduction to Database Data Sources
-When a new Database is added to the list of data sources, and no DDL is defined, the Kubling engine treats that data source as _passthrough_ (also called _direct_),
+When a new Database is added to the list of data sources, and no DDL is defined, the Kubling engine treats that data source as `passthrough` (also called _direct_),
 which has several implications on how the engine parses and resolves queries.
 
 ## Passtrough
@@ -22,6 +22,32 @@ As a result, the query the source receives is almost identical to the one Kublin
 
 In regular mode, however, the DQP resolves the AST differently. Subqueries may be resolved as independent units, resulting in multiple queries being sent to the data source.
 <br/>
+
+### Additional Columns  <Tag description={"v25.1+"} />
+In `passthrough` mode, it is possible to add specific fields without defining the entire schema.  
+This is particularly useful for making small amendments to tables, such as adding constant values using the `val_constant` directive.
+
+Example:
+```yaml
+dataSources:
+  - name: "psql-1"
+    dataSourceType: "POSTGRESQL"
+    configObject:
+      dataSourceName: "psql-1"
+      databaseName: "psql-1"
+      ...
+    schema:
+      ...
+      addColumns:
+        - tableNamePattern: ".+"
+          name: "data_center"
+          type: "string"
+          directives:
+            val_constant: "DC1"
+```
+
+`tableNamePattern` allows selecting which tables will be impacted by the column addition using a Java regular expression.  
+`directives` is equivalent to adding `OPTIONS` next to the field via DDL. However, as in DDL, it is optional.
 
 ## Operations in Regular Mode (non _passthrough_)
 When defining a `TABLE` in the DDL that enriches the original schema, CUD (Create, Update, Delete) operations are translated into a set of 
@@ -77,7 +103,7 @@ It determines the appropriate strategy for this process as follows:
 
 ---
 
-# Specific `TABLE` directives
+## Specific `TABLE` directives
 Following directives work only in Database Data Sources
 | Directive           | Type    | Options    | Description                                                                                                                                     |
 |---------------------|---------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------|

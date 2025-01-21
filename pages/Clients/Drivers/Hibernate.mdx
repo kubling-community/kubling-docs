@@ -1,14 +1,6 @@
 import { Callout } from 'nextra/components'
 
 # Hibernate
-We [released a Hibernate dialect](https://github.com/kubling-community/kubling-teiid-os/tree/master/hibernate-dialect) that currently supports 
-Hibernate `6.1.7`, but [we are planning](http://localhost:3000/roadmap) to move directly to version `7` once it is released, tested and adopted mostly by Spring and Quarkus.
-
-<Callout>
-  Take into account that from Hibernate version `6.1.x` to `6.2.x`, the `Dialect` base class changed some important methods like `initializeFunctionRegistry`,
-  therefore if you need support for versions >= `6.2.x`, you just need to register the same functions and column types
-  following the new API model, that is, even though we haven't tested it, from `Kubling` viewpoint it should not change.
-</Callout>
 
 ## Usage
 In your project, add Apache Maven dependencies for the Hibernate ORM core and Kubling JDBC Driver and Dialect.
@@ -17,12 +9,12 @@ In your project, add Apache Maven dependencies for the Hibernate ORM core and Ku
 <dependency>
     <groupId>com.kubling</groupId>
     <artifactId>kubling-client</artifactId>
-    <version>24.2.5</version>
+    <version>24.2.7</version>
 </dependency>
 <dependency>
     <groupId>com.kubling</groupId>
     <artifactId>kubling-hibernate-dialect</artifactId>
-    <version>24.2.5</version>
+    <version>24.2.7</version>
 </dependency>
 ```
 

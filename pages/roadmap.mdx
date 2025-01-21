@@ -8,10 +8,14 @@ This is why we’re sharing our high-level roadmap with you.
 
 Please keep in mind that we only list features here that might directly impact you, and not all of them will necessarily be implemented.
 
+
+## Expose Kubling as an AI Agent to Provide Services to Other AI Agents and Copilots <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
+We are working on a way to embed the Kubling engine in an agentic environment. However, due to the complexity of the logic required, there will likely be a remote Kubling agent that the engine can call using an API token.  
+This approach prevents the engine from having to handle complex LLM calls directly, in order to reserve the compute capacity for the main engine's task.
+
 ## Support SQL Functions from Modules in Queries <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
 Currently, SQL functions defined in [modules](/Modules/Functions/SQL) are only used to transform data at definition time (DDL). They cannot yet be invoked during query execution.
 We are actively working on a mechanism that will enable these functions to be used directly in regular query execution.
-
 
 ## Create a new GraphQL Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
 We are currently developing a new Data Source for GraphQL, which is expected to make a significant impact. 
@@ -45,10 +49,6 @@ Loading DDL files defined inside modules is not yet supported. We are currently 
 or if the `ddlFilePath` property should support schemes like `module:` and/or `bundle:`.
 
 ## Upgrade Hibernate dialect to version 7 <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"Low Prio"} txtFont={"font-gilroyBold"} />
-We currently support up to version `6.1.7`, and we are planning to jump directly to version `7`.
 
 ## Support Couchbase Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"Low Prio"} txtFont={"font-gilroyBold"} />
 We will support Couchbase, possibly with some limitations, in ~~the next~~ a future release.
-
-## Support Cassandra Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"Low Prio"} txtFont={"font-gilroyBold"} />
-We will support Cassandra, possibly with some limitations, in ~~the next~~ a future release.

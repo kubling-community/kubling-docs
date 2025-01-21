@@ -374,6 +374,7 @@ Conditions with equal precedence are left-associative. The following table lists
 | `BITXOR(x, y)`           | Bitwise XOR                                                                                                                                                                                                                                                  | x, y in [`integer`], returns `integer`                                                           |
 | `BITNOT(x)`              | Bitwise NOT                                                                                                                                                                                                                                                  | x in [`integer`], returns `integer`                                                              |
 
+---
 
 ### String Functions
 
@@ -425,6 +426,8 @@ The `0` index is considered to be before the start of the string.
   Options that are specified on the type, such as length, precision, scale, etc., are effectively ignored - the Engine is simply converting from one object type to another.<br/>
 </Callout>
 
+---
+
 ### Data and Time Functions
 
 | Function                        | Description                                                                                                                     | Datatype Constraint                          |
@@ -460,6 +463,66 @@ The `0` index is considered to be before the start of the string.
 | `UNIX_TIMESTAMP(unix_timestamp)`| Return the Unix timestamp (in seconds).                                                                                       | `unix_timestamp` as `string`, returns `long` |
 | `WEEK(x)`                       | Return the week of the year (1-53).                                                                                           | `x` in {`date`, `timestamp`}, returns `integer` |
 | `YEAR(x)`                       | Return the four-digit year.                                                                                                   | `x` in {`date`, `timestamp`}, returns `integer` |
+
+#### `TIMESTAMPADD`
+Adds a specified interval amount to a timestamp.
+
+```sql
+TIMESTAMPADD(interval, count, timestamp)
+```
+
+Arguments:
+| Name        | Description                                                                                                                                                                                                                     |
+|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `interval`  | A datetime interval unit, can be one of the following keywords:                                                                                                                                                                 |
+|             | - `SQL_TSI_FRAC_SECOND` - fractional seconds (billionths of a second)                                                                                                                                                           |
+|             | - `SQL_TSI_SECOND` - seconds                                                                                                                                                                                                    |
+|             | - `SQL_TSI_MINUTE` - minutes                                                                                                                                                                                                    |
+|             | - `SQL_TSI_HOUR` - hours                                                                                                                                                                                                        |
+|             | - `SQL_TSI_DAY` - days                                                                                                                                                                                                          |
+|             | - `SQL_TSI_WEEK` - weeks using Sunday as the first day                                                                                                                                                                          |
+|             | - `SQL_TSI_MONTH` - months                                                                                                                                                                                                      |
+|             | - `SQL_TSI_QUARTER` - quarters (3 months) where the first quarter is months 1-3, etc.                                                                                                                                           |
+|             | - `SQL_TSI_YEAR` - years                                                                                                                                                                                                        |
+| `count`     | A long or integer count of units to add to the timestamp. Negative values subtract that number of units. Long values are allowed for symmetry with `TIMESTAMPDIFF`, but the effective range is still limited to integer values. |
+| `timestamp` | A datetime expression.                                                                                                                                                                                                          |
+
+Example:
+```sql
+SELECT TIMESTAMPADD(SQL_TSI_MONTH, 12,'2025-10-10');
+SELECT TIMESTAMPADD(SQL_TSI_SECOND, 12,'2025-10-10 23:59:59');
+```
+
+#### `TIMESTAMPDIFF`
+
+Calculates the number of date part intervals crossed between two timestamps and returns a `long` value.
+
+```sql
+TIMESTAMPDIFF(interval, startTime, endTime)
+```
+
+Arguments:
+| Name        | Description                                                            |
+|-------------|------------------------------------------------------------------------|
+| `interval`  | A datetime interval unit, the same as keywords used by `TIMESTAMPADD`. |
+| `startTime` | A datetime expression.                                                 |
+| `endTime`   | A datetime expression.                                                 |
+
+Example:
+```sql
+SELECT TIMESTAMPDIFF(SQL_TSI_MONTH,'2000-01-02','2025-10-10');
+SELECT TIMESTAMPDIFF(SQL_TSI_SECOND,'2000-01-02 00:00:00','2025-10-10 23:59:59');
+SELECT TIMESTAMPDIFF(SQL_TSI_FRAC_SECOND,'2000-01-02 00:00:00.0','2025-10-10 23:59:59.999999');
+```
+
+Please note that:
+- If `endTime > startTime`, a non-negative number will be returned.  
+- If `endTime < startTime`, a non-positive number will be returned.  
+- The date part difference is counted regardless of how close the timestamps are.  
+- For example, `'2025-01-02 00:00:00.0'` is still considered 1 hour ahead of `'2025-01-01 23:59:59.999999'`.
+
+
+---
 
 ### Decode Functions
 | Function                    | Description                                                                                                                                                                                                                                                                                                                         | Datatype Constraint                             |
@@ -511,6 +574,15 @@ WHERE
 | `IFNULL(x,y)`                | If x is `null`, return y; else return x.                           | x, y of any type. However, that type must be the same for both. |
 | `NVL(x,y)`                   | If x is `null`, return y; else return x.                           | x, y of any type. However, that type must be the same for both. |
 | `NULLIF(param1, param2)`     | Equivalent to `case when (param1 = param2) then null else param1`. | param1 and param2 must be comparable types.                     |
+
+### Vector functions <Tag description={"v25.1+"} />
+
+| Function                 | Description                                                                                              | Datatype constraint                         |
+|--------------------------|----------------------------------------------------------------------------------------------------------|---------------------------------------------|
+| `vectorStringToArray(x)` | Transforms a string that represents a vector, in the form `[0.1, 0.2, 0.3,...]` to an array of `double`. | x must be string.                           |
+| `euclideanDistance(x,y)` | Computes the **euclidean** distance of x and y                                                           | x, y must be `double[]` with the same size. |
+| `innerProduct(x,y)`      | Computes the **inner product** (or dot product) of x and y                                               | x, y must be `double[]` with the same size. |
+| `cosineDistance(x,y)`    | Computes the **cosine** distance of x and y                                                              | x, y must be `double[]` with the same size. |
 
 ## `SELECT` command
 

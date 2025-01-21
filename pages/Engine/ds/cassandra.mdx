@@ -1,0 +1,37 @@
+import Tag from '../../../component/Tag'
+import { Callout } from 'nextra/components'
+
+# Cassandra Data Source (`CASSANDRA`) <Tag description={"v25.1+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+The **Cassandra** data source enables interaction with a **Cassandra cluster**.
+
+While it shares similarities with other Kubling database data sources, it is **not** categorized under that group because:
+- **Capabilities**: The supported query operations and optimizations differ from standard relational databases.
+- **Translation Mechanism**: The internal query translation process requires a distinct approach for Cassandra.
+
+Due to these differences, Cassandra is handled in Kubling as a separate data source type under the database datasource category.
+
+<Callout type="warning">
+  As of version `v25.1`, only `passthrough` mode is supported. This means that **custom DDL definitions are not yet available**. 
+  We plan to introduce this capability in a future release, along with support for `synthetic` tables.
+
+  However, you can still **define additional columns** through the schema configuration.
+</Callout>
+
+## Configuration example
+```yaml copy
+dataSources:
+  - name: "cassandra"
+    dataSourceType: "CASSANDRA"
+    configObject:
+      address: 127.0.0.1
+      dataCenter: "datacenter1"
+      keyspace: "test_keyspace"
+      cache:
+        enabled: false
+        ttlSeconds: 43200
+      allowBruteForceOperations: false
+    schema:
+      type: "PHYSICAL"
+      cacheDefaultStrategy: "NO_CACHE"
+```

@@ -1,11 +1,11 @@
 # Data Sources
 
-Kubling Data Source Adapters are divided into four major types:
+Kubling Data Source Adapters are divided into five major types:
 
 - **Database Data Source:**<br/>
 This adapter allows connections to external databases using built-in connectors and drivers. Kubling queries are automatically 
 translated into the appropriate query language that the target database can process. With this type of data source, you can either:
-    - Automatically import schemas and tables from the remote database, generating virtual schemas based on metadata retrieved from the source (called passtrough), or
+    - Automatically import schemas and tables from the remote database, generating virtual schemas based on metadata retrieved from the source (called `passtrough`), or
     - Manually define `FOREIGN` tables using SQL-like DDL to customize the data model.
 
 - **Kubernetes Data Source:**<br/>
@@ -18,6 +18,10 @@ Data fetching and operations on these documents are handled through scripts, suc
 
 - **Embedded Data Source:**<br/>
 This adapter creates an internal, lightweight database engine that is automatically added as a data source. 
+
+- **Proxy Data Source:**<br/>
+This is the only adapter not backed by a remote data origin. Instead, it functions as a layer on top of other Kubling local data sources, 
+enabling enrichment, composition, and other advanced features.
 
 For more information, please have a look at the [architecture.](/Concepts/architecture)
 
