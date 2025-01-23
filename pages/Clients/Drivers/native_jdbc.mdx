@@ -59,6 +59,23 @@ Property values should be URL encoded if they contain reserved characters, e.g. 
 | `reportAsViews`             | `boolean` | Indicates whether `DatabaseMetaData` must report views as `VIEW` table type. If `false` then views will be reported as `TABLE`. Default `true`.                                                                                                                                                                                                                                                                                                    |
 | `connectionPropsFilePath`   | `string`  | Path to the **client** connection properties file, also known as client settings. These properties are related to networking and transport, so please do not confuse with connection string (URL) properties listed in this table.                                                                                                                                                                                                                 |
 
+## Create a Connection
+```java copy
+import java.sql.Connection;
+import java.util.Properties;
+
+...
+
+TeiidDriver td = new TeiidDriver();
+final var props = new Properties();
+props.setProperty("user", "sa");
+props.setProperty("password", "mypass");
+Connection connection =
+        td.connect("jdbc:teiid:EmptyVDB@mm://localhost:35482", props);
+connection.setAutoCommit(true);
+...
+```
+
 ### Client Networking Properties File
 
 ```properties copy

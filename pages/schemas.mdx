@@ -251,6 +251,11 @@ properties:
         name:
           type: "string"
           description: "Name is also used as schema name if no schema.name is provided."
+        description:
+          type: "string"
+          description: "Provides a description of the schema. Defining a clear and\
+            \ concise description is crucial for enabling AI Agents/Copilots to accurately\
+            \ understand the schema's purpose and intended use."
         dataSourceType:
           type: "string"
           description: "Supported source types."
@@ -258,11 +263,15 @@ properties:
           - "SCRIPT_JS"
           - "SCRIPT_DOCUMENT_JS"
           - "EMBEDDED_INMEM"
-          - "H2"
+          - "PORTABLE_LOCAL"
+          - "CASSANDRA"
           - "MYSQL"
           - "POSTGRESQL"
+          - "REDIS"
           - "KUBLING"
           - "KUBERNETES"
+          - "COMPOSITE"
+          - "ROUTING"
         properties:
           type: "object"
           description: "Additional properties injected to template contexts."
@@ -314,6 +323,25 @@ properties:
               enum:
               - "CACHE"
               - "NO_CACHE"
+            addColumns:
+              type: "array"
+              description: "Defines additional columns to include in tables when operating\
+                \ in 'passthrough' mode. This enables extending the table structure\
+                \ dynamically."
+              items:
+                type: "object"
+                id: "schema:kubling:dbvirt:translation:model:ColumnDefinition"
+                properties:
+                  tableNamePattern:
+                    type: "string"
+                  name:
+                    type: "string"
+                  type:
+                    type: "string"
+                  directives:
+                    type: "object"
+                    additionalProperties:
+                      type: "string"
             ddl:
               type: "string"
               description: "Content of the DDL used to generate the schema's tables."
@@ -849,6 +877,115 @@ properties:
       type: "string"
 ```
 
+## Redis Data Source Configuration
+Applies to the following Data Source types:
+
+- `REDIS`
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:RedisSourceConfig"
+properties:
+  host:
+    type: "string"
+  port:
+    type: "integer"
+  database:
+    type: "integer"
+  userName:
+    type: "string"
+    description: "Username used to establish the connection."
+  token:
+    type: "string"
+    description: "Token or password used to establish the connection."
+  ssl:
+    type: "boolean"
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+```
+
+## Cassandra Data Source Configuration
+Applies to the following Data Source types:
+
+- `CASSANDRA`
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:CassandraSourceConfig"
+properties:
+  address:
+    type: "string"
+  dataCenter:
+    type: "string"
+  keyspace:
+    type: "string"
+  userName:
+    type: "string"
+  token:
+    type: "string"
+  port:
+    type: "integer"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  allowBruteForceOperations:
+    type: "boolean"
+    description: "Allows the engine to perform Update and Delete operations using\
+      \ all fields as a fallback when no other way to identify rows is available."
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+```
 
 ## Kubernetes Data Source Configuration
 
@@ -937,6 +1074,109 @@ properties:
           \ is 43,200 seconds (12 hours)."
 ```
 
+## Composite Data Source Configuration
+
+Applies to the following Data Source types:
+
+- `COMPOSITE`
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:CompositeSourceConfig"
+properties:
+  dataSourceName:
+    type: "string"
+    description: "Internal Engine data source name."
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+  imports:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:translation:model:routing:ImportElement"
+      properties:
+        dataSource:
+          type: "string"
+        tableNamePattern:
+          type: "string"
+```
+
+## Routing Data Source Configuration
+
+Applies to the following Data Source types:
+
+- `ROUTING`
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:SimpleRoutingSourceConfig"
+properties:
+  strict:
+    type: "boolean"
+    description: "Specifies whether the engine should return an error if no rule matches\
+      \ the command. When set to false, the engine will use the default routing behavior."
+  defaultTo:
+    type: "string"
+    description: "Specifies the schema to which the command should be routed if no\
+      \ rule matches, when in non-strict mode. If this value is not provided, the\
+      \ engine defaults to routing the command to the first schema in the import list."
+  imports:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:translation:model:routing:ImportElement"
+      properties:
+        dataSource:
+          type: "string"
+        tableNamePattern:
+          type: "string"
+  rules:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:translation:model:routing:SimpleRoutingRule"
+      properties:
+        tableNamePattern:
+          type: "string"
+        toDataSource:
+          type: "string"
+        field:
+          type: "string"
+        comparison:
+          type: "string"
+          enum:
+          - "EQUAL"
+          - "NOT_EQUAL"
+          - "GREATER_THAN"
+          - "GREATER_THAN_OR_EQUAL"
+          - "LESS_THAN"
+          - "LESS_THAN_OR_EQUAL"
+        value:
+          type: "string"
+```
+
+---
 # Endpoints
 
 ## Query endpoint
