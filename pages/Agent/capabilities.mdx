@@ -1,0 +1,78 @@
+# Capabilities
+
+Capabilities define what a Kubling instance can offer within a multi-agent setup. While Kubling is not an AI agent itself, it is designed to **participate in agent-based environments**, exposing a set of well-defined services that other agents—or even human users—can call.
+
+This makes it possible to delegate specific tasks, like querying, reasoning, or investigating, to Kubling from a master agent or orchestration layer.
+
+Capabilities will continue to expand as new versions are released.
+
+---
+
+## Available Capabilities
+
+### 1. Natural Language to SQL (No Execution)
+
+**Description:**  
+Converts a natural language query into a Kubling-compatible SQL query without executing it.
+
+**Method:** `GET`  
+**Endpoint:**  
+`http[s]://[kubling_host:kubling_port]/agent/query`
+
+**Request Format:**
+- **Content-Type:** `text/plain`
+- **Body:** Natural language query
+
+**Response Format:**
+- **Content-Type:** `application/sql`
+- **Body:** Generated SQL query
+
+---
+
+### 2. Execute Natural Language Query
+
+**Description:**  
+Translates a natural language query into SQL, executes it, and returns the results.
+
+**Method:** `POST`  
+**Endpoint:**  
+`http[s]://[kubling_host:kubling_port]/agent/query/results`
+
+**Request Format:**
+- **Content-Type:** `text/plain`
+- **Body:** Natural language query
+- **Parameters:**  
+  `dataFormatResponse`: Expected output format.  
+  Valid options are:
+  - `JSON`
+  - `YAML`
+  - `CSV`
+  - `ASCII_TABLE`
+  - `MARKDOWN_TABLE`
+
+**Response Format:**
+- **Content-Type:** `text/plain;application/json`
+- **Body:** Query result in the specified format
+
+---
+
+### 3. Investigation
+
+**Description:**  
+Handles complex, open-ended questions about your data. This capability performs deeper reasoning to extract insights and investigate root causes across data points.
+
+**Method:** `POST`  
+**Endpoint:**  
+`http[s]://[kubling_host:kubling_port]/agent/investigation`
+
+**Request Format:**
+- **Content-Type:** `text/plain`
+- **Body:** Natural language prompt  
+- **Example:**  
+  `"I would need you to investigate why some containers have status 'ImagePullBackOff' in kube1, that is, why they can't be pulled."`
+
+**Response Format:**
+- **Content-Type:** `text/plain`
+- **Body:** The conclusion of the investigation in natural language  
+- **Example:**  
+  `"The 'ImagePullBackOff' status for containers is caused by issues with pulling the specified images from their respective registries. The error message 'Back-off pulling image' indicates that the Kubernetes system is unable to retrieve the container images from the specified registry URLs. This could be due to several reasons such as network issues, incorrect image names or tags, lack of permissions, or the images not being available in the registry. The affected images include those from 'xyz.kubling.com' and other registries, as seen in the provided data."`

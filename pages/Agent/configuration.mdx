@@ -1,0 +1,89 @@
+import { Callout } from 'nextra/components'
+
+# Configuration
+
+You can enable agentic capabilities in a Kubling instance through the [main application configuration](/schemas#main-application-configuration).
+
+For example:
+```yaml
+kublingAgent:
+  enabled: true
+  instanceIdentifier: "k8s"
+  api:
+    keepAlive:
+      activated: true
+```
+
+By default, if no other values are provided, the [**Kubling Agent Platform**](kubling-agent-platform) will be used as the implementation.
+
+## Instance Identifier
+The `instanceIdentifier` allows the implementation service to recognize and associate metadata with this specific Kubling instance.
+
+Each time an instance starts with agentic capabilities enabled, it contacts the service to exchange model metadata. If the specified identifier is already registered, the model metadata will not be reprocessed.
+
+This means you can run multiple instances using the same identifier, which is useful for scaling or redundancy.
+
+<Callout type="warning">
+  Keep in mind that transforming instance model metadata (semantic schemas) into LLM-consumable information, can take several minutes depending on the size of your VDB, and it will also consume tokens.
+</Callout>
+
+## Keep-Alive Endpoint
+
+This is a feature implemented specifically for the **Kubling Agent Platform**, but it may also be useful in custom implementations.
+
+When an instance's model metadata is registered for the first time and associated with an instance identifier, the **Kubling Agent Platform** stores it in a sandbox that expires after 1 hour.
+
+This is especially helpful in development environments where volatile or short-lived metadata is expected.
+
+The Keep-Alive Endpoint allows an instance to request expiration extensions from the **Kubling Agent Platform**. Each time the endpoint is called, an additional hour is granted to the instance’s metadata sandbox.
+
+<Callout type="info">
+  You can move your instance's model metadata out of the sandbox by making it permanent. Please see the `Kubling Agent Platform` entry in this section for more information.
+</Callout>
+
+## Implementing the Service
+
+If you're planning to build your own implementation, you'll need to configure your Kubling instance to interact with it instead of using the default **Kubling Agent Platform**.
+
+Each agentic capability has its own associated API endpoint. These `api endpoint` configurations define how Kubling should call your implementation for each supported capability.
+
+By customizing these endpoints, you gain full control over how requests are routed and handled within your custom service.
+
+API Endpoint Schema:
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+properties:
+  httpMethod:
+    type: "string"
+    description: "HTTP method to be used for the request. Supported methods: GET,\
+      \ POST, PUT, PATCH, HEAD, CONNECT, DELETE, OPTIONS, TRACE."
+  path:
+    type: "string"
+    description: "Relative endpoint path that, when combined with the base URL, forms\
+      \ the final request URL. If a full URL is provided, the base URL will be ignored."
+  headers:
+    type: "object"
+    description: "Custom headers to be included in this specific request. Any value\
+      \ enclosed in '{{' and '}}' will be dynamically replaced by the corresponding\
+      \ environment variable."
+    additionalProperties:
+      type: "string"
+```
+
+Example:
+```yaml
+kublingAgent:
+  enabled: true
+  instanceIdentifier: "k8s"
+  api:
+    baseURL: "http://localhost:3080/agent/api/v1"
+    statementGenerator:
+      httpMethod: 'POST'
+      path: '/gen/statement'
+      headers:
+        instance: "instance_1"
+        token: {{ MY_TOKEN }}
+    keepAlive:
+      activated: false
+```

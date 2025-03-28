@@ -20,6 +20,8 @@ For more information about template parser, [please see this](Engine/template).
 type: "object"
 id: "schema:kubling:dbvirt:config:app:Application"
 properties:
+  instanceName:
+    type: "string"
   transports:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:Transports"
@@ -56,6 +58,8 @@ properties:
                 type: "string"
                 description: "Certificate store entry name/alias (do not change if\
                   \ certificates were generated with Kubling CLI)."
+          enable:
+            type: "boolean"
       nativeProtocol:
         type: "object"
         $ref: "schema:kubling:dbvirt:config:app:Transport"
@@ -126,6 +130,13 @@ properties:
   maxConcurrentAuthJSContexts:
     type: "integer"
     description: "Maximum allowed concurrent script contexts for auth*."
+  properties:
+    type: "object"
+    description: "Fixed properties that are not expected to change frequently. Useful\
+      \ for embedding configurations directly into the application configuration instead\
+      \ of relying on an external properties file."
+    additionalProperties:
+      type: "string"
   propertiesFilePath:
     type: "string"
     description: "Properties file location."
@@ -134,6 +145,81 @@ properties:
     description: "Tags added to exposed metrics. Useful for identifying engine instances."
     additionalProperties:
       type: "string"
+  kublingAgent:
+    type: "object"
+    id: "schema:kubling:dbvirt:config:app:KublingAgent"
+    properties:
+      instanceIdentifier:
+        type: "string"
+      enabled:
+        type: "boolean"
+      api:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:agent:KublingAgentUpstreamAPI"
+        properties:
+          baseURL:
+            type: "string"
+            description: "Base URL of the Agent API."
+          userAgent:
+            type: "string"
+            description: "User agent."
+          registerInstance:
+            type: "object"
+            id: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            description: "API endpoint for registering an instance."
+            properties:
+              httpMethod:
+                type: "string"
+                description: "HTTP method to be used for the request. Supported methods:\
+                  \ GET, POST, PUT, PATCH, HEAD, CONNECT, DELETE, OPTIONS, TRACE."
+              path:
+                type: "string"
+                description: "Relative endpoint path that, when combined with the\
+                  \ base URL, forms the final request URL. If a full URL is provided,\
+                  \ the base URL will be ignored."
+              headers:
+                type: "object"
+                description: "Custom headers to be included in this specific request.\
+                  \ Any value enclosed in '{{' and '}}' will be dynamically replaced\
+                  \ by the corresponding environment variable."
+                additionalProperties:
+                  type: "string"
+          unregisterInstance:
+            type: "object"
+            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            description: "API endpoint for unregistering an instance."
+          statementGenerator:
+            type: "object"
+            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            description: "API endpoint for generating a general SQL statement."
+          executableStatementGenerator:
+            type: "object"
+            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            description: "API endpoint for generating an executable Kubling SQL statement."
+          investigation:
+            type: "object"
+            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            description: "API endpoint for conducting an automated investigation."
+          keepAlive:
+            type: "object"
+            id: "schema:kubling:dbvirt:model:agent:KeepAliveEndpoint"
+            properties:
+              activated:
+                type: "boolean"
+              statementGenerator:
+                type: "object"
+                $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+                description: "API endpoint for sending a keep alive message."
+              cron:
+                type: "string"
+                description: "CRON expression."
+          headers:
+            type: "object"
+            description: "Custom headers to be included in all requests. Any value\
+              \ enclosed in '{{' and '}}' will be dynamically replaced by the corresponding\
+              \ environment variable."
+            additionalProperties:
+              type: "string"
 ```
 
 ### Sample
@@ -900,6 +986,11 @@ properties:
     description: "Token or password used to establish the connection."
   ssl:
     type: "boolean"
+  prefixTableNameToKey:
+    type: "boolean"
+    description: "If enabled, the table name will be prefixed to the key. This helps\
+      \ prevent unintended matches when querying by key using pattern-based filtering,\
+      \ such as 'LIKE'."
   connectionPool:
     type: "object"
     id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
@@ -923,6 +1014,18 @@ properties:
         description: "Maximum wait time in milliseconds the thread will wait in the\
           \ queue for a connection from the pool. Once reached, an error is thrown\
           \ if no available connection.Default: 10000ms (10s)"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
 ```
 
 ## Cassandra Data Source Configuration
@@ -934,12 +1037,19 @@ Applies to the following Data Source types:
 type: "object"
 id: "schema:kubling:dbvirt:model:vdb:sources:CassandraSourceConfig"
 properties:
+  datastaxConfigFilePath:
+    type: "string"
+    description: "Specifies the path to the DataStax configuration file. If provided,\
+      \ this file will take precedence over individual configuration fields such as\
+      \ address, dataCenter, etc."
   address:
     type: "string"
   dataCenter:
     type: "string"
   keyspace:
     type: "string"
+    description: "The default keyspace for all queries. This will be used even if\
+      \ the configuration is loaded from a DataStax configuration file."
   userName:
     type: "string"
   token:

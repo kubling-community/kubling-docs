@@ -1,5 +1,16 @@
 # Product changelog
 
+## v25.2
+- Introduced agentic endpoints that enable capability propagation to any upstream agent following the expected message contract.
+- Fixed an issue in the Cassandra data source where Kubling SQL expressions like `field = field + 1` were not correctly translated to Cassandra’s `+=` operator for `COUNTER` fields.
+- Added support for defining properties directly in the application configuration, useful when an external properties file is not an option.
+- Added caching support for the Redis data source, based on user feedback.
+- Added support for Redis counter field types.
+- Added the ability to transparently define table names as part of keys in Redis, to avoid mixing up entries when using `LIKE`.
+- Added support for batch updates to the Redis data source (e.g., when performing a `SELECT ... INTO`).
+- Added `importer.tableNamePattern` to the Cassandra data type.
+- Added support for DataStax configuration file definition in the Cassandra data type.
+
 ## v25.1.2
 - Fixed an issue in the Cassandra Data Source that prevented `SELECT` queries from completing correctly when processing millions of tuples.
 - Fixed the `cosineDistance` function, which failed when applied to high-dimensional vectors (1000+).

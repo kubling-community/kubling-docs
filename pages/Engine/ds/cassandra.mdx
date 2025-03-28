@@ -35,3 +35,33 @@ dataSources:
       type: "PHYSICAL"
       cacheDefaultStrategy: "NO_CACHE"
 ```
+
+## Using a DataStax Configuration File <Tag description={"v25.2+"} />
+
+Kubling supports the use of a **DataStax configuration file** when connecting to a Cassandra cluster.
+
+This allows for **advanced connection options**, such as:
+
+- Custom load balancing policies
+- SSL configurations
+- Connection pooling and timeouts
+- Retry and reconnection policies
+- Authentication mechanisms
+
+### Example
+
+```yaml
+dataSources:
+  - name: "cassandra"
+    dataSourceType: "CASSANDRA"
+    configObject:
+      datastaxConfigFilePath: "/etc/kubling/dse-driver.conf"
+    schema:
+      type: "PHYSICAL"
+      cacheDefaultStrategy: "NO_CACHE"
+```
+
+> **Note:** The file must be accessible by the engine at runtime.
+
+For more details about available options, see the official DataStax driver documentation:  
+[https://docs.datastax.com/en/developer/java-driver/latest/manual/core/configuration/](https://docs.datastax.com/en/developer/java-driver/latest/manual/core/configuration/)

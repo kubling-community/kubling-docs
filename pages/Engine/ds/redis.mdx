@@ -29,11 +29,6 @@ dataSources:
         ...
 ```
 
-<Callout type="info">
-  Kubling does not support `CACHE` in the Redis data source. This is because Redis itself functions as a cache, making it redundant and potentially counterproductive 
-  to store Redis entries in Kubling's internal cache.
-</Callout>
-
 ### `string` data structure
 ```sql
 CREATE FOREIGN TABLE KV_STRING
@@ -146,18 +141,66 @@ SELECT * FROM redis.KV_SORTED_SET_WITH_EXP WHERE "key" = 'MY_KEY';
 
 There are **no limitations** on filtering other fields. You can apply any necessary filter conditions as needed.
 
+## Key Namespacing with `prefixTableNameToKey`
+
+When working with Redis, it's common to encounter key collisions—especially when using pattern-based filters like `LIKE`. To prevent this, Kubling offers a configuration option:
+
+```yaml
+prefixTableNameToKey: true
+```
+
+This setting ensures that the **full table name is automatically prefixed to the Redis key**, effectively creating a logical namespace for each table. For example:
+
+- A key like `"user:123"` would become `"IDENTITY.USER:123"` if stored in a table named `USER` in `IDENTITY` schema.
+
+This approach allows you to:
+
+- Use the same logical keys across multiple tables without conflict.
+- Avoid unexpected matches when filtering by pattern (e.g., `LIKE 'user:%'`).
+- Maintain clean, isolated storage per table inside a shared Redis instance.
+
+> 🔍 From the user’s perspective, **this is completely transparent**. You do not need to include the table name when querying—Kubling will handle key resolution behind the scenes.
+
+This feature is particularly useful in multi-tenant or multi-entity scenarios where key collisions would otherwise be hard to manage.
+
+### Configuration Example
+
+```yaml
+dataSources:
+  - name: "redis"
+    dataSourceType: "REDIS"
+    configObject:
+      host: 127.0.0.1
+      prefixTableNameToKey: true
+    schema:
+      type: "PHYSICAL"
+      cacheDefaultStrategy: "NO_CACHE"
+      ddl: |
+        CREATE FOREIGN TABLE KV_STRING
+        (
+            "key_" string OPTIONS (redis_key 'true'),
+            "value_" string OPTIONS (redis_value 'true'),
+            PRIMARY KEY(key_)
+        )
+        OPTIONS(updatable 'true', redis_data_structure 'string');
+
+        ...
+```
+
 ## Specific `TABLE` Directives
 | Directive              | Type   | Options                        | Description                                             |
 |------------------------|--------|--------------------------------|---------------------------------------------------------|
 | `redis_data_structure` | String | `string`, `sorted_set`, `hash` | Specifies the Redis data structure type this table maps to. |
 
 ## Specific `FIELD` Directives
-| Directive          | Type    | Options | Description                                             |
-|--------------------|---------|---------|---------------------------------------------------------|
-| `redis_key`        | Boolean | `true`  | Identifies the field as the `key` of the entry.         |
-| `redis_value`      | Boolean | `true`  | Identifies the field as the `value` of the entry.       |
-| `redis_expiration` | Boolean | `true`  | Identifies the field as the `expiration` for the entry. |
-| `redis_score`      | Boolean | `true`  | Identifies the field as the `score` for the entry.      |
+
+| Directive          | Type    | Options | Description                                                                                                                                                                                            |
+|--------------------|---------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `redis_key`        | Boolean | `true`  | Identifies the field as the `key` of the entry.                                                                                                                                                        |
+| `redis_value`      | Boolean | `true`  | Identifies the field as the `value` of the entry.                                                                                                                                                      |
+| `redis_expiration` | Boolean | `true`  | Identifies the field as the `expiration` for the entry.                                                                                                                                                |
+| `redis_score`      | Boolean | `true`  | Identifies the field as the `score` for the entry.                                                                                                                                                     |
+| `redis_increment`  | Number  | any     | Defines an increment value that will be applied to the field on each update operation. For more details, refer to the [Redis INCR command documentation](https://redis.io/docs/latest/commands/incr/). |
 
 ## Configuration example
 ```yaml copy

@@ -1,0 +1,219 @@
+# Semantic Schema
+
+The real challenge of adding agentic capabilities to a product like Kubling is that metadata, and its semantics, change constantly. 
+
+This makes it difficult to create a general-purpose agent (or LLM) that can understand the meaning of your evolving schemas without fine-tuning or enhancing existing models.
+
+While such approaches are possible, not all organizations have the budget or expertise to maintain that kind of infrastructure.
+
+Our approach is to simplify the process by generating minimal, targeted contexts containing just enough information for an LLM to reason effectively, whether it’s answering questions, performing complex investigations, or mutating data.
+
+To keep things simple, objects in your schema (such as tables and fields) can be annotated directly in the DDL. 
+These annotations are used to build a simplified semantic structure that captures the information most relevant to an LLM.
+
+## Model Metadata
+
+The semantic schema is transformed into **model metadata** by the engine, which is then sent to the specified implementation during instance registration.
+
+This metadata is used, at least in our implementation, to help extract meaning from questions and prompts, enabling the agent to reason effectively based on your domain-specific context.
+
+<details>
+<summary>Model Metadata with Semantic Schemas (JSON/YAML Schema)</summary>
+```yaml
+type: "object"
+id: "schema:kubling:agent:model:metadata:VDBMetadata"
+properties:
+  name:
+    type: "string"
+  dataSources:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:agent:model:metadata:DataSourceMetadata"
+      properties:
+        name:
+          type: "string"
+        description:
+          type: "string"
+        tables:
+          type: "array"
+          items:
+            type: "object"
+            id: "schema:kubling:agent:model:metadata:TableMetadata"
+            properties:
+              name:
+                type: "string"
+              description:
+                type: "string"
+              fields:
+                type: "array"
+                items:
+                  type: "object"
+                  id: "schema:kubling:agent:model:metadata:FieldMetadata"
+                  properties:
+                    name:
+                      type: "string"
+                    description:
+                      type: "string"
+                    type:
+                      type: "string"
+                    pk:
+                      type: "boolean"
+                    properties:
+                      type: "object"
+                      additionalProperties:
+                        type: "object"
+                        id: "schema:kubling:InnerObject"
+              properties:
+                type: "object"
+                additionalProperties:
+                  type: "object"
+                  $ref: "schema:kubling:InnerObject"
+              uniqueKeys:
+                type: "array"
+                items:
+                  type: "object"
+                  id: "schema:kubling:agent:model:metadata:KeyRecord"
+                  properties:
+                    name:
+                      type: "string"
+                    columns:
+                      type: "array"
+                      items:
+                        type: "string"
+              indexes:
+                type: "array"
+                items:
+                  type: "object"
+                  $ref: "schema:kubling:agent:model:metadata:KeyRecord"
+              foreignKeys:
+                type: "array"
+                items:
+                  type: "object"
+                  $ref: "schema:kubling:agent:model:metadata:KeyRecord"
+              relationships:
+                type: "object"
+                additionalProperties:
+                  type: "array"
+                  items:
+                    type: "string"
+        properties:
+          type: "object"
+          additionalProperties:
+            type: "object"
+            $ref: "schema:kubling:InnerObject"
+  properties:
+    type: "object"
+    additionalProperties:
+      type: "object"
+      $ref: "schema:kubling:InnerObject"
+```
+</details>
+
+
+## General Annotations
+
+To generate a Semantic Schema, the foundational layer consists of general annotations, which provide meaning to:
+
+- Tables  
+- Fields  
+- Functions
+
+These annotations help LLMs understand the structure and purpose of your data, enabling more accurate and relevant responses.
+
+### Annotating Tables
+
+When annotating tables, the goal is to describe their **general meaning**—what the table represents within your schema.
+
+Keep in mind that many LLMs already have a baseline understanding of common entities. For example, if you have a table named `USER`, it's usually unnecessary to over-explain it, as concepts like "user," "email," or "password" are universally known.
+
+#### Example:
+```sql
+CREATE FOREIGN TABLE POD_CONTAINER
+(
+    ...
+)
+OPTIONS(...,
+        ANNOTATION 'Represents a container running inside a Kubernetes Pod.');
+```        
+
+### Best Practices for Table Annotations
+
+1. **Ensure relevance for vector search**  
+   During inference, only the most relevant metadata is retrieved and included in the prompt context. If a table isn't clearly described, it may be ignored or incorrectly prioritized.  
+   → Make sure annotations are concise, meaningful, and representative of real-world use cases.
+
+2. **Balance context with assumed knowledge**  
+   Don’t over-explain concepts that are likely already understood by the model.  
+   → For example, instead of writing:  
+   `"This table contains the user account data such as email, password hash, and user role..."`,  
+   prefer:  
+   `"Represents an application user."`
+
+3. **Use domain-specific hints**  
+   LLMs perform better when annotations help tie data to your specific domain.  
+   → For example:  
+    ```sql
+       CREATE FOREIGN TABLE INCIDENT_LOG  
+       (  
+           ...  
+       )  
+       OPTIONS(...,  
+               ANNOTATION 'Captures reported incidents within the incident management system, including timestamps and severity levels.');
+
+    ```
+4. **Avoid noise**  
+   Avoid adding technical or structural information (e.g., field types, indexes) in annotations unless it directly affects semantics. This type of metadata is already generated automatically by the engine, so there's no need to repeat it.
+
+## Relationship Annotations
+
+Kubling supports a set of **relationship annotations** that allow you to define semantic links between objects in your schema. These annotations help the LLM understand how different components relate to each other, enabling it to reason more effectively when performing investigations, answering questions, or establishing cause-effect chains.
+
+By annotating these relationships, you're essentially providing a simplified, declarative graph of interactions within your domain, something that would otherwise require extensive training.
+
+### Supported Relationship Annotations
+
+Kubling currently supports the following annotations:
+
+- `relationships` — General associations between this object and others. Use when the direction or type of relationship is not essential.
+- `relationship_affects` — Indicates which objects this one can influence or change.
+- `relationship_affected_by` — Indicates which objects can influence or change this one.
+- `relationship_generates` — Denotes outputs or artifacts generated by this object.
+- `relationship_caused_by` — Used to express root-cause-like relationships, especially in diagnostic or event-driven systems.
+
+### Example
+
+```sql
+CREATE FOREIGN TABLE HORIZONTAL_POD_AUTOSCALER
+(
+    ...
+)
+OPTIONS(
+    ...
+    ANNOTATION 'Represents a Kubernetes HorizontalPodAutoscaler (HPA), which automatically scales the number of pod replicas based on resource metrics.',
+    relationship_affects 'DEPLOYMENT, REPLICASET, STATEFULSET',
+    relationship_affected_by 'METRICS_SERVER'
+);
+```
+
+In this example:
+
+- The `HORIZONTAL_POD_AUTOSCALER` affects deployments, replicasets, and statefulsets—since it scales them.
+- It is affected by the `METRICS_SERVER`, which provides the metrics it uses to make scaling decisions.
+
+### Best Practices
+
+- **Keep it simple**  
+  Use concise names for related entities, matching your schema object names, so the relationships are easy to resolve.
+
+- **Be directional when needed**  
+  Use `relationship_affects` and `relationship_affected_by` when causality or flow matters. Use `relationships` when direction is irrelevant or bi-directional.
+
+- **Duplicate intentionally**  
+  Even if two objects are connected, each should declare the relationship on its own side.  
+  → For example, if `A` affects `B`, then `B` should also declare it is `affected_by A`.  
+  This ensures both objects are properly represented in the vector space and improves retrieval accuracy during reasoning.
+
+- **Align with your schema naming**  
+  Make sure the referenced entities match actual table or object names used in your schema for consistent mapping.
+Relationship annotations play a crucial role in enabling powerful multi-hop reasoning and investigation capabilities within the Kubling Agent Platform.

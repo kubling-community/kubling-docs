@@ -20,7 +20,7 @@ kdv cert create -s /certs/server.ks -c /certs/client.ks -x myserverpass -p mycli
 
 Command generates both client and server certificates. Client certificate is only required in case the client is configured to validate the server certificate.
 
-When no password is specified for either client and/or server certificates, `kdv` generates them and prints them out in the console, copy those passwords in a secure store.
+When no password is provided for either the client or server certificates, kdv will automatically generate them and display the passwords in the console. Make sure to copy and store these passwords securely.
 
 ## Configure transports
 For security reasons, you may want to use a different certificate per transport, reason why their configurations are independent, as follows:
