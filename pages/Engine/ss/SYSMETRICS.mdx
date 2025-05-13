@@ -18,3 +18,12 @@ This table provides information about the metrics exposed by the system.
 | `tags`        | `string` | Tags associated with the metric                   |
 | `statistic`   | `string` | Type of statistic (e.g., `VALUE`, `COUNT`)        |
 | `val`         | `string` | Current value of the metric                       |
+
+### SYSMETRICS.Health <Tag description={"v25.3+"} />
+
+This table provides the health status of the engine. For more information, please see the [Health Endpoint Documentation](/Observability/metrics).
+
+| Column Name | Type      | Description            |
+|-------------|-----------|------------------------|
+| `status`    | `string`  | `UP` or `DOWN`         |
+| `up`        | `boolean` | `true` if the engine is up, `false` otherwise |

@@ -145,6 +145,19 @@ properties:
     description: "Tags added to exposed metrics. Useful for identifying engine instances."
     additionalProperties:
       type: "string"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:config:app:SoftTransactionProperties"
+    properties:
+      enabled:
+        type: "boolean"
+      transactionsDBPath:
+        type: "string"
+      flushRemovalTaskCron:
+        type: "string"
+        description: "Cron expression for periodic transaction DB flush of removed\
+          \ segments. Default is every 5 minutes. Use a standard cron format, e.g.,\
+          \ '0 0/5 * * * *'."  
   kublingAgent:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:KublingAgent"
@@ -868,6 +881,8 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"  
   allowBruteForceOperations:
     type: "boolean"
     description: "Allows the engine to perform Update and Delete operations using\
@@ -946,6 +961,8 @@ properties:
     type: "boolean"
     description: "Allows the engine to perform Update and Delete operations using\
       \ all fields as a fallback when no other way to identify rows is available."
+  enableSoftTransactions:
+    type: "boolean"  
   filePath:
     type: "string"
     description: "Path to file where to store the database."
@@ -1026,6 +1043,8 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"          
 ```
 
 ## Cassandra Data Source Configuration
@@ -1068,6 +1087,8 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"          
   allowBruteForceOperations:
     type: "boolean"
     description: "Allows the engine to perform Update and Delete operations using\
@@ -1140,6 +1161,8 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"          
 ```
 
 ## Script Document Data Source Configuration
@@ -1182,6 +1205,8 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"          
 ```
 
 ## Composite Data Source Configuration
@@ -1230,6 +1255,8 @@ properties:
           type: "string"
         tableNamePattern:
           type: "string"
+  enableSoftTransactions:
+    type: "boolean"          
 ```
 
 ## Routing Data Source Configuration

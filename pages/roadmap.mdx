@@ -8,14 +8,14 @@ This is why we’re sharing our high-level roadmap with you.
 
 Please keep in mind that we only list features here that might directly impact you, and not all of them will necessarily be implemented.
 
+## Support Raw-Text Data Source Formats <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
+We are working on a new data source that will allow Kubling to load files from various origins (e.g., local filesystems, HTTP, S3, Azure Files) in formats such as CSV, Excel, and JSON.
+Kubling will create lightweight, ephemeral indexes for fast searches, including vector support, providing powerful data access without the need for a full database load.
 
-## Expose Kubling as an AI Agent to Provide Services to Other AI Agents and Copilots <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
-We are working on a way to embed the Kubling engine in an agentic environment. However, due to the complexity of the logic required, there will likely be a remote Kubling agent that the engine can call using an API token.  
-This approach prevents the engine from having to handle complex LLM calls directly, in order to reserve the compute capacity for the main engine's task.
 
-## Support SQL Functions from Modules in Queries <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
-Currently, SQL functions defined in [modules](/Modules/Functions/SQL) are only used to transform data at definition time (DDL). They cannot yet be invoked during query execution.
-We are actively working on a mechanism that will enable these functions to be used directly in regular query execution.
+## Support all PostgreSQL Metadata Objects <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
+We plan to support missing PostgreSQL metadata objects (tables, views, and columns) in order to enable connectivity with a wide variety of tools, 
+including some legacy systems where adding the Kubling driver is not an option, such as PowerBI and Spotfire.
 
 ## Create a new GraphQL Data Source <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"High Prio"} txtFont={"font-gilroyBold"} />
 We are currently developing a new Data Source for GraphQL, which is expected to make a significant impact. 
@@ -33,9 +33,6 @@ We plan to support saving logs in files, with the ability to define some rolling
 
 ## Log Routers <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Implemented"} txtFont={"font-gilroyBold"} />
 We are analyzing whether to support routing logs, based on a predefined criteria, to custom script functions.
-
-## Transaction support on `SCRIPT_DOCUMENT_JS` and `KUBERNETES` Data Sources <Tag bgColor={"bg-kubling-green"} txtColor={"text-white"} description={"Analysis"} txtFont={"font-gilroyBold"} />
-We are analyzing whether it is possible to implement transactions without breaking these DS principles.
 
 ## SQL functions defined in modules
 Currently, SQL functions are [defined in specific modules](/Modules/Functions/SQL), forcing to have everything centralized. We plan to support defining SQL functions also

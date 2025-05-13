@@ -1,6 +1,27 @@
 import { Callout } from 'nextra/components'
 import Tag from '../../component/Tag'
 
+# Health Endpoint
+
+The health endpoint indicates whether the engine is `UP` or `DOWN`.
+
+The engine is considered `UP` when all its critical modules respond positively to a health check, indicating that:
+
+- Clients can connect to the engine via any of the supported protocols.
+- Soft transactions can be processed (if enabled).
+- Adapters can establish connections with remote data sources.
+
+The last point has a special meaning: if a data source is unreachable, the overall health of the engine is reported as `DOWN`.
+
+Health status is particularly important not only for monitoring Kubling instances but also for integrating Kubling into complex pipelines, 
+as it provides a mechanism to check readiness before proceeding with the next steps.
+
+Health Check Endpoint:
+```http
+GET http[s]://[address]:8282/observe/health
+```
+
+---
 # Metrics
 
 Kubling provides a set of metrics that can be integrated into your observability stack. 
