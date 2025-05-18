@@ -3,11 +3,6 @@ import Tag from '../../../component/Tag'
 
 # Queries
 
-## SQL compatibility
-
-Kubling provides most of the functionality of SQL-92 DML.
-The idea of this document is not to cover SQL exhaustively, but rather highlights how SQL is used in Kubling. 
-
 ## Identifiers
 
 SQL commands contain references to tables and columns. These references are known as **identifiers**, which uniquely identify tables, columns, and other schema elements within the context of a query. In Kubling, all queries are processed within a **Virtual Database (VDB)**, which allows federated access to multiple data sources. This means tables and columns must be fully qualified to avoid conflicts and ensure context is preserved across different schemas.
