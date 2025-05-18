@@ -2,6 +2,6 @@
     "5ss": {
       "title": "5-second Setup"
     },
-    "Console": "",
-    "Dashboards": ""
+    "console": "Console",
+    "dashboards": "Dashboards"
   }

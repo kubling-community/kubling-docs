@@ -1,0 +1,970 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+## Aggregate Functions
+
+Aggregate functions operate on sets of values from a group produced by an explicit or implicit `GROUP BY` clause, returning a single scalar value computed from the group.
+
+---
+
+#### `COUNT(*)`
+
+Counts the number of values (including `null`s and duplicates) in a group. Returns an `integer`.
+
+```sql
+SELECT COUNT(*) AS total_nodes FROM NODE;
+```
+
+Expected output:
+
+```
+| total_nodes |
+|-------------|
+| 56          |
+```
+
+---
+
+#### `COUNT(x)`
+
+Counts the number of non-null values in a group. Returns an `integer`.
+
+```sql
+SELECT COUNT(status__phase) AS known_phases FROM NODE;
+```
+
+Expected output:
+
+```
+| known_phases |
+|--------------|
+| 45           |
+```
+
+---
+
+#### `COUNT_BIG(*)`
+
+Counts the number of values (including `null`s and duplicates) in a group. Returns a `long`. This is useful when you expect a very large number of rows.
+
+```sql
+SELECT COUNT_BIG(*) AS total_pods FROM POD;
+```
+
+Expected output:
+
+```
+| total_pods |
+|------------|
+| 120000000  |
+```
+
+---
+
+#### `COUNT_BIG(x)`
+
+Counts the number of non-null values in a group. Returns a `long`.
+
+```sql
+SELECT COUNT_BIG(metadata__name) AS named_pods FROM POD;
+```
+
+---
+
+#### `SUM(x)`
+
+Calculates the sum of the values (excluding `null`s) in a group. Useful for numeric columns.
+
+```sql
+SELECT 
+  SUM(CAST(jsonPathAsString(status__capacity, '$.cpu') AS integer)) AS total_cpu_capacity
+FROM NODE;
+```
+
+---
+
+#### `AVG(x)`
+
+Calculates the average of the values (excluding `null`s) in a group.
+
+```sql
+SELECT 
+  AVG(CAST(jsonPathAsString(status__capacity, '$.memory') AS integer)) AS avg_memory_capacity
+FROM NODE;
+```
+
+---
+
+#### `MIN(x)`
+
+Finds the minimum value in a group (excluding `null`s).
+
+```sql
+SELECT 
+  MIN(CAST(jsonPathAsString(status__capacity, '$.memory') AS integer)) AS min_memory_capacity
+FROM NODE;
+```
+
+---
+
+#### `MAX(x)`
+
+Finds the maximum value in a group (excluding `null`s).
+
+```sql
+SELECT 
+  MAX(CAST(jsonPathAsString(status__capacity, '$.memory') AS integer)) AS max_memory_capacity
+FROM NODE;
+```
+
+---
+
+#### `ANY(x)` / `SOME(x)`
+
+Returns `TRUE` if any value in the group is `TRUE` (excluding `null`).
+
+```sql
+SELECT 
+  ANY(spec__unschedulable) AS any_unschedulable
+FROM NODE;
+```
+
+---
+
+#### `EVERY(x)`
+
+Returns `TRUE` if every value in the group is `TRUE` (excluding `null`).
+
+```sql
+SELECT 
+  EVERY(spec__unschedulable) AS all_unschedulable
+FROM NODE;
+```
+
+---
+
+#### `VAR_POP(x)`
+
+Calculates the **population variance** of the values in a group, excluding `null`s.
+
+```sql
+SELECT 
+  VAR_POP(CAST(jsonPathAsString(status__capacity, '$.memory') AS integer)) AS memory_variance
+FROM NODE;
+```
+
+---
+
+#### `VAR_SAMP(x)`
+
+Calculates the **sample variance** of the values in a group, excluding `null`s.
+
+```sql
+SELECT 
+  VAR_SAMP(CAST(jsonPathAsString(status__capacity, '$.memory') AS integer)) AS memory_sample_variance
+FROM NODE;
+```
+
+---
+
+#### `STDDEV_POP(x)`
+
+Calculates the **population standard deviation** of the values in a group, excluding `null`s.
+
+```sql
+SELECT 
+  STDDEV_POP(CAST(jsonPathAsString(status__capacity, '$.memory') AS integer)) AS memory_std_dev
+FROM NODE;
+```
+
+---
+
+#### `STDDEV_SAMP(x)`
+
+Calculates the **sample standard deviation** of the values in a group, excluding `null`s.
+
+```sql
+SELECT 
+  STDDEV_SAMP(CAST(jsonPathAsString(status__capacity, '$.memory') AS integer)) AS memory_sample_std_dev
+FROM NODE;
+```
+
+## Window Functions
+
+Kubling provides ANSI SQL 2003 window functions, allowing aggregate functions to be applied to subsets of the result set without requiring a `GROUP BY` clause. Window functions are similar to aggregate functions but require the use of an `OVER` clause or a window specification.
+
+### **Usage**
+
+```sql
+aggregate [FILTER (WHERE ...)] OVER ( [PARTITION BY ...] [ORDER BY ...] [frame] )
+| FIRST_VALUE(val) OVER ( [PARTITION BY ...] [ORDER BY ...] [frame] )
+| LAST_VALUE(val) OVER ( [PARTITION BY ...] [ORDER BY ...] [frame] )
+| analytical OVER ( [PARTITION BY ...] [ORDER BY ...] )
+```
+
+Where:
+
+- **Partition Clause:** Divides the result set into partitions, each treated independently.
+- **Frame Clause:** Defines the subset of the partition for which the window function is calculated.
+
+**Partition Clause:**
+
+```sql
+PARTITION BY expression [, expression]* 
+```
+
+**Frame Clause:**
+
+```sql
+RANGE | ROWS frameBound 
+| BETWEEN frameBound AND frameBound
+```
+
+**Frame Bound Options:**
+
+```sql
+UNBOUNDED PRECEDING 
+| UNBOUNDED FOLLOWING
+| n PRECEDING 
+| n FOLLOWING
+| CURRENT ROW
+```
+
+---
+
+### **Analytical Function Definitions**
+
+#### **Ranking Functions:**
+
+- **`RANK()`** - Assigns a rank to each row within a partition, with gaps for identical values.
+- **`DENSE_RANK()`** - Similar to `RANK()` but without gaps between rank values.
+- **`PERCENT_RANK()`** - Calculates the relative rank of a row within a partition as `(RANK - 1) / (RC - 1)`, where `RC` is the total row count.
+- **`CUME_DIST()`** - Computes the cumulative distribution as `PR / RC`, where `PR` is the rank of the row including peers and `RC` is the total row count.
+
+#### **Value Functions:**
+
+- **`FIRST_VALUE(val)`** - Returns the first value in the window frame.
+- **`LAST_VALUE(val)`** - Returns the last value in the window frame.
+- **`LEAD(val [, offset [, default]])`** - Returns the value at the specified offset ahead of the current row.
+- **`LAG(val [, offset [, default]])`** - Returns the value at the specified offset behind the current row.
+- **`NTH_VALUE(val, n)`** - Returns the nth value in the window frame.
+
+#### **Row Value Functions:**
+
+- **`ROW_NUMBER()`** - Assigns a unique sequential number to each row within a partition.
+- **`NTILE(n)`** - Distributes rows into `n` approximately equal parts.
+
+---
+
+### **Processing Notes**
+
+- Window functions can only appear in the `SELECT` and `ORDER BY` clauses.
+- Window functions cannot be nested.
+- The `PARTITION BY` and `ORDER BY` clauses cannot contain subqueries or outer references.
+- The default frame is `RANGE UNBOUNDED PRECEDING`, which also implies the default end bound of `CURRENT ROW`.
+- `RANGE` computes over a row and its peers, while `ROWS` computes over every row individually.
+- **`LEAD`**, **`LAG`**, **`NTH_VALUE`** require an `ORDER BY` in the window specification.
+
+---
+
+### **Examples: Windowed Results**
+
+```sql
+SELECT 
+  name, 
+  salary, 
+  MAX(salary) OVER (PARTITION BY name) AS max_sal,
+  RANK() OVER (ORDER BY salary) AS rank, 
+  DENSE_RANK() OVER (ORDER BY salary) AS dense_rank,
+  ROW_NUMBER() OVER (ORDER BY salary) AS row_num 
+FROM Employees.STAFF;
+```
+
+```
+| name  | salary | max_sal | rank | dense_rank | row_num |
+|-------|--------|---------|------|------------|---------|
+| John  | 100000 | 100000  | 2    | 2          | 2       |
+| Henry | 50000  | 50000   | 5    | 4          | 5       |
+| John  | 60000  | 100000  | 3    | 3          | 3       |
+| Suzie | 60000  | 150000  | 3    | 3          | 4       |
+| Suzie | 150000 | 150000  | 1    | 1          | 1       |
+```
+
+---
+
+### **Considerations and Limitations**
+
+- Windowed aggregates cannot use `DISTINCT` if the window specification is ordered.
+- Analytical value functions like **`LEAD`**, **`LAG`**, **`NTH_VALUE`** require an ordering clause.
+- `RANGE` cannot use `n PRECEDING` or `n FOLLOWING`.
+
+---
+
+### **Additional Notes**
+
+For predictable ordering, always use `ORDER BY` in your `SELECT` statement, as window functions alone do not guarantee row order.
+
+## General Functions
+
+### Numeric Functions
+
+| **Function**             | **Description**                                                                       | **Datatype Constraint**                                          |
+|--------------------------|---------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| `+` `-` `*` `/`          | Standard numeric operators.                                                           | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` |
+| `ABS(x)`                 | Returns the absolute value of `x`.                                                    | Numeric types (same as above)                                    |
+| `ACOS(x)`                | Returns the arc cosine of `x`.                                                        | `double`, `bigdecimal`                                           |
+| `ASIN(x)`                | Returns the arc sine of `x`.                                                          | `double`, `bigdecimal`                                           |
+| `ATAN(x)`                | Returns the arc tangent of `x`.                                                       | `double`, `bigdecimal`                                           |
+| `ATAN2(x, y)`            | Returns the arc tangent of `y / x` using the signs to determine the correct quadrant. | `double`, `bigdecimal`                                           |
+| `CEILING(x)`             | Returns the smallest integer greater than or equal to `x`.                            | `double`, `float`                                                |
+| `COS(x)`                 | Returns the cosine of `x`.                                                            | `double`, `bigdecimal`                                           |
+| `COT(x)`                 | Returns the cotangent of `x`.                                                         | `double`, `bigdecimal`                                           |
+| `DEGREES(x)`             | Converts radians to degrees.                                                          | `double`, `bigdecimal`                                           |
+| `EXP(x)`                 | Returns e^x (Euler's number raised to the power of `x`).                              | `double`, `float`                                                |
+| `FLOOR(x)`               | Returns the largest integer less than or equal to `x`.                                | `double`, `float`                                                |
+| `FORMATBIGDECIMAL(x, y)` | Formats `x` using format `y`.                                                         | `bigdecimal`, `string`                                           |
+| `FORMATBIGINTEGER(x, y)` | Formats `x` using format `y`.                                                         | `biginteger`, `string`                                           |
+| `FORMATDOUBLE(x, y)`     | Formats `x` using format `y`.                                                         | `double`, `string`                                               |
+| `FORMATFLOAT(x, y)`      | Formats `x` using format `y`.                                                         | `float`, `string`                                                |
+| `FORMATINTEGER(x, y)`    | Formats `x` using format `y`.                                                         | `integer`, `string`                                              |
+| `FORMATLONG(x, y)`       | Formats `x` using format `y`.                                                         | `long`, `string`                                                 |
+| `LOG(x)`                 | Returns the natural logarithm (base e) of `x`.                                        | `double`, `float`                                                |
+| `LOG10(x)`               | Returns the base 10 logarithm of `x`.                                                 | `double`, `float`                                                |
+| `MOD(x, y)`              | Returns the remainder of `x / y`.                                                     | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` |
+| `POWER(x, y)`            | Returns `x` raised to the power of `y`.                                               | `double`, `bigdecimal`, `biginteger`                             |
+| `RADIANS(x)`             | Converts degrees to radians.                                                          | `double`, `bigdecimal`                                           |
+| `ROUND(x, y)`            | Rounds `x` to `y` decimal places.                                                     | `integer`, `float`, `double`, `bigdecimal`                       |
+| `SIGN(x)`                | Returns `1` if `x > 0`, `0` if `x = 0`, `-1` if `x < 0`.                              | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` |
+| `SIN(x)`                 | Returns the sine of `x`.                                                              | `double`, `bigdecimal`                                           |
+| `SQRT(x)`                | Returns the square root of `x`.                                                       | `long`, `double`, `bigdecimal`                                   |
+| `TAN(x)`                 | Returns the tangent of `x`.                                                           | `double`, `bigdecimal`                                           |
+| `BITAND(x, y)`           | Returns the bitwise AND of `x` and `y`.                                               | `integer`                                                        |
+| `BITOR(x, y)`            | Returns the bitwise OR of `x` and `y`.                                                | `integer`                                                        |
+| `BITXOR(x, y)`           | Returns the bitwise XOR of `x` and `y`.                                               | `integer`                                                        |
+| `BITNOT(x)`              | Returns the bitwise NOT of `x`.                                                       | `integer`                                                        |
+
+#### Examples
+
+```sql
+-- Rounding and Power Functions
+SELECT 
+  ROUND(123.4567, 2) AS rounded_value,  -- Returns 123.46
+  POWER(2, 3) AS powered_value;  -- Returns 8
+
+-- Trigonometric Functions
+SELECT 
+  SIN(PI()/2) AS sin_value,  -- Returns 1
+  COS(PI()) AS cos_value,    -- Returns -1
+  TAN(PI()/4) AS tan_value;  -- Returns 1
+
+-- Logarithm and Exponent Functions
+SELECT 
+  LOG(2.71828) AS natural_log,  -- Returns approximately 1
+  LOG10(1000) AS log_base_10,   -- Returns 3
+  EXP(1) AS exp_value;          -- Returns approximately 2.71828
+
+-- Bitwise Operations
+SELECT 
+  BITAND(5, 3) AS bitwise_and,  -- Returns 1 (0101 AND 0011)
+  BITOR(5, 3) AS bitwise_or,    -- Returns 7 (0101 OR 0011)
+  BITXOR(5, 3) AS bitwise_xor;  -- Returns 6 (0101 XOR 0011)
+```
+
+### String Functions
+
+| **Function**                                     | **Description**                                                                                                                                          | **Datatype Constraint**                          |
+|--------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------|
+| `x \|\| y`                                       | Concatenates `x` and `y`. Returns `null` if either `x` or `y` is `null`.                                                                                 | `string`, `clob`                                 |
+| `ASCII(x)`                                       | Returns the ASCII value of the first character in `x`. Returns `null` for an empty string.                                                               | `string`, returns `integer`                      |
+| `CHR(x)` / `CHAR(x)`                             | Returns the character corresponding to the ASCII value `x`.                                                                                              | `integer`, returns `string`                      |
+| `CONCAT(x, y)`                                   | Concatenates `x` and `y` with ANSI semantics. Returns `null` if either is `null`.                                                                        | `string`, returns `string`                       |
+| `CONCAT2(x, y)`                                  | Concatenates `x` and `y` with non-ANSI semantics. If either is `null`, returns the non-null value.                                                       | `string`, returns `string`                       |
+| `ENDSWITH(x, y)`                                 | Returns `true` if `y` ends with `x`. Returns `null` if either is `null`.                                                                                 | `string`, returns `boolean`                      |
+| `INITCAP(x)`                                     | Capitalizes the first letter of each word in `x` and lowercases the rest.                                                                                | `string`, returns `string`                       |
+| `INSERT(str1, start, length, str2)`              | Inserts `str2` into `str1` at the specified start position, replacing `length` characters.                                                               | `string`, `integer`, `string`, returns `string`  |
+| `LCASE(x)`                                       | Converts `x` to lowercase.                                                                                                                               | `string`, returns `string`                       |
+| `LEFT(x, y)`                                     | Returns the leftmost `y` characters of `x`.                                                                                                              | `string`, `integer`, returns `string`            |
+| `LENGTH(x)`                                      | Returns the number of characters in `x`.                                                                                                                 | `string`, returns `integer`                      |
+| `LOCATE(x, y)`                                   | Returns the position of the first occurrence of `x` in `y`.                                                                                              | `string`, `string`, returns `integer`            |
+| `LOCATE(x, y, z)`                                | Returns the position of the first occurrence of `x` in `y`, starting from position `z`.                                                                  | `string`, `string`, `integer`, returns `integer` |
+| `LPAD(x, y)`                                     | Pads `x` with spaces on the left to make it `y` characters long.                                                                                         | `string`, `integer`, returns `string`            |
+| `LPAD(x, y, z)`                                  | Pads `x` on the left to make it `y` characters long, using character `z`.                                                                                | `string`, `integer`, `string`, returns `string`  |
+| `LTRIM(x)`                                       | Removes leading whitespace from `x`.                                                                                                                     | `string`, returns `string`                       |
+| `QUERYSTRING(path [, expr [AS name] ...])`       | Returns a URL query string based on the provided path and optional parameters.                                                                           | `string`, returns `string`                       |
+| `REPEAT(str1, instances)`                        | Repeats `str1` a specified number of times.                                                                                                              | `string`, `integer`, returns `string`            |
+| `RIGHT(x, y)`                                    | Returns the rightmost `y` characters of `x`.                                                                                                             | `string`, `integer`, returns `string`            |
+| `RPAD(x, y)`                                     | Pads `x` with spaces on the right to make it `y` characters long.                                                                                        | `string`, `integer`, returns `string`            |
+| `RPAD(x, y, z)`                                  | Pads `x` on the right to make it `y` characters long, using character `z`.                                                                               | `string`, `integer`, `string`, returns `string`  |
+| `RTRIM(x)`                                       | Removes trailing whitespace from `x`.                                                                                                                    | `string`, returns `string`                       |
+| ``TRIM([[LEADING\|TRAILING\|BOTH] [x] FROM] y)`` | Trims characters from the beginning, end, or both ends of `y`.                                                                                           | `string`, returns `string`                       |
+| `SPACE(x)`                                       | Returns a string of `x` space characters.                                                                                                                | `integer`, returns `string`                      |
+| `SUBSTRING(x, y)`                                | Returns the substring of `x`, starting from position `y`.                                                                                                | `string`, `integer`, returns `string`            |
+| `SUBSTRING(x, y, z)`                             | Returns the substring of `x`, starting from position `y` with length `z`.                                                                                | `string`, `integer`, `integer`, returns `string` |
+| `UCASE(x)`                                       | Converts `x` to uppercase.                                                                                                                               | `string`, returns `string`                       |
+| `UNESCAPE(x)`                                    | Unescapes characters in `x`, including Unicode and octal sequences.                                                                                      | `string`, returns `string`                       |
+| `REPLACE(x, y, z)`                               | Replaces all occurrences of `y` in `x` with `z`.                                                                                                         | `string`, `string`, `string`, returns `string`   |
+| `REGEXP_REPLACE(str, pattern, sub [, flags])`    | Replaces one or more occurrences of `pattern` in `str` with `sub`. Supports flags for global (`g`), multiline (`m`), and case-insensitive (`i`) matches. | `string`, `string`, `string`, returns `string`   |
+
+#### Examples
+
+```sql
+-- Basic String Operations
+SELECT 
+  CONCAT('Hello', ' World') AS greeting,  -- Returns 'Hello World'
+  LENGTH('Hello World') AS length,        -- Returns 11
+  INITCAP('hello world') AS capitalized;  -- Returns 'Hello World'
+
+-- Substring and Padding
+SELECT 
+  SUBSTRING('abcdef', 2, 3) AS substring,  -- Returns 'bcd'
+  LPAD('123', 5, '0') AS padded_left,      -- Returns '00123'
+  RPAD('123', 5, '0') AS padded_right;     -- Returns '12300'
+
+-- Trimming and Repeating
+SELECT 
+  TRIM('  Hello World  ') AS trimmed,     -- Returns 'Hello World'
+  REPEAT('abc', 3) AS repeated;           -- Returns 'abcabcabc'
+
+-- Advanced String Replacement
+SELECT 
+  REPLACE('Hello World', 'World', 'SQL') AS replaced,       -- Returns 'Hello SQL'
+  REGEXP_REPLACE('abc123def', '[0-9]', 'X', 'g') AS masked; -- Returns 'abcXXXdef'
+```
+
+### Type Conversion Functions
+
+| **Function**       | **Description**                                                                       | **Datatype Constraint** |
+|--------------------|---------------------------------------------------------------------------------------|-------------------------|
+| `CONVERT(x, type)` | Converts `x` to the specified `type`. The target `type` must be a standard data type. | `any`, returns `type`   |
+| `CAST(x AS type)`  | Identical to `CONVERT`. Converts `x` to the specified `type`.                         | `any`, returns `type`   |
+
+<Callout>
+  Options specified on the target type, such as length, precision, scale, etc., are effectively ignored - the engine simply converts from one object type to another.
+</Callout>
+
+#### Examples
+
+```sql
+-- Basic Type Conversion
+SELECT 
+  CAST('123' AS integer) AS int_value,      -- Returns 123
+  CONVERT('123.45', double) AS dbl_value,   -- Returns 123.45
+  CAST(123 AS string) AS str_value;         -- Returns '123'
+
+-- Converting Dates and Timestamps
+SELECT 
+  CAST('2025-10-10' AS date) AS date_value,             -- Returns 2025-10-10
+  CONVERT('2025-10-10 23:59:59', timestamp) AS ts_value; -- Returns 2025-10-10 23:59:59.000
+
+-- Converting JSON Strings
+SELECT 
+  CAST('[1, 2, 3]' AS json) AS json_array,        -- Returns [1,2,3]
+  CONVERT('{"key": "value"}', json) AS json_obj;  -- Returns {"key": "value"}
+```
+
+### Date and Time Functions
+
+| **Function** | **Description** | **Datatype Constraint** |
+|--------------|-----------------|-------------------------|
+| `CURDATE()` / `CURRENT_DATE()` | Returns the current date. Same value for all invocations in a single user command. | Returns `date` |
+| `CURTIME()` / `CURRENT_TIME()` | Returns the current time. Same value for all invocations in a single user command. | Returns `time` |
+| `NOW()` / `CURRENT_TIMESTAMP()` | Returns the current timestamp (date and time with millisecond precision). Same value for all invocations in a single user command. | Returns `timestamp` |
+| `DAYNAME(x)` | Returns the name of the day for the given date or timestamp in the default locale. | `x` in {`date`, `timestamp`}, returns `string` |
+| `DAYOFMONTH(x)` | Returns the day of the month for the given date or timestamp. | `x` in {`date`, `timestamp`}, returns `integer` |
+| `DAYOFWEEK(x)` | Returns the day of the week (Sunday = 1, Saturday = 7). | `x` in {`date`, `timestamp`}, returns `integer` |
+| `DAYOFYEAR(x)` | Returns the day number within the year for the given date or timestamp. | `x` in {`date`, `timestamp`}, returns `integer` |
+| `EPOCH(x)` | Returns the seconds since the Unix epoch with microsecond precision. | `x` in {`date`, `timestamp`}, returns `double` |
+| `EXTRACT(FIELD FROM x)` | Returns the specified `FIELD` from the date value `x`. Fields include `YEAR`, `MONTH`, `DAYOFMONTH`, `HOUR`, `MINUTE`, `SECOND`, `EPOCH`, etc. | `x` in {`date`, `time`, `timestamp`}, returns `integer` or `double` |
+| `FORMATDATE(x, y)` | Formats the date `x` using the format `y`. | `x` is `date`, `y` is `string`, returns `string` |
+| `FORMATTIME(x, y)` | Formats the time `x` using the format `y`. | `x` is `time`, `y` is `string`, returns `string` |
+| `FORMATTIMESTAMP(x, y)` | Formats the timestamp `x` using the format `y`. | `x` is `timestamp`, `y` is `string`, returns `string` |
+| `FROM_MILLIS(millis)` | Returns the `timestamp` value for the given milliseconds since Unix epoch. | `long` UTC timestamp in milliseconds |
+| `FROM_UNIXTIME(unix_timestamp)` | Returns the Unix timestamp as a `string` in the default format `yyyy/mm/dd hh:mm:ss`. | `long` Unix timestamp (in seconds) |
+| `HOUR(x)` | Returns the hour component (in 24-hour format). | `x` in {`time`, `timestamp`}, returns `integer` |
+| `MINUTE(x)` | Returns the minute component. | `x` in {`time`, `timestamp`}, returns `integer` |
+| `MODIFYTIMEZONE(timestamp, startTimeZone, endTimeZone)` | Returns a timestamp adjusted for the difference between `startTimeZone` and `endTimeZone`. | Strings for time zones, returns `timestamp` |
+| `MONTH(x)` | Returns the month component. | `x` in {`date`, `timestamp`}, returns `integer` |
+| `MONTHNAME(x)` | Returns the name of the month in the default locale. | `x` in {`date`, `timestamp`}, returns `string` |
+| `PARSEDATE(x, y)` | Parses a date from `x` using the format `y`. | `x`, `y` are `string`, returns `date` |
+| `PARSETIME(x, y)` | Parses a time from `x` using the format `y`. | `x`, `y` are `string`, returns `time` |
+| `PARSETIMESTAMP(x, y)` | Parses a timestamp from `x` using the format `y`. | `x`, `y` are `string`, returns `timestamp` |
+| `QUARTER(x)` | Returns the quarter of the year. | `x` in {`date`, `timestamp`}, returns `integer` |
+| `SECOND(x)` | Returns the seconds component. | `x` in {`time`, `timestamp`}, returns `integer` |
+| `TIMESTAMPCREATE(date, time)` | Creates a timestamp from a `date` and a `time`. | `date` is `date`, `time` is `time`, returns `timestamp` |
+| `TO_MILLIS(timestamp)` | Returns the UTC timestamp in milliseconds. | Timestamp value |
+| `UNIX_TIMESTAMP(unix_timestamp)` | Returns the Unix timestamp (in seconds). | `unix_timestamp` as `string`, returns `long` |
+| `WEEK(x)` | Returns the week of the year (1-53). | `x` in {`date`, `timestamp`}, returns `integer` |
+| `YEAR(x)` | Returns the four-digit year. | `x` in {`date`, `timestamp`}, returns `integer` |
+
+#### `TIMESTAMPADD`
+Adds a specified interval amount to a timestamp.
+
+```sql
+TIMESTAMPADD(interval, count, timestamp)
+```
+
+Arguments:
+
+| Name        | Description                                                                                                                                                                                                                  |
+|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `interval`  | A datetime interval unit, can be one of the following keywords: `SQL_TSI_FRAC_SECOND`, `SQL_TSI_SECOND`, `SQL_TSI_MINUTE`, `SQL_TSI_HOUR`, `SQL_TSI_DAY`, `SQL_TSI_WEEK`, `SQL_TSI_MONTH`, `SQL_TSI_QUARTER`, `SQL_TSI_YEAR` |
+| `count`     | A long or integer count of units to add to the timestamp. Negative values subtract that number of units.                                                                                                                     |
+| `timestamp` | A datetime expression.                                                                                                                                                                                                       |
+
+Examples:
+
+```sql
+SELECT TIMESTAMPADD(SQL_TSI_MONTH, 12,'2025-10-10');
+SELECT TIMESTAMPADD(SQL_TSI_SECOND, 12, CONVERT('2025-10-10 23:59:59', timestamp));
+```
+
+---
+
+#### `TIMESTAMPDIFF`
+
+Calculates the number of date part intervals crossed between two timestamps and returns a `long` value.
+
+```sql
+TIMESTAMPDIFF(interval, startTime, endTime)
+```
+
+Arguments:
+
+| Name        | Description                                                            |
+|-------------|------------------------------------------------------------------------|
+| `interval`  | A datetime interval unit, the same as keywords used by `TIMESTAMPADD`. |
+| `startTime` | A datetime expression.                                                 |
+| `endTime`   | A datetime expression.                                                 |
+
+Examples:
+
+```sql
+SELECT TIMESTAMPDIFF(SQL_TSI_MONTH,'2000-01-02','2025-10-10');
+SELECT TIMESTAMPDIFF(SQL_TSI_SECOND,'2000-01-02 00:00:00','2025-10-10 23:59:59');
+SELECT TIMESTAMPDIFF(SQL_TSI_FRAC_SECOND,'2000-01-02 00:00:00.0','2025-10-10 23:59:59.999999');
+```
+
+Note:
+- If `endTime > startTime`, a non-negative number is returned.  
+- If `endTime < startTime`, a non-positive number is returned.  
+- The date part difference is counted regardless of how close the timestamps are.  
+- For example, `'2025-01-02 00:00:00.0'` is still considered 1 hour ahead of `'2025-01-01 23:59:59.999999'`.
+
+### Decode Functions
+
+| **Function**                | **Description**                                                                                                                                                                                                                                                                                                                              | **Datatype Constraint**                         |
+|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
+| `DECODESTRING(x, y [, z])`  | Decodes the column `x` using a string of value pairs `y` with an optional delimiter `z` and returns the decoded column as a string. If a delimiter is not specified, a comma (`,`) is used. The format for `y` is `SearchDelimResultDelimSearchDelimResult[DelimDefault]`. Returns `Default` if specified, or `x` if there are no matches.   | All parameters and return type are `string`.    |
+| `DECODEINTEGER(x, y [, z])` | Decodes the column `x` using a string of value pairs `y` with an optional delimiter `z` and returns the decoded column as an integer. If a delimiter is not specified, a comma (`,`) is used. The format for `y` is `SearchDelimResultDelimSearchDelimResult[DelimDefault]`. Returns `Default` if specified, or `x` if there are no matches. | All parameters are `string`; returns `integer`. |
+
+#### Examples
+
+**Basic String Decoding**
+
+```sql
+SELECT 
+  metadata__name AS pod_name,
+  metadata__namespace AS namespace,
+  clusterName,
+  DECODESTRING(status, 'True:Ready,False:Not Ready,Unknown:Unknown Status', ':') AS status_message
+FROM POD_STATUS_CONDITION
+WHERE status IS NOT NULL;
+```
+
+```
+pod_name                                |namespace         |clusterName|status_message|
+----------------------------------------+------------------+-----------+--------------+
+haproxy-ingress-r579p                   |ingress-controller|kube1      |Ready,False   |
+haproxy-ingress-r579p                   |ingress-controller|kube1      |Ready,False   |
+haproxy-ingress-r579p                   |ingress-controller|kube1      |Ready,False   |
+haproxy-ingress-r579p                   |ingress-controller|kube1      |Ready,False   |
+haproxy-ingress-r579p                   |ingress-controller|kube1      |Ready,False   |
+ingress-default-backend-6468f96589-cm9kh|ingress-controller|kube1      |Ready,False   |
+```
+
+---
+
+**Using Default Value**
+
+```sql
+SELECT DECODESTRING(status, '200:OK,404:Not Found', ':', 'Unknown Status') AS status_message 
+FROM API_LOGS;
+```
+
+---
+
+**Integer Decoding**
+
+```sql
+SELECT DECODEINTEGER(priority, '1:Low,2:Medium,3:High', ':', '0') AS priority_label 
+FROM TASKS;
+```
+
+### Document Functions <Tag description={"v24.5.3+"} />
+
+| **Function**                       | **Description**                                                                                                                                                                                                                                                                     |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `jsonParse(value, skipValidation)` | Parses a `value` (`CLOB` or `BLOB`) and returns a `json` object. `skipValidation` indicates whether pre-parsing validation of `value` should be skipped.                                                                                                                            |
+| `jsonObject(c1, c2, ..., cn)`      | Returns a `json` object based on a list of columns. The resulting object contains fields in the form of `column_name: column_value`.                                                                                                                                                |
+| `yamlAsJSON(value)`                | Converts `value` (`CLOB`), which is expected to be a valid YAML document, into a `json` object.                                                                                                                                                                                     |
+| `jsonPath(value, path)`            | Evaluates a [JsonPath](https://datatracker.ietf.org/doc/rfc9535/) expression on `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed. |
+| `jsonJq(value, query)`             | Applies a [jq](https://jqlang.github.io/jq/) query to `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed.                           |
+| `jsonPathAsString(value, path)`    | Same as `jsonPath` but returns a `string` instead of a `json` object.                                                                                                                                                                                                               |
+| `jsonJqAsString(value, query)`     | Same as `jsonJq` but returns a `string` instead of a `json` object.                                                                                                                                                                                                                 |
+
+#### Examples
+
+**Parsing JSON Documents**
+
+```sql
+SELECT jsonParse(config_json, true) AS parsed_config
+FROM CONFIG_TABLE;
+```
+
+---
+
+**Extracting Fields with JsonPath**
+
+```sql
+SELECT jsonObject(metadata__name, spec__providerID) AS node_summary
+FROM NODE;
+```
+
+(assuming `metadata__name` and `spec__providerID` are string columns)
+
+---
+
+**Using JSON Objects Directly**
+
+```sql
+SELECT jsonObject(metadata__labels, status__nodeInfo) AS node_summary
+FROM NODE;
+```
+
+Expected output (assuming `metadata__labels` and `status__nodeInfo` are json columns):
+
+```
+| node_summary                         |
+|--------------------------------------|
+| {"metadata__name":"kbl-dev-master-1","status__conditions":[ {
+  "lastHeartbeatTime" : "2025-05-18T14:30:15Z",
+  "lastTransitionTime" : "2025-03-12T14:07:28Z",
+  "message" : "kubelet has sufficient memory available",
+  "reason" : "KubeletHasSufficientMemory",
+  "status" : "False",
+  "type" : "MemoryPressure"
+}, {
+  "lastHeartbeatTime" : "2025-05-18T14:30:15Z",
+  "lastTransitionTime" : "2025-03-12T14:07:28Z",
+  "message" : "kubelet has no disk pressure",
+  "reason" : "KubeletHasNoDiskPressure",
+  "status" : "False",
+  "type" : "DiskPressure"
+} ]} |
+```
+
+---
+
+**YAML to JSON Conversion**
+
+```sql
+SELECT yamlAsJSON(manifest_yaml) AS manifest_json
+FROM CONFIG_MAPS;
+```
+
+Expected output (assuming `manifest_yaml` contains valid YAML documents):
+
+```
+| manifest_json   |
+|-----------------|
+| {"key":"value"} |
+| {"foo":"bar"}   |
+```
+
+### Choice Functions
+
+Choice functions are used to handle null values or to select the first non-null value from a list. They are essential when dealing with incomplete data or when default values are required.
+
+---
+
+#### COALESCE
+
+Returns the first non-null value in a list of expressions.
+
+```sql
+SELECT 
+  name,
+  COALESCE(email, 'No Email Provided') AS contact
+FROM USERS;
+```
+
+Expected output:
+
+```
+| name   | contact               |
+|--------|-----------------------|
+| Alice  | alice@example.com     |
+| Bob    | No Email Provided     |
+| Carol  | carol@example.com     |
+```
+
+---
+
+#### IFNULL
+
+Similar to `COALESCE`, but only accepts two arguments. Returns the second argument if the first is `null`.
+
+```sql
+SELECT 
+  name,
+  IFNULL(phone, 'No Phone Available') AS phone_number
+FROM USERS;
+```
+
+Expected output:
+
+```
+| name   | phone_number         |
+|--------|----------------------|
+| Alice  | 123-456-7890         |
+| Bob    | No Phone Available   |
+| Carol  | 987-654-3210         |
+```
+
+---
+
+#### NVL
+
+Another variation of `IFNULL` with the same behavior.
+
+```sql
+SELECT 
+  metadata__name,
+  NVL(spec__externalID, 'No External ID Provided') AS user_address
+FROM NODE;
+```
+
+Expected output:
+
+```
+metadata__name  |user_address           |
+----------------+-----------------------+
+master-1		|123					|
+master-2		|No External ID Provided|
+node-1  		|ABC					|
+node-2  		|No External ID Provided|
+```
+
+---
+
+#### NULLIF
+
+Returns `null` if the two arguments are equal, otherwise returns the first argument.
+
+```sql
+SELECT 
+  metadata__name,
+  NULLIF(spec__podCIDR, '10.42.0.0/24') AS active_status
+FROM NODE;
+```
+
+### Vector Functions <Tag description={"v25.1+"} />
+
+Vector functions are used for mathematical operations on vectors, such as distance calculations and transformations. These are especially useful for machine learning and similarity computations.
+
+---
+
+#### `vectorStringToArray`
+
+Converts a string representation of a vector into an array of `double`.
+
+```sql
+SELECT 
+  vectorStringToArray('[0.1, 0.2, 0.3]') AS vector_array;
+```
+
+Expected output:
+
+```
+| vector_array    |
+|-----------------|
+| [0.1, 0.2, 0.3] |
+```
+
+---
+
+#### `euclideanDistance`
+
+Calculates the **Euclidean distance** between two vectors.
+
+```sql
+SELECT 
+  euclideanDistance(
+    vectorStringToArray('[1.0, 2.0, 3.0]'),
+    vectorStringToArray('[4.0, 5.0, 6.0]')
+  ) AS distance;
+```
+
+Expected output:
+
+```
+| distance |
+|----------|
+| 5.196    |
+```
+
+---
+
+#### `innerProduct`
+
+Calculates the **dot product** of two vectors.
+
+```sql
+SELECT 
+  innerProduct(
+    vectorStringToArray('[1.0, 2.0, 3.0]'),
+    vectorStringToArray('[4.0, 5.0, 6.0]')
+  ) AS dot_product;
+```
+
+Expected output:
+
+```
+| dot_product |
+|-------------|
+| 32.0        |
+```
+
+---
+
+#### `cosineDistance`
+
+Calculates the **cosine distance** between two vectors.
+
+```sql
+SELECT 
+  cosineDistance(
+    vectorStringToArray('[1.0, 0.0, 0.0]'),
+    vectorStringToArray('[0.0, 1.0, 0.0]')
+  ) AS cosine_distance;
+```
+
+Expected output:
+
+```
+| cosine_distance |
+|-----------------|
+| 1.0             |
+```
+
+## Document Functions <Tag description={"v24.5.3+"} />
+
+Document functions are essential for working with JSON and YAML data, which is common in Kubernetes objects and other structured documents. They provide a way to parse, query, and transform these formats directly within SQL.
+
+---
+
+#### `jsonParse(value, skipValidation)`
+
+Parses a `value` (`CLOB` or `BLOB`) into a `json` object. If `skipValidation` is set to `true`, the function skips pre-parsing validation of `value`.
+
+```sql
+SELECT 
+  jsonParse('{"key": "value"}', true) AS parsed_json
+FROM NODE
+LIMIT 1;
+```
+
+Expected output:
+
+```
+| parsed_json     |
+|-----------------|
+| {"key":"value"} |
+```
+
+---
+
+#### `jsonObject(c1, c2, ..., cn)`
+
+Returns a `json` object based on a list of columns. The resulting object contains fields in the form of `column_name: column_value`.
+
+```sql
+SELECT 
+  jsonObject(clusterName, schema, metadata__name) AS node_info
+FROM NODE
+LIMIT 1;
+```
+
+Expected output:
+
+```
+| node_info                                                                |
+|--------------------------------------------------------------------------|
+| {"clusterName":"kube1","schema":"kube1","metadata__name":"dev-master-1"} |
+```
+
+---
+
+#### `yamlAsJSON(value)`
+
+Converts a `CLOB` containing YAML into a `json` object.
+
+```sql
+SELECT yamlAsJSON('name: example-node'||chr(10)||'cluster: my-cluster');
+```
+
+Expected output:
+
+```
+| parsed_yaml                                    |
+|------------------------------------------------|
+| {"name":"example-node","cluster":"my-cluster"} |
+```
+
+---
+
+#### `jsonPath(value, path)`
+
+Evaluates a [JsonPath](https://datatracker.ietf.org/doc/rfc9535/) expression on `value`, which should be a `json` document. Always returns a `json` object.
+
+```sql
+SELECT 
+  jsonPath(status__allocatable, '$.cpu') AS cpu_capacity
+FROM NODE
+```
+
+---
+
+#### `jsonJq(value, query)`
+
+Applies a [jq](https://jqlang.github.io/jq/) query to `value`, which should be a `json` document. Always returns a `json` object.
+
+```sql
+SELECT 
+  jsonJq(status__allocatable, '.cpu') AS cpu_capacity
+FROM NODE
+```
+
+---
+
+#### `jsonPathAsString(value, path)`
+
+Similar to `jsonPath` but returns a `string` instead of a `json` object. This is particularly useful when you need to compare the extracted value directly in a `WHERE` clause.
+
+```sql
+SELECT 
+  jsonPathAsString(status__allocatable, '$.cpu') AS cpu_capacity
+FROM NODE
+```
+
+---
+
+#### `jsonJqAsString(value, query)`
+
+Similar to `jsonJq` but returns a `string` instead of a `json` object.
+
+```sql
+SELECT 
+  jsonJqAsString(status__allocatable, '.cpu') AS cpu_capacity
+FROM NODE
+```

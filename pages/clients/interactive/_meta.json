@@ -1,4 +1,4 @@
 {
   "psql": "PostgreSQL interactive terminal",
-  "DBeaver": "DBeaver"
+  "dbeaver": "DBeaver"
 }

@@ -1,7 +1,7 @@
 {
   "virtual-database": "Virtual Database",
   "data-types": "Data Types",
-  "DDL": "DDL",
+  "ddl": "DDL",
   "queries": "Queries",
   "script-context-members": "",  
   "ds": "Data Sources",

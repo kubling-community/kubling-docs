@@ -1,0 +1,906 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Queries
+
+## SQL compatibility
+
+Kubling provides most of the functionality of SQL-92 DML.
+The idea of this document is not to cover SQL exhaustively, but rather highlights how SQL is used in Kubling. 
+
+## Identifiers
+
+SQL commands contain references to tables and columns. These references are known as **identifiers**, which uniquely identify tables, columns, and other schema elements within the context of a query. In Kubling, all queries are processed within a **Virtual Database (VDB)**, which allows federated access to multiple data sources. This means tables and columns must be fully qualified to avoid conflicts and ensure context is preserved across different schemas.
+
+### Fully-Qualified Identifiers
+
+A fully-qualified identifier in Kubling is composed of multiple parts, typically including a schema name, table specification, and column name. These parts are separated by a period (`.`) as follows:
+
+- **Table Identifiers:** `{<schema_name>.<table_spec>}`
+- **Column Identifiers:** `{<schema_name>.<table_spec>.<column_name>}`
+
+### Syntax Rules
+
+- **Character Set:** Identifiers can include alphanumeric characters and underscores (`_`). They must start with an alphabetic character. Unicode characters are also supported.
+- **Quoted Identifiers:** Identifiers enclosed in double quotes can contain any character, including spaces and special symbols. The double quote itself can be escaped by using a double double-quote (`""`), like `"some "" id"`.
+- **Case Sensitivity:** Identifiers are **not** case-sensitive, even when quoted. However, it is recommended to stick to a consistent naming convention.
+- **Nested Structures:** Kubling allows table specification to be a dot-delimited construct, supporting deep hierarchies in some data sources.
+- **Reserved Characters:** Columns, column aliases, and schema names cannot contain a period (`.`) unless quoted.
+- **Avoiding Conflicts:** Be cautious when using common names like `USER`, `TABLE`, or `INDEX`, as these may conflict with reserved SQL keywords.
+
+### Examples of Valid Identifiers
+
+**Valid Table Identifiers:**
+
+- `Kubernetes.DEPLOYMENTS`
+- `"Kubernetes.Deployments"`
+
+**Valid Column Identifiers:**
+
+- `Kubernetes.DEPLOYMENTS.metadata__name`
+- `"Kubernetes.Deployments"."metadata__name"`
+
+<Callout type="info" emoji="ℹ️">
+  Using consistent, meaningful names for tables and columns can significantly improve query readability and maintainability.
+</Callout>
+
+## Operator Precedence
+
+Operator precedence determines the order in which operators are evaluated in an SQL expression. In Kubling, understanding precedence is crucial for writing accurate and efficient queries, especially when combining multiple operators.
+
+### Precedence Table
+
+| Operator   | Description                        |
+|------------|------------------------------------|
+| `[]`       | Array element reference            |
+| `+`, `-`   | Positive/negative value expression |
+| `*`, `/`   | Multiplication/division            |
+| `+`, `-`   | Addition/subtraction               |
+| `||`       | String concatenation               |
+| `criteria` | Logical expressions (e.g., `AND`, `OR`) |
+
+### Key Rules
+
+1. **Left-to-Right Evaluation:** Operators at the same precedence level are evaluated from left to right.
+2. **Parentheses Take Priority:** Use parentheses to explicitly define the order of operations, overriding the default precedence.
+3. **Mixed Types:** Be cautious when combining different data types, as implicit type conversion may occur.
+4. **Boolean Logic:** Logical operators (`AND`, `OR`, `NOT`) are evaluated after arithmetic operators but before comparison operators.
+
+### Common Pitfalls
+
+- **Unintended Type Coercion:** Mixing numeric and string types without explicit conversion can lead to unexpected results.
+- **Ambiguous Expressions:** Over-reliance on precedence can make complex queries hard to read and debug.
+- **Negation Confusion:** `-x^2` is evaluated as `-(x^2)`, not `(-x)^2`.
+
+### Examples
+
+```sql
+-- Without Parentheses (default precedence)
+SELECT 2 + 3 * 4;  -- Returns 14, not 20
+
+-- With Parentheses
+SELECT (2 + 3) * 4;  -- Returns 20
+
+-- Boolean Logic
+SELECT true AND false OR true;  -- Returns true (equivalent to (true AND false) OR true)
+
+-- Combining Arithmetic and Boolean
+SELECT (5 > 2) AND (3 + 2 < 10);  -- Returns true
+
+-- Array Element Reference
+SELECT my_array[2] FROM my_table;
+```
+
+<Callout type="warning">
+  Always use parentheses to clearly express intent in complex expressions. Relying too much on operator precedence can lead to hard-to-find bugs.
+</Callout>
+
+## Expressions
+
+Expressions are the building blocks of SQL queries in Kubling. They can be as simple as a single column reference or as complex as nested functions with multiple operators. Expressions can appear in nearly every part of a SQL statement, including `SELECT`, `FROM`, `WHERE`, `GROUP BY`, `HAVING`, and `ORDER BY` clauses.
+
+### Key Components
+
+1. **Column Identifiers:** Refer to specific columns within a table.
+2. **Literals:** Fixed values, including numbers, strings, booleans, and `NULL`.
+3. **Functions:** Built-in or user-defined operations that take one or more arguments.
+4. **Operators:** Mathematical, logical, and string operators.
+5. **Parentheses:** Used to explicitly define evaluation order.
+
+### Column Identifiers
+
+Column identifiers are used to specify which columns should be returned, filtered, or grouped in a query. They follow the identifier rules defined earlier.
+
+```sql
+SELECT deployments.metadata__name, deployments.status__replicas FROM Kubernetes.DEPLOYMENTS;
+```
+
+### Literals
+
+Literals are fixed values that are directly represented in the SQL query. Kubling supports a wide range of literals:
+
+- **Strings:** Enclosed in single quotes.
+- **Numbers:** Integer, float, and scientific notation.
+- **Boolean:** `true` and `false`.
+- **Binary:** Hexadecimal representation.
+- **Null:** The absence of a value.
+
+```sql
+SELECT 
+  'hello world' AS greeting,
+  42 AS answer,
+  3.14 AS pi,
+  true AS is_active,
+  X'0F0A' AS binary_data,
+  NULL AS missing_value;
+```
+
+### Literal Syntax Rules
+
+- Integer values will be assigned to the smallest possible integer type (`integer`, `long`, or `biginteger`).
+- Floating point values are parsed as `double`.
+- The keyword `NULL` is inherently untyped and will adopt the type of the context it is used in.
+
+### Examples
+
+```sql
+-- Basic literals
+SELECT 'abc', 123, -456.78, true, false, X'1A2B', NULL;
+
+-- Mixing types in expressions
+SELECT 5 + NULL AS example_null_addition;  -- Results in NULL
+```
+
+<Callout type="info">
+  Be cautious when mixing data types in expressions. Kubling will attempt to convert types as needed, which can lead to unexpected results.
+</Callout>
+
+## Case and Searched Case
+
+Conditional logic in SQL is handled using the `CASE` expression, which provides a way to perform branching logic within a single SQL statement. Kubling supports two main forms of `CASE` expressions: **Simple Case** and **Searched Case**.
+
+### Simple Case
+
+The **Simple Case** expression compares a single expression to a set of possible values and returns a result based on the first match found. If no match is found, the optional `ELSE` clause is used. If the `ELSE` clause is not specified, `NULL` is returned.
+
+**Syntax:**
+
+```sql
+CASE <expression>
+    WHEN <value1> THEN <result1>
+    WHEN <value2> THEN <result2>
+    ...
+    [ELSE <default_result>]
+END
+```
+
+**Example:**
+
+```sql
+SELECT 
+  status__phase AS status,
+  CASE status__phase
+    WHEN 'Running' THEN 'Healthy'
+    WHEN 'Pending' THEN 'Starting Up'
+    WHEN 'Failed' THEN 'Unhealthy'
+    ELSE 'Unknown'
+  END AS status_description
+FROM POD;
+```
+
+### Searched Case
+
+The **Searched Case** expression is more flexible, allowing you to specify complex boolean conditions for each branch, rather than just comparing against a single expression.
+
+**Syntax:**
+
+```sql
+CASE
+    WHEN <condition1> THEN <result1>
+    WHEN <condition2> THEN <result2>
+    ...
+    [ELSE <default_result>]
+END
+```
+
+**Example:**
+
+```sql
+SELECT 
+  CAST(jsonPathAsString(status__allocatable, '$.cpu') AS integer) AS cpu_capacity,
+  CASE 
+    WHEN CAST(jsonPathAsString(status__allocatable, '$.cpu') AS integer) > 80 THEN 'High Load'
+    WHEN CAST(jsonPathAsString(status__allocatable, '$.cpu') AS integer) BETWEEN 50 AND 80 THEN 'Moderate Load'
+    WHEN CAST(jsonPathAsString(status__allocatable, '$.cpu') AS integer) > 0 THEN 'Low Load'
+    ELSE 'No Load'
+  END AS load_description
+FROM NODE;
+```
+
+### Key Points
+
+- **Order Matters:** The first matching `WHEN` condition is returned, and no further conditions are evaluated.
+- **NULL Handling:** If an expression evaluates to `NULL`, it will not match any `WHEN` condition.
+- **Nested Cases:** You can nest `CASE` expressions if needed, but be mindful of readability.
+
+### Complex Example
+
+```sql
+SELECT 
+  metadata__name AS node_name,
+  CASE 
+    WHEN status__conditions IS NULL THEN 'Unknown Status'
+    WHEN jsonPathAsString(status__conditions, '$[?(@.type=="Ready")].status') LIKE '["True"]' THEN 'Ready'
+    WHEN jsonPathAsString(status__conditions, '$[?(@.type=="Ready")].status') LIKE '["False"]' THEN 'Not Ready'
+    ELSE 'Unknown'
+  END AS readiness_status
+FROM NODE;
+```
+
+<Callout type="info">
+  Use `CASE` expressions to simplify complex business logic within your SQL queries. However, avoid deeply nested cases when possible to maintain readability.
+</Callout>
+
+## Arrays
+
+Arrays in Kubling provide a powerful way to store and manipulate ordered collections of values within a single column. Arrays can be used for grouping related values, storing multi-dimensional data, or working with nested structures.
+
+### Array Syntax
+
+Kubling supports multiple ways to declare arrays, including both empty arrays and arrays with single or multiple elements.
+
+**Empty Arrays:**
+
+```sql
+-- Different forms of empty arrays
+SELECT ARRAY[] AS empty_array_1, () AS empty_array_2, (,) AS empty_array_3;
+```
+
+**Single Element Arrays:**
+
+```sql
+SELECT ARRAY[42] AS single_element, (42,) AS single_element_alt;
+```
+
+**General Array Syntax:**
+
+```sql
+-- Multi-element arrays
+SELECT ARRAY[1, 2, 3] AS numbers, ('a', 'b', 'c') AS letters;
+```
+
+**Nested Arrays (Multi-Dimensional):**
+
+```sql
+SELECT ARRAY[ARRAY[1, 2], ARRAY[3, 4]] AS matrix;
+```
+
+### Array Element Reference
+
+To access individual elements within an array, use square brackets with 1-based indexing:
+
+```sql
+SELECT ARRAY[10, 20, 30][1] AS first_element, ARRAY[10, 20, 30][2] AS second_element;
+```
+
+## Criteria
+
+Criteria are the conditions used to filter rows in SQL statements. They can be as simple as a single comparison or as complex as nested logical expressions. In Kubling, criteria are primarily used in the `WHERE`, `HAVING`, and `JOIN` clauses to limit the number of rows processed.
+
+### Basic Criteria
+
+```sql
+-- Simple comparison
+SELECT * FROM Users.PROFILES WHERE age > 18;
+
+-- Multiple conditions
+SELECT * FROM Orders.SALES WHERE total > 1000 AND status = 'Completed';
+```
+
+### Supported Criteria Types
+
+- **Comparison:** `=`, `<>`, `!=`, `<`, `>`, `<=`, `>=`
+- **Null Check:** `IS NULL`, `IS NOT NULL`
+- **Pattern Matching:** `LIKE`, `NOT LIKE`
+- **Regular Expressions:** `LIKE_REGEX`, `SIMILAR TO`
+- **Set Membership:** `IN`, `NOT IN`
+- **Existence Check:** `EXISTS`, `NOT EXISTS`
+- **Range Check:** `BETWEEN`, `NOT BETWEEN`
+- **Boolean Logic:** `AND`, `OR`, `NOT`
+
+### Syntax Rules
+
+```sql
+-- Comparison
+SELECT * FROM POD WHERE status__phase = 'Running';
+
+-- Null Check
+SELECT * FROM POD WHERE status__nominatedNodeName IS NULL;
+
+-- Pattern Matching
+SELECT * FROM NODE WHERE metadata__name LIKE 'node-%';
+
+-- Regular Expressions
+SELECT * FROM POD WHERE jsonPathAsString(status__message, '$') LIKE_REGEX '.*Error.*';
+
+-- Set Membership
+SELECT * FROM NAMESPACE WHERE status__phase IN ('Active', 'Terminating');
+
+-- Existence Check
+SELECT 
+  metadata__name 
+FROM POD 
+WHERE 
+  EXISTS (
+    SELECT 1 
+    FROM POD_STATUS_CONDITION 
+    WHERE pod_identifier = identifier
+  );
+
+-- Range Check
+SELECT * FROM POD WHERE spec__activeDeadlineSeconds BETWEEN 300 AND 600;
+
+-- Boolean Logic
+SELECT * FROM NODE WHERE spec__unschedulable = true;
+
+```
+
+### Complex Criteria
+
+Complex criteria are built by combining simple criteria using logical operators:
+
+```sql
+-- Combining multiple criteria
+SELECT * 
+FROM NODE 
+WHERE 
+  (metadata__name = 'default' OR metadata__name = 'kube-system') 
+  AND spec__unschedulable = true;
+```
+
+### Key Considerations
+
+- **Order of Evaluation:** The order in which criteria are evaluated depends on the **Operator Precedence** rules.
+- **Short-Circuit Evaluation:** Logical operators like `AND` and `OR` are evaluated using short-circuit logic, meaning the second condition may not be evaluated if the first is sufficient to determine the result.
+- **Pushdown Optimization:** Kubling attempts to "push down" criteria to the data source level when possible, reducing the amount of data transferred.
+
+<Callout type="info">
+  Be cautious when using complex criteria. Overly complicated conditions can lead to slow queries and poor performance.
+</Callout>
+
+## `SELECT` Command
+
+The `SELECT` command is the cornerstone of SQL, used to retrieve data from one or more tables. In Kubling, the `SELECT` statement supports a wide range of features, including filtering, grouping, sorting, and data transformation.
+
+### Basic Syntax
+
+```sql
+SELECT [DISTINCT|ALL] expression1, expression2, ...
+FROM table_name
+[WHERE criteria]
+[GROUP BY expression1, expression2, ...]
+[HAVING criteria]
+[ORDER BY expression1 [ASC|DESC], expression2 [ASC|DESC], ...]
+[LIMIT count [OFFSET offset]]
+```
+
+### Key Features
+
+- **Projection:** Define which columns to return.
+- **Filtering:** Use the `WHERE` clause to filter rows.
+- **Grouping:** Aggregate rows using `GROUP BY`.
+- **Sorting:** Order the results with `ORDER BY`.
+- **Pagination:** Limit the number of rows returned with `LIMIT`.
+
+### Basic Examples
+
+```sql
+-- Simple select
+SELECT name, age FROM Users.PROFILES;
+
+-- Filtering rows
+SELECT name, age FROM Users.PROFILES WHERE age > 18;
+
+-- Sorting results
+SELECT name, age FROM Users.PROFILES ORDER BY age DESC;
+
+-- Limiting rows
+SELECT name, age FROM Users.PROFILES ORDER BY age DESC LIMIT 10;
+
+-- Using DISTINCT
+SELECT DISTINCT department FROM Employees.STAFF;
+```
+
+### Using Aliases
+
+Column and table aliases are useful for simplifying queries or renaming output columns:
+
+```sql
+SELECT 
+  name AS full_name,
+  age AS user_age 
+FROM Users.PROFILES AS u
+WHERE u.active = true;
+```
+
+### Expressions in `SELECT`
+
+You can use complex expressions, including mathematical operations, functions, and subqueries:
+
+```sql
+SELECT 
+  metadata__name AS pod_name, 
+  status__phase AS pod_phase, 
+  LENGTH(metadata__name) * 2 AS double_name_length, 
+  COALESCE(metadata__namespace, '') || '.' || COALESCE(metadata__name, '') AS full_pod_identifier 
+FROM POD;
+```
+
+### Combining Data
+
+You can combine data from multiple tables using `JOIN` clauses:
+
+```sql
+SELECT 
+  p.metadata__name AS pod_name,
+  n.metadata__name AS node_name,
+  p.status__phase AS pod_phase
+FROM POD p
+JOIN NODE n ON p.spec__nodeName = n.metadata__name
+WHERE p.status__phase = 'Running';
+```
+
+### Advanced Example
+
+```sql
+SELECT 
+  n.metadata__name AS node_name,
+  COUNT(p.metadata__name) AS pod_count,
+  AVG(
+    CASE 
+      WHEN jsonPathAsString(p.spec__containers, '$[*].resources.requests.cpu') LIKE '%m' 
+      THEN CAST(REPLACE(jsonPathAsString(p.spec__containers, '$[*].resources.requests.cpu'), 'm', '') AS float) / 1000
+      ELSE CAST(jsonPathAsString(p.spec__containers, '$[*].resources.requests.cpu') AS float)
+    END
+  ) AS avg_cpu_request_cores
+FROM NODE n
+LEFT JOIN POD p ON n.metadata__name = p.spec__nodeName
+GROUP BY n.metadata__name
+HAVING COUNT(p.metadata__name) > 10
+ORDER BY avg_cpu_request_cores DESC
+LIMIT 5;
+```
+
+### Key Considerations
+
+- **Implicit Ordering:** If no `ORDER BY` is specified, the result set order is not guaranteed.
+- **Null Handling:** Use the `COALESCE` function to replace `NULL` values if needed.
+- **Performance Impact:** Be cautious when using complex expressions and subqueries in the `SELECT` clause, as they can significantly impact query performance.
+
+<Callout type="info" emoji="💡">
+  Always include an `ORDER BY` clause if the order of your results is important. Without it, the order is not guaranteed.
+</Callout>
+
+## `WHERE` Clause
+
+The `WHERE` clause is used to filter rows in SQL queries based on specified criteria. It is one of the most important components for controlling which rows are included in the result set, significantly impacting query performance.
+
+### Basic Syntax
+
+```sql
+SELECT column1, column2, ...
+FROM table_name
+WHERE condition;
+```
+
+### Key Features
+
+- **Filtering Rows:** Return only rows that match the specified conditions.
+- **Boolean Logic:** Combine multiple conditions using `AND`, `OR`, and `NOT`.
+- **Pattern Matching:** Use `LIKE` and `LIKE_REGEX` for flexible text matching.
+- **Null Checks:** Use `IS NULL` and `IS NOT NULL` to handle missing values.
+
+### Basic Examples
+
+```sql
+-- Single condition
+SELECT * FROM Users.PROFILES WHERE age > 18;
+
+-- Multiple conditions
+SELECT * FROM Users.PROFILES WHERE age > 18 AND active = true;
+
+-- Pattern matching
+SELECT * FROM Users.PROFILES WHERE username LIKE 'a%';
+
+-- Null check
+SELECT * FROM Users.PROFILES WHERE middle_name IS NULL;
+```
+
+### Complex Criteria
+
+Combine multiple criteria for more advanced filtering:
+
+```sql
+-- Combining AND, OR, and NOT
+SELECT * FROM Employees.STAFF 
+WHERE (department = 'IT' OR department = 'HR') 
+AND active = true 
+AND NOT terminated;
+```
+
+### Using Subqueries
+
+You can also use subqueries within a `WHERE` clause:
+
+```sql
+SELECT * FROM Products.CATALOG 
+WHERE id IN (SELECT product_id FROM Orders.SALES WHERE total > 1000);
+```
+
+### Regular Expressions
+
+For advanced text matching, use `LIKE_REGEX`:
+
+```sql
+SELECT * FROM Logs.EVENTS 
+WHERE message LIKE_REGEX '.*(ERROR|WARN).*';
+```
+
+### Key Considerations
+
+- **Index Usage:** Well-defined `WHERE` clauses can significantly speed up queries if proper indexes are in place.
+- **Pushdown Optimization:** Kubling attempts to push `WHERE` clauses to the data source when possible to reduce data transfer.
+- **Null Behavior:** Be cautious when comparing to `NULL`, as `NULL` is not equal to any value, including itself.
+
+<Callout type="info" emoji="🔍">
+  Use `WHERE` clauses thoughtfully to reduce the amount of data processed and transferred. This can lead to substantial performance gains.
+</Callout>
+
+## `GROUP BY` Clause
+
+The `GROUP BY` clause is used to aggregate rows that share a common attribute, producing a single summary row for each unique group. It is often used in conjunction with aggregate functions like `COUNT`, `SUM`, `AVG`, `MIN`, and `MAX`.
+
+### Basic Syntax
+
+```sql
+SELECT column1, column2, aggregate_function(column3)
+FROM table_name
+WHERE condition
+GROUP BY column1, column2;
+```
+
+### Key Features
+
+- **Grouping Rows:** Collect rows into groups based on one or more columns.
+- **Aggregate Functions:** Perform calculations on each group.
+- **Filtering Groups:** Use the `HAVING` clause to filter groups.
+
+### Basic Examples
+
+```sql
+-- Grouping by a single column
+SELECT metadata__namespace, COUNT(*) AS pod_count
+FROM POD
+GROUP BY metadata__namespace;
+
+-- Grouping by multiple columns
+SELECT department, role, AVG(salary) AS avg_salary
+SELECT metadata__namespace, status__phase, COUNT(*) AS pod_count
+FROM POD
+GROUP BY metadata__namespace, status__phase;
+```
+
+### Using Aggregate Functions
+
+Commonly used aggregate functions include:
+
+- `COUNT()` - Counts the number of rows.
+- `SUM()` - Sums the values in a column.
+- `AVG()` - Calculates the average value.
+- `MIN()` - Finds the minimum value.
+- `MAX()` - Finds the maximum value.
+
+```sql
+SELECT 
+  department, 
+  COUNT(*) AS total_employees, 
+  SUM(salary) AS total_salary, 
+  AVG(salary) AS avg_salary,
+  MIN(salary) AS min_salary,
+  MAX(salary) AS max_salary
+FROM Employees.STAFF
+GROUP BY department;
+```
+
+### Filtering with `HAVING`
+
+The `HAVING` clause is used to filter groups after aggregation:
+
+```sql
+SELECT department, AVG(salary) AS avg_salary
+FROM Employees.STAFF
+GROUP BY department
+HAVING AVG(salary) > 50000;
+```
+
+### Key Considerations
+
+- **Grouping Expressions:** Every column in the `SELECT` clause that is not part of an aggregate function must appear in the `GROUP BY` clause.
+- **Null Handling:** Rows with `NULL` values in the grouping columns will be grouped together.
+- **Performance Impact:** Grouping can be computationally expensive, especially when combined with complex expressions.
+
+### Complex Example
+
+```sql
+SELECT 
+  metadata__namespace AS namespace,
+  COUNT(metadata__name) AS pod_count,
+  AVG(status__readyReplicas) AS avg_ready_replicas
+FROM DEPLOYMENT
+GROUP BY metadata__namespace
+HAVING COUNT(metadata__name) > 2
+ORDER BY avg_ready_replicas DESC;
+```
+
+<Callout type="info">
+  Use the `HAVING` clause to filter aggregated results, not individual rows. For row-level filtering, use the `WHERE` clause.
+</Callout>
+
+## `HAVING` Clause
+
+The `HAVING` clause is used to filter groups of rows after they have been aggregated by the `GROUP BY` clause. It is similar to the `WHERE` clause, but applies to grouped rows rather than individual rows.
+
+### Basic Syntax
+
+```sql
+SELECT column1, aggregate_function(column2)
+FROM table_name
+GROUP BY column1
+HAVING aggregate_function(column2) condition;
+```
+
+### Key Features
+
+- **Post-Aggregation Filtering:** Apply conditions to aggregated data.
+- **Supports All Aggregate Functions:** Works with `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, and more.
+- **Can Use Complex Expressions:** Supports mathematical and logical operations.
+
+### Basic Examples
+
+```sql
+-- Filter groups based on aggregate value
+SELECT metadata__namespace AS namespace, COUNT(metadata__name) AS total_services
+FROM SERVICE
+GROUP BY metadata__namespace
+HAVING COUNT(metadata__name) > 5;
+
+-- Combining with other aggregate functions
+SELECT metadata__namespace AS namespace, AVG(status__readyReplicas) AS avg_ready_replicas
+FROM DEPLOYMENT
+GROUP BY metadata__namespace
+HAVING AVG(status__readyReplicas) > 5;
+```
+
+### Combining `WHERE` and `HAVING`
+
+You can use both `WHERE` and `HAVING` in the same query, but remember their different purposes:
+
+```sql
+SELECT metadata__namespace AS namespace, COUNT(metadata__name) AS total_deployments, AVG(status__readyReplicas) AS avg_ready_replicas
+FROM DEPLOYMENT
+WHERE status__readyReplicas IS NOT NULL
+GROUP BY metadata__namespace
+HAVING AVG(status__readyReplicas) > 10;
+```
+
+### Key Considerations
+
+- **Order of Execution:** The `HAVING` clause is applied after the `GROUP BY` aggregation, while `WHERE` is applied before.
+- **Column References:** You can only use columns that are part of the `GROUP BY` clause or aggregate functions in the `HAVING` clause.
+- **Performance Impact:** Filtering with `HAVING` can be more expensive than using `WHERE` because it occurs after grouping.
+
+<Callout type="info">
+  Use `WHERE` for row-level filtering and `HAVING` for group-level filtering. This distinction can significantly impact query performance.
+</Callout>
+
+## `ORDER BY` Clause
+
+The `ORDER BY` clause is used to sort the result set of a query based on one or more columns. It provides control over the order in which rows are returned, which is especially important when using functions like `LIMIT` or `FETCH FIRST`.
+
+### Basic Syntax
+
+```sql
+SELECT column1, column2, ...
+FROM table_name
+ORDER BY column1 [ASC|DESC], column2 [ASC|DESC], ...;
+```
+
+### Key Features
+
+- **Ascending and Descending Order:** Use `ASC` for ascending (default) or `DESC` for descending order.
+- **Multiple Columns:** Sort by multiple columns, each with its own sort direction.
+- **Null Ordering:** Control how `NULL` values are sorted with `NULLS FIRST` or `NULLS LAST`.
+
+### Basic Examples
+
+```sql
+-- Sort by a single column (ascending by default)
+SELECT name, age FROM Users.PROFILES ORDER BY age;
+
+-- Sort by a single column (descending)
+SELECT name, age FROM Users.PROFILES ORDER BY age DESC;
+
+-- Sort by multiple columns
+SELECT name, age, city FROM Users.PROFILES ORDER BY city, age DESC;
+```
+
+<Callout type="warning">
+  Not all data sources support multiple sorting directions. For example, APIs like Kubernetes do not inherently support sorting on multiple columns with mixed direction (e.g., `ASC` and `DESC`).
+</Callout>
+
+### Using Column Aliases
+
+You can also sort by column aliases or expressions:
+
+```sql
+SELECT 
+  name, 
+  age, 
+  age * 2 AS double_age 
+FROM Users.PROFILES
+ORDER BY double_age DESC;
+```
+
+### Sorting with `NULLS FIRST` and `NULLS LAST`
+
+Control the position of `NULL` values in the result set:
+
+```sql
+SELECT name, age FROM Users.PROFILES ORDER BY age ASC NULLS LAST;
+SELECT name, age FROM Users.PROFILES ORDER BY age DESC NULLS FIRST;
+```
+
+### Key Considerations
+
+- **Stable Sorting:** Rows with the same sort key values are not guaranteed to retain their relative order unless a secondary sort key is provided.
+- **Performance Impact:** Sorting can be resource-intensive, especially when working with large datasets or complex expressions.
+- **Implicit Sorting:** If no `ORDER BY` clause is present, the result set order is not guaranteed.
+
+<Callout type="info">
+  Always include an `ORDER BY` clause if the order of your results is important. Relying on the default order is not recommended.
+</Callout>
+
+## `LIMIT` Clause
+
+The `LIMIT` clause is used to restrict the number of rows returned by a query, making it particularly useful for paging large datasets or returning just the "top N" results. It can also be combined with the `OFFSET` keyword to skip a specified number of rows.
+
+### Basic Syntax
+
+```sql
+SELECT column1, column2, ...
+FROM table_name
+[WHERE condition]
+[ORDER BY column1 [ASC|DESC], ...]
+LIMIT [offset,] count;
+```
+
+### Key Features
+
+- **Row Limiting:** Quickly return only a subset of rows.
+- **Offset Support:** Skip a specified number of rows before returning results.
+- **Combined with Sorting:** Often used in conjunction with `ORDER BY` for controlled pagination.
+
+### Basic Examples
+
+```sql
+-- Return the top 10 rows
+SELECT name, age FROM Users.PROFILES ORDER BY age DESC LIMIT 10;
+
+-- Return 5 rows, skipping the first 10
+SELECT name, age FROM Users.PROFILES ORDER BY age DESC LIMIT 10, 5;
+```
+
+### Using `OFFSET`
+
+An alternative syntax for `OFFSET` is also supported:
+
+```sql
+SELECT name, age FROM Users.PROFILES ORDER BY age DESC LIMIT 5 OFFSET 10;
+```
+
+### Advanced Paging
+
+```sql
+-- Efficient paging for large datasets
+SELECT name, age 
+FROM Users.PROFILES 
+ORDER BY age DESC 
+LIMIT 5 OFFSET 50;
+```
+
+### Key Considerations
+
+- **Order Matters:** Without an `ORDER BY` clause, the rows returned by `LIMIT` are not guaranteed to be in any specific order.
+- **Performance Impact:** Using large `OFFSET` values can be slow, as the database still processes the skipped rows.
+- **Non-Strict Limits:** Use the `NON_STRICT` hint for better performance when the exact row count is not critical.
+
+```sql
+SELECT * FROM Users.PROFILES /*+ NON_STRICT */ LIMIT 5;
+```
+
+<Callout type="info">
+  Use the `NON_STRICT` hint for significantly faster queries when the exact row ordering is not required.
+</Callout>
+
+## `INTO` Clause
+
+The `INTO` clause is used to insert the results of a `SELECT` query into a new or existing table. It is often used for data migration, data aggregation, or creating temporary snapshots of a dataset.
+
+### Basic Syntax
+
+```sql
+SELECT column1, column2, ...
+INTO new_table
+FROM source_table
+[WHERE condition];
+```
+
+### Key Features
+
+- **Data Insertion:** Transfer data from one table to another.
+- **Schema Inference:** Automatically creates a new table if it does not exist.
+- **Data Transformation:** Use functions and expressions to transform data during the copy.
+
+### Basic Examples
+
+```sql
+-- Create a copy of the Users.PROFILES table
+SELECT * INTO Users.PROFILES_COPY FROM Users.PROFILES;
+
+-- Copy only active users
+SELECT * INTO ActiveUsers FROM Users.PROFILES WHERE active = true;
+
+-- Create a summary table
+SELECT 
+  department, 
+  COUNT(*) AS employee_count, 
+  AVG(salary) AS avg_salary
+INTO DepartmentSummary
+FROM Employees.STAFF
+GROUP BY department;
+```
+
+### Combining with Data Transformation
+
+```sql
+SELECT 
+  name, 
+  age * 2 AS double_age 
+INTO UserAges
+FROM Users.PROFILES
+WHERE active = true;
+```
+
+### Key Considerations
+
+- **Schema Compatibility:** The target table's schema must match the structure of the data being inserted.
+- **Performance Impact:** Be cautious when copying large amounts of data, as this can be resource-intensive.
+- **Overwrite Behavior:** If the target table already exists, data will be appended, not overwritten, unless the table is explicitly truncated.
+
+### Advanced Example
+
+```sql
+-- Creating a denormalized summary table
+SELECT 
+  d.name AS department_name, 
+  COUNT(e.id) AS employee_count, 
+  AVG(e.salary) AS avg_salary
+INTO DepartmentStats
+FROM Departments d
+LEFT JOIN Employees e ON d.id = e.department_id
+GROUP BY d.name;
+```
+
+<Callout type="info">
+  Use the `INTO` clause for data archival, data transformation, or creating intermediate results for further analysis.
+</Callout>
