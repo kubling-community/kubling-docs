@@ -1,0 +1,155 @@
+import { Callout } from 'nextra/components'
+
+# Data Types
+
+Engine types are used when defining columns in table DDLs.  
+The corresponding JDBC and ODBC types are provided as references for implementing custom drivers or client libraries.
+
+| Engine Type              | Description                                                                                        | JDBC Type     | ODBC Type   |
+|--------------------------|----------------------------------------------------------------------------------------------------|---------------|-------------|
+| `string` / `varchar`     | Variable-length character string, max 4000 characters.                                             | `VARCHAR`     | `VARCHAR`   |
+| `varbinary`              | Variable-length binary string, nominal max 8192 bytes.                                             | `VARBINARY`   | `VARBINARY` |
+| `char`                   | A single 16-bit character. Only supports Basic Multilingual Plane.                                 | `CHAR`        | `CHAR`      |
+| `boolean`                | Boolean value: `true`, `false`, or `null`.                                                         | `BIT`         | `SMALLINT`  |
+| `byte` / `tinyint`       | Signed 8-bit integer.                                                                              | `TINYINT`     | `SMALLINT`  |
+| `short` / `smallint`     | Signed 16-bit integer.                                                                             | `SMALLINT`    | `SMALLINT`  |
+| `integer` / `serial`     | Signed 32-bit integer. `serial` implies `NOT NULL` and auto-incrementing from 1, but not `UNIQUE`. | `INTEGER`     | `INTEGER`   |
+| `long` / `bigint`        | Signed 64-bit integer.                                                                             | `BIGINT`      | `NUMERIC`   |
+| `biginteger`             | Arbitrary precision integer (up to 1000 digits).                                                   | `NUMERIC`     | `NUMERIC`   |
+| `float` / `real`         | 32-bit IEEE 754 floating-point number.                                                             | `REAL`        | `FLOAT`     |
+| `double`                 | 64-bit IEEE 754 floating-point number.                                                             | `DOUBLE`      | `DOUBLE`    |
+| `bigdecimal` / `decimal` | Arbitrary precision decimal (up to 1000 digits).                                                   | `NUMERIC`     | `NUMERIC`   |
+| `date`                   | Date (year, month, day).                                                                           | `DATE`        | `DATE`      |
+| `time`                   | Time (hour, minute, second).                                                                       | `TIME`        | `TIME`      |
+| `timestamp`              | Date and time (with fractional seconds).                                                           | `TIMESTAMP`   | `TIMESTAMP` |
+| `object`                 | Any serializable object.                                                                           | `JAVA_OBJECT` | `VARCHAR`   |
+| `blob`                   | Binary large object.                                                                               | `BLOB`        | `VARCHAR`   |
+| `clob`                   | Character large object.                                                                            | `CLOB`        | `VARCHAR`   |
+| `xml` _(deprecated)_     | XML document. Marked for removal.                                                                  | `JAVA_OBJECT` | `VARCHAR`   |
+| `geometry`               | Geospatial object.                                                                                 | `BLOB`        | `BLOB`      |
+| `geography`              | Geospatial object.                                                                                 | `BLOB`        | `BLOB`      |
+| `json`                   | JSON text stream.                                                                                  | `CLOB`        | `VARCHAR`   |
+
+## Arrays
+
+An array is declared by appending `[]` for each dimension to a base type.
+
+### Examples
+
+```sql
+string[]
+integer[][]
+```
+<Callout type="warning">
+  Arrays are processed in memory. Large arrays may cause performance issues, and arrays of LOBs (large objects) might not serialize correctly.
+</Callout>
+
+---
+# Type Conversions
+
+Data types can be converted either **implicitly** (automatically) or **explicitly** (using conversion functions).
+
+Implicit conversions are applied automatically in expressions and filters to make development more convenient. Explicit conversions, on the other hand, require the use of the `CAST` keyword or the `CONVERT()` function.
+
+## Key Rules for Type Conversion
+
+- Any type can be implicitly converted to the `object` type.
+- The `object` type can be explicitly cast to any supported type.
+- `null` can be assigned to any type.
+- All implicit conversions are valid as explicit conversions.
+- Implicit conversion of literals is permitted if it does not result in loss of information.
+- By default, the system property `widenComparisonToString` is **false**:
+  - If a comparison cannot be safely converted, it will raise an exception.
+- If `widenComparisonToString` is set to **true**, broader (widening) conversions may be applied automatically in expressions.
+  - See the _System Properties_ section in the Administrator’s Guide for more detail.
+
+<Callout type="warning">
+    Conversions between numeric types (like `float`, `double`, `bigdecimal`) or `timestamp` to `string` use Java/JDBC formats.
+    These formats may not match the pushdown behavior of the data source and can lead to inconsistencies. Avoid using string forms in critical criteria comparisons.
+</Callout>
+
+### Example
+
+```sql
+SELECT * FROM my.table WHERE created_by = 'not a date'
+```
+
+If `created_by` is a `date` column, and `widenComparisonToString` is **false**, this will raise an error because `'not a date'` cannot be converted to a valid date.
+
+## Conversion Matrix
+
+| Source Type          | Implicit Target Types                     | Explicit Target Types                                                                                                  |
+|----------------------|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `string`             | `clob`                                    | `char`, `boolean`, `byte`, `short`, `integer`, `long`, `biginteger`, `float`, `double`, `bigdecimal`, `xml`[^xmlparse] |
+| `char`               | `string`                                  | —                                                                                                                      |
+| `boolean`            | `string`, numeric types                   | —                                                                                                                      |
+| `byte`               | `string`, numeric types                   | `boolean`                                                                                                              |
+| `short`              | `string`, numeric types                   | `boolean`, `byte`                                                                                                      |
+| `integer`            | `string`, numeric types                   | `boolean`, `byte`, `short`, `float`                                                                                    |
+| `long`               | `string`, numeric types                   | `boolean`, `byte`, `short`, `integer`, `float`, `double`                                                               |
+| `biginteger`         | `string`, `bigdecimal`, `float`, `double` | `boolean`, `byte`, `short`, `integer`, `long`, `float`, `double`                                                       |
+| `bigdecimal`         | `string`, `float`, `double`               | `boolean`, `byte`, `short`, `integer`, `long`, `biginteger`, `float`, `double`                                         |
+| `float`              | `string`, `bigdecimal`, `double`          | numeric types                                                                                                          |
+| `double`             | `string`, `bigdecimal`, `float`           | numeric types                                                                                                          |
+| `date`               | `string`, `timestamp`                     | —                                                                                                                      |
+| `time`               | `string`, `timestamp`                     | —                                                                                                                      |
+| `timestamp`          | `string`                                  | `date`, `time`                                                                                                         |
+| `clob`               | —                                         | `string`                                                                                                               |
+| `json`               | `clob`                                    | `string`                                                                                                               |
+| `xml` _(deprecated)_ | —                                         | `string`                                                                                                               |
+| `geography`          | —                                         | `geometry`                                                                                                             |
+
+## Special Conversion Cases
+
+Some conversions in the query engine occur automatically in specific contexts. This section highlights those implicit conversions and how the engine interprets certain literal values.
+
+### String Literal Conversions
+
+String literals in SQL are automatically converted to their **implied types**, especially during comparisons in `WHERE` clauses.
+
+```sql
+SELECT * FROM my.table WHERE created_by = '2025-01-02'
+```
+
+If the column `created_by` is of type `date`, the string `'2025-01-02'` will be implicitly converted to a `DATE`.
+
+### Boolean Conversions
+
+Literal strings and numeric values can be automatically interpreted as booleans.
+
+| Type   | Literal Value | Boolean Result |
+|--------|---------------|----------------|
+| String | `'false'`     | `false`        |
+|        | `'unknown'`   | `null`         |
+|        | any other     | `true`         |
+| Number | `0`           | `false`        |
+|        | any other     | `true`         |
+
+### Date and Time Conversions
+
+Strings that match JDBC-compatible formats are implicitly converted to `DATE`, `TIME`, or `TIMESTAMP` types depending on their structure.
+
+| String Format                 | Interpreted As |
+|-------------------------------|----------------|
+| `yyyy-mm-dd`                  | `DATE`         |
+| `hh:mm:ss`                    | `TIME`         |
+| `yyyy-mm-dd[ hh:mm:ss[.fff]]` | `TIMESTAMP`    |
+
+<Callout>
+    For other formats or locales, use the `PARSEDATE`, `PARSETIME`, or `PARSETIMESTAMP` functions to explicitly parse custom string formats.
+</Callout>
+
+### Escaped Literal Syntax
+
+Instead of relying on implicit conversions, you can explicitly define typed literals using **escape syntax**, which is part of the SQL standard. This method avoids ambiguity and makes your intent clear.
+
+| Data Type | Escape Syntax                    | Equivalent Standard SQL               |
+|-----------|----------------------------------|---------------------------------------|
+| BOOLEAN   | `{b 'true'}`                     | `TRUE`                                |
+| DATE      | `{d '2024-05-21'}`               | `DATE '2024-05-21'`                   |
+| TIME      | `{t '14:30:00'}`                 | `TIME '14:30:00'`                     |
+| TIMESTAMP | `{ts '2024-05-21 14:30:00.123'}` | `TIMESTAMP '2024-05-21 14:30:00.123'` |
+
+<Callout>
+    The literal string must match the expected format exactly, or a runtime error will occur.
+</Callout>

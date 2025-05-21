@@ -21,6 +21,13 @@ Health Check Endpoint:
 GET http[s]://[address]:8282/observe/health
 ```
 
+## Contributors <Tag description={"v25.3.1+"} />
+
+By default, data sources' adapters contribute to overall health. However, that option can be disabled to provide the flexibility and granularity needed to determine whether an unreachable remote data source should impact the engine's health status.
+
+You can configure this behavior using the `contributesToHealth` property in each data source.  
+For more information, please see the [configuration schemas](/schemas).
+
 ---
 # Metrics
 

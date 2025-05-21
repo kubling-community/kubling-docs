@@ -21,9 +21,22 @@ This table provides information about the metrics exposed by the system.
 
 ### SYSMETRICS.Health <Tag description={"v25.3+"} />
 
-This table provides the health status of the engine. For more information, please see the [Health Endpoint Documentation](/Observability/metrics).
+This table provides the health status of the engine. For more information, please see the [Health Endpoint Documentation](/observability/metrics).
 
-| Column Name | Type      | Description            |
-|-------------|-----------|------------------------|
-| `status`    | `string`  | `UP` or `DOWN`         |
+| Column Name | Type      | Description                                   |
+|-------------|-----------|-----------------------------------------------|
+| `status`    | `string`  | `UP` or `DOWN`                                |
 | `up`        | `boolean` | `true` if the engine is up, `false` otherwise |
+
+### SYSMETRICS.DataSources <Tag description={"v25.3.1+"} />
+
+This table provides the health status per data source.
+
+| Column Name             | Type        | Description                                                             |
+|-------------------------|-------------|-------------------------------------------------------------------------|
+| `name`                  | `string`    | Data source name                                                        |
+| `type`                  | `string`    | Data source type (`dataSourceType`)                                     |
+| `status`                | `string`    | `UP` or `DOWN`                                                          |
+| `up`                    | `boolean`   | `true` if the data source is up, `false` otherwise                      |
+| `contributes_to_health` | `boolean`   | Indicates whether this data source contributes to overall engine health |
+| `last_check`            | `timestamp` | Indicates when the engine performed the last check                      |

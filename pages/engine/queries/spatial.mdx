@@ -1,0 +1,806 @@
+import { Callout } from 'nextra/components'
+
+## Spatial Functions
+
+Spatial functions provide functionality for working with [geospatial](https://www.ogc.org) data.
+
+Kubling provides partial compatibility with the OpenGIS Simple Features Specification for SQL.
+
+For more details on specific spatial operations, see the [Open GIS specification](https://portal.ogc.org/files/?artifact_id=25354) 
+or the [PostGIS manual](http://postgis.net/docs/manual-3.0/).
+
+<Callout icon="⚠️" title="2D Limitation">
+Most geometry operations are limited to two dimensions due to WKB and WKT format constraints.
+</Callout>
+
+<Callout icon="💡" title="Pushdown Behavior">
+When the remote data source supports spatial functions, the DQP (Distributed Query Processor) might decide to push them down so the engine is freed from having to compute expensive calculations.  
+There might be minor differences between Kubling's internal evaluation and pushdown behavior. Always validate results across sources when precision matters.
+</Callout>
+### Conversion Functions
+
+#### `ST_GeomFromText`
+
+Returns a geometry from a WKT string.
+
+```sql
+ST_GeomFromText(text [, srid])
+```
+
+- `text` is a WKT string.
+- `srid` is an optional integer Spatial Reference System ID.
+- Returns a geometry.
+
+#### `ST_GeogFromText`
+
+Returns a geography from an (E)WKT string.
+
+```sql
+ST_GeogFromText(text)
+```
+
+- `text` is a WKT string.
+- Returns a geography (assumes SRID 4326 unless handled separately).
+
+#### `ST_GeomFromWKB` / `ST_GeomFromBinary`
+
+Returns a geometry from a WKB BLOB.
+
+```sql
+ST_GeomFromWKB(bin [, srid])
+```
+
+- `bin` is a binary WKB.
+- `srid` is optional.
+- Returns a geometry.
+
+#### `ST_GeomFromEWKB`
+
+Returns a geometry from an EWKB BLOB.
+
+```sql
+ST_GeomFromEWKB(bin)
+```
+
+- `bin` is a binary EWKB.
+- Returns a 2D geometry.
+
+#### `ST_GeogFromWKB`
+
+Returns a geography from a (E)WKB BLOB.
+
+```sql
+ST_GeogFromWKB(bin)
+```
+
+- `bin` is a binary value.
+- Returns a 2D geography.
+
+#### `ST_GeomFromEWKT`
+
+Returns a geometry from a CLOB in EWKT format.
+
+```sql
+ST_GeomFromEWKT(text)
+```
+
+- `text` is an EWKT string.
+- Returns a geometry.
+
+#### `ST_GeomFromGeoJSON`
+
+Returns a geometry from a GeoJSON string.
+
+```sql
+ST_GeomFromGeoJson(text [, srid])
+```
+
+- `text` is a GeoJSON string.
+- `srid` is optional.
+- Returns a geometry.
+
+#### `ST_GeomFromGML`
+
+Returns a geometry from a GML2 CLOB.
+
+```sql
+ST_GeomFromGML(text [, srid])
+```
+
+- `text` is GML2.
+- `srid` is optional.
+- Returns a geometry.
+
+#### `ST_AsText`
+
+Returns the WKT string of the given geometry.
+
+```sql
+ST_AsText(geom)
+```
+
+- Returns a `CLOB` in WKT format.
+
+#### `ST_AsBinary`
+
+Returns a WKB blob from a geometry or geography.
+
+```sql
+ST_AsBinary(geo)
+```
+
+- Input: geometry or geography.
+- Output: BLOB.
+
+#### `ST_AsEWKB`
+
+Returns an EWKB BLOB for the geometry.
+
+```sql
+ST_AsEWKB(geom)
+```
+
+#### `ST_AsGeoJSON`
+
+Returns a GeoJSON CLOB from a geometry.
+
+```sql
+ST_AsGeoJSON(geom)
+```
+
+#### `ST_AsGML`
+
+Returns a GML2 CLOB from a geometry.
+
+```sql
+ST_AsGML(geom)
+```
+
+#### `ST_AsEWKT`
+
+Returns an EWKT CLOB from geometry or geography.
+
+```sql
+ST_AsEWKT(geo)
+```
+
+- Includes SRID prefix in the result string.
+
+#### `ST_AsKML`
+
+Returns a simplified KML string projected in SRID 4326.
+
+```sql
+ST_AsKML(geom)
+```
+
+---
+
+### Relationship Functions
+
+#### `ST_Contains`
+
+Returns true if `geom1` contains `geom2`.
+
+```sql
+ST_Contains(geom1, geom2)
+```
+
+- Both inputs are geometries.
+- Returns: Boolean.
+
+#### `ST_Crosses`
+
+Returns true if the geometries cross.
+
+```sql
+ST_Crosses(geom1, geom2)
+```
+
+- Inputs: two geometries.
+- Returns: Boolean.
+
+#### `ST_Disjoint`
+
+Returns true if the geometries are disjoint.
+
+```sql
+ST_Disjoint(geom1, geom2)
+```
+
+- Inputs: two geometries.
+- Returns: Boolean.
+
+#### `ST_Distance`
+
+Returns the distance between two geometries or geographies.
+
+```sql
+ST_Distance(geo1, geo2)
+```
+
+- Inputs: both geometries or both geographies.
+- Returns: double.
+- Note: Geography variant must be pushed down for evaluation.
+
+#### `ST_DWithin`
+
+Returns true if the geometries are within a given distance.
+
+```sql
+ST_DWithin(geom1, geom2, dist)
+```
+
+- `geom1`, `geom2`: geometries.
+- `dist`: distance in double.
+- Returns: Boolean.
+
+#### `ST_Equals`
+
+Returns true if the two geometries are spatially equal. Points and order can differ.
+
+```sql
+ST_Equals(geom1, geom2)
+```
+
+- Inputs: two geometries.
+- Returns: Boolean.
+
+#### `ST_Intersects`
+
+Returns true if the geometries or geographies intersect.
+
+```sql
+ST_Intersects(geo1, geo2)
+```
+
+- Inputs: geometries or geographies.
+- Returns: Boolean.
+- Geography version must be pushed down.
+
+#### `ST_OrderingEquals`
+
+Returns true if geometries have the same structure and point ordering.
+
+```sql
+ST_OrderingEquals(geom1, geom2)
+```
+
+- Inputs: two geometries.
+- Returns: Boolean.
+
+#### `ST_Overlaps`
+
+Returns true if geometries overlap.
+
+```sql
+ST_Overlaps(geom1, geom2)
+```
+
+- Inputs: two geometries.
+- Returns: Boolean.
+
+#### `ST_Relate` (with pattern)
+
+```sql
+ST_Relate(geom1, geom2, pattern)
+```
+
+- `geom1`, `geom2`: geometries.
+- `pattern`: DE-9IM pattern string (9 characters).
+- Returns: Boolean.
+
+#### `ST_Relate` (returns pattern)
+
+```sql
+ST_Relate(geom1, geom2)
+```
+
+- Returns the DE-9IM string representing the intersection matrix.
+
+#### `ST_Touches`
+
+Returns true if the geometries touch.
+
+```sql
+ST_Touches(geom1, geom2)
+```
+
+- Inputs: geometries.
+- Returns: Boolean.
+
+#### `ST_Within`
+
+Returns true if `geom1` is completely inside `geom2`.
+
+```sql
+ST_Within(geom1, geom2)
+```
+
+- Inputs: geometries.
+- Returns: Boolean.
+
+---
+
+### Attributes and Tests
+
+#### `ST_Area`
+
+Returns the area of a geometry.
+
+```sql
+ST_Area(geom)
+```
+
+- Input: geometry.
+- Returns: double.
+
+#### `ST_CoordDim`
+
+Returns the coordinate dimensions of a geometry.
+
+```sql
+ST_CoordDim(geom)
+```
+
+- Returns: integer (0–3).
+
+#### `ST_Dimension`
+
+Returns the topological dimension of the geometry.
+
+```sql
+ST_Dimension(geom)
+```
+
+- Returns: integer.
+
+#### `ST_EndPoint`
+
+Returns the last point of a LineString.
+
+```sql
+ST_EndPoint(geom)
+```
+
+- Returns: geometry.
+- Returns null if input is not a LineString.
+
+#### `ST_ExteriorRing`
+
+Returns the outer ring of a polygon.
+
+```sql
+ST_ExteriorRing(geom)
+```
+
+- Returns: geometry.
+- Null if input is not a polygon.
+
+#### `ST_GeometryN`
+
+Returns the Nth geometry from a collection.
+
+```sql
+ST_GeometryN(geom, index)
+```
+
+- `index` is 1-based.
+- Returns: geometry or null.
+
+#### `ST_GeometryType`
+
+Returns the type name of a geometry as a string (e.g., `ST_LineString`, `ST_Polygon`).
+
+```sql
+ST_GeometryType(geom)
+```
+
+- Returns: string.
+
+#### `ST_HasArc`
+
+Returns false. Curved geometry types not supported.
+
+```sql
+ST_HasArc(geom)
+```
+
+- Returns: Boolean.
+
+#### `ST_InteriorRingN`
+
+Returns the Nth interior ring of a polygon.
+
+```sql
+ST_InteriorRingN(geom, index)
+```
+
+- Returns: geometry or null.
+
+#### `ST_IsClosed`
+
+Returns true if the LineString is closed.
+
+```sql
+ST_IsClosed(geom)
+```
+
+- Returns: Boolean.
+
+#### `ST_IsEmpty`
+
+Returns true if the geometry is empty.
+
+```sql
+ST_IsEmpty(geom)
+```
+
+- Returns: Boolean.
+
+#### `ST_IsRing`
+
+Returns true if the geometry is a closed and simple LineString.
+
+```sql
+ST_IsRing(geom)
+```
+
+- Returns: Boolean.
+
+#### `ST_IsSimple`
+
+Returns true if the geometry has no self-intersections.
+
+```sql
+ST_IsSimple(geom)
+```
+
+- Returns: Boolean.
+
+#### `ST_IsValid`
+
+Returns true if the geometry is valid according to the model rules.
+
+```sql
+ST_IsValid(geom)
+```
+
+- Returns: Boolean.
+
+#### `ST_Length`
+
+Returns the length of a LineString or geography line.
+
+```sql
+ST_Length(geo)
+```
+
+- Input: geometry or geography.
+- Returns: double.
+- Geography variant must be pushed down.
+
+#### `ST_NumGeometries`
+
+Returns the number of geometries in a collection.
+
+```sql
+ST_NumGeometries(geom)
+```
+
+- Returns: integer (1 for non-collections).
+
+#### `ST_NumInteriorRings`
+
+Returns the number of interior rings in a polygon.
+
+```sql
+ST_NumInteriorRings(geom)
+```
+
+- Returns: integer or null if not a polygon.
+
+#### `ST_NunPoints`
+
+Returns the number of points in the geometry.
+
+```sql
+ST_NunPoints(geom)
+```
+
+- Returns: integer.
+
+#### `ST_PointOnSurface`
+
+Returns a point guaranteed to lie on the surface of the geometry.
+
+```sql
+ST_PointOnSurface(geom)
+```
+
+- Returns: geometry (point).
+
+#### `ST_Perimeter`
+
+Returns the perimeter of a polygon or multipolygon.
+
+```sql
+ST_Perimeter(geom)
+```
+
+- Returns: double (0 if not polygonal).
+
+#### `ST_PointN`
+
+Returns the Nth point of a LineString.
+
+```sql
+ST_PointN(geom, index)
+```
+
+- `index` is 1-based.
+- Returns: geometry or null.
+
+#### `ST_SRID`
+
+Returns the SRID of the geometry or geography.
+
+```sql
+ST_SRID(geo)
+```
+
+- Returns: integer.
+- Returns 0 if unknown.
+
+#### `ST_SetSRID`
+
+Sets the SRID of the geometry or geography.
+
+```sql
+ST_SetSRID(geo, srid)
+```
+
+- Returns: modified geo with new SRID.
+- No coordinate transformation performed.
+
+#### `ST_StartPoint`
+
+Returns the first point of a LineString.
+
+```sql
+ST_StartPoint(geom)
+```
+
+- Returns: geometry or null.
+
+#### `ST_X`
+
+Returns the X coordinate (longitude) of a point.
+
+```sql
+ST_X(geom)
+```
+
+- Returns: double or null.
+- Throws if not a point.
+
+#### `ST_Y`
+
+Returns the Y coordinate (latitude) of a point.
+
+```sql
+ST_Y(geom)
+```
+
+- Returns: double or null.
+- Throws if not a point.
+
+#### `ST_Z`
+
+Returns the Z coordinate of a point.
+
+```sql
+ST_Z(geom)
+```
+
+- Returns: double or null.
+- Usually null, as Z is not supported.
+
+---
+
+### Miscellaneous Functions
+
+#### `ST_Boundary`
+
+Computes the boundary of the given geometry.
+
+```sql
+ST_Boundary(geom)
+```
+
+- Returns: geometry.
+
+#### `ST_Buffer`
+
+Returns a geometry that includes all points within a specified distance from the original geometry.
+
+```sql
+ST_Buffer(geom, distance)
+```
+
+- `distance`: double.
+- Returns: geometry.
+
+#### `ST_Centroid`
+
+Returns the centroid (geometric center) of the geometry.
+
+```sql
+ST_Centroid(geom)
+```
+
+- Returns: geometry.
+
+#### `ST_ConvexHull`
+
+Returns the smallest convex polygon containing all points of the geometry.
+
+```sql
+ST_ConvexHull(geom)
+```
+
+- Returns: geometry.
+
+#### `ST_CurveToLine`
+
+Converts curved geometries to linear approximations. Not implemented in Kubling.
+
+```sql
+ST_CurveToLine(geom)
+```
+
+- Returns: geometry.
+
+#### `ST_Difference`
+
+Returns the part of `geom1` that does not intersect `geom2`.
+
+```sql
+ST_Difference(geom1, geom2)
+```
+
+- Returns: geometry.
+
+#### `ST_Envelope`
+
+Returns the 2D bounding box (envelope) of a geometry.
+
+```sql
+ST_Envelope(geom)
+```
+
+- Returns: geometry.
+
+#### `ST_Force_2D`
+
+Removes Z coordinates if present.
+
+```sql
+ST_Force_2D(geom)
+```
+
+- Returns: geometry.
+
+#### `ST_Intersection`
+
+Returns the intersection geometry between `geom1` and `geom2`.
+
+```sql
+ST_Intersection(geom1, geom2)
+```
+
+- Returns: geometry.
+
+#### `ST_Simplify`
+
+Simplifies a geometry using Douglas-Peucker. May produce invalid geometry.
+
+```sql
+ST_Simplify(geom, distanceTolerance)
+```
+
+- Returns: geometry.
+
+#### `ST_SimplifyPreserveTopology`
+
+Simplifies a geometry while preserving topology.
+
+```sql
+ST_SimplifyPreserveTopology(geom, distanceTolerance)
+```
+
+- Returns: valid geometry.
+
+#### `ST_SnapToGrid`
+
+Snaps points of the geometry to a grid of specified size.
+
+```sql
+ST_SnapToGrid(geom, size)
+```
+
+- `size`: float.
+- Returns: geometry.
+
+#### `ST_SymDifference`
+
+Returns the symmetric difference between `geom1` and `geom2`.
+
+```sql
+ST_SymDifference(geom1, geom2)
+```
+
+- Returns: geometry.
+
+#### `ST_Transform`
+
+Transforms geometry from one SRID to another.
+
+```sql
+ST_Transform(geom, srid)
+```
+
+- Returns: geometry.
+- The SRID must exist in the `SPATIAL_REF_SYS` view.
+
+#### `ST_Union`
+
+Returns a geometry representing the union of `geom1` and `geom2`.
+
+```sql
+ST_Union(geom1, geom2)
+```
+
+- Returns: geometry.
+
+---
+
+### Aggregate Functions
+
+#### `ST_Extent`
+
+Computes the 2D bounding box around all input geometry values. All inputs should use the same SRID.
+
+```sql
+ST_Extent(geom)
+```
+
+- Input: geometry.
+- Returns: geometry (bounding envelope).
+
+---
+
+### Construction Functions
+
+#### `ST_Point`
+
+Constructs a point geometry from X (longitude) and Y (latitude) coordinates.
+
+```sql
+ST_Point(x, y)
+```
+
+- `x`, `y`: double.
+- Returns: Point geometry.
+
+#### `ST_Polygon`
+
+Creates a polygon geometry using a shell (ring) and optional SRID.
+
+```sql
+ST_Polygon(geom, srid)
+```
+
+- `geom`: a linear ring.
+- `srid`: integer.
+- Returns: Polygon geometry.

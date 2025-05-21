@@ -1,5 +1,10 @@
 # Product changelog
 
+## v25.3.1
+- Fixed an issue that created the soft transaction row locks DB even when the feature was disabled at the application level.
+- Added support to mark data sources as contributors to the global health check.
+- Introduced the new `SYSMETRICS.DataSources` table, which provides data source–level health status.
+
 ## v25.3
 - Implemented the Soft Transaction Engine
 - Added `SYSMETRICS.Health` table.

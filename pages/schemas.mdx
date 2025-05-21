@@ -883,6 +883,12 @@ properties:
           \ is 43,200 seconds (12 hours)."
   enableSoftTransactions:
     type: "boolean"  
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
   allowBruteForceOperations:
     type: "boolean"
     description: "Allows the engine to perform Update and Delete operations using\
@@ -963,6 +969,12 @@ properties:
       \ all fields as a fallback when no other way to identify rows is available."
   enableSoftTransactions:
     type: "boolean"  
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
   filePath:
     type: "string"
     description: "Path to file where to store the database."
@@ -1044,7 +1056,13 @@ properties:
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
   enableSoftTransactions:
-    type: "boolean"          
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."         
 ```
 
 ## Cassandra Data Source Configuration
@@ -1116,6 +1134,12 @@ properties:
         description: "Maximum wait time in milliseconds the thread will wait in the\
           \ queue for a connection from the pool. Once reached, an error is thrown\
           \ if no available connection.Default: 10000ms (10s)"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
 ```
 
 ## Kubernetes Data Source Configuration
@@ -1162,7 +1186,13 @@ properties:
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
   enableSoftTransactions:
-    type: "boolean"          
+    type: "boolean"         
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."   
 ```
 
 ## Script Document Data Source Configuration
@@ -1206,7 +1236,13 @@ properties:
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
   enableSoftTransactions:
-    type: "boolean"          
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."          
 ```
 
 ## Composite Data Source Configuration
