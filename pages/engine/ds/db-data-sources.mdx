@@ -50,10 +50,22 @@ dataSources:
 `directives` is equivalent to adding `OPTIONS` next to the field via DDL. However, as in DDL, it is optional.
 
 ## Operations in Regular Mode (non _passthrough_)
-When defining a `TABLE` in the DDL that enriches the original schema, CUD (Create, Update, Delete) operations are translated into a set of 
-commands the data source can understand, particularly when the fields referenced in the commands are generated (i.e., they do not exist in the source).
 
-Imagine we have a PostgreSQL instance with the following table:
+In this mode, all objects (particularly `SCHEMAs` and `TABLEs`) are defined explicitly in a DDL file, 
+as specified in the [Virtual Database information file](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle) 
+under the `schema.ddl` or `schema.ddlFilePaths` property. 
+
+As a result, **Kubling will not auto-generate the schema** based on the remote database’s metadata.
+
+### Schema Definition
+
+The `NAMEINSOURCE` (or `name_in_source`) directive is required at both the table and field levels. 
+This directive specifies the corresponding object in the remote data source.
+
+When a `TABLE` is defined in the DDL to **extend the original schema**, CUD (Create, Update, Delete) operations are translated into a set of commands 
+that the remote source understands, even if the fields involved are generated and do not physically exist in the source.
+
+For example, given a PostgreSQL table:
 ```sql
 CREATE TABLE itops.app_component (
 	identifier varchar(36) NOT NULL,
@@ -64,14 +76,14 @@ CREATE TABLE itops.app_component (
 CREATE INDEX idx_app_component_search ON itops.app_component USING btree (name, application_identifier);
 ```
 
-And we import it into Kubling as:
+You can import it into Kubling using:
 ```sql
 CREATE FOREIGN TABLE app_component
 (
   -- matches with source 
-  identifier string,
-  application_identifier string,
-  name string,
+  identifier string OPTIONS(NAMEINSOURCE '"identifier"'),
+  application_identifier string OPTIONS(NAMEINSOURCE '"application_identifier"'),
+  name string OPTIONS(NAMEINSOURCE '"name"'),
 
   -- extended fields
   ext_rnd string OPTIONS(call_func 'get_random<>'),
@@ -84,21 +96,77 @@ CREATE FOREIGN TABLE app_component
 OPTIONS(updatable true, name_in_source 'itops.app_component');
 ```
 
-Extended fields, as well as generated primary key (`val_pk`), are not pushed to the source since they exist only within Kubling's boundaries.
+Fields like `ext_rnd` or `n_identifier` are **extended fields**, they exist only within Kubling and are not pushed to the remote database. 
+However, they **can** still be used in `WHERE` clauses.
 
-However, they can still be used in the `WHERE` clause of `UPDATE` and `DELETE` operations. 
-To identify the rows affected by these operations, the engine first fetches the rows matching the criteria (similar to a `SELECT`). 
-It determines the appropriate strategy for this process as follows:
+To determine how to apply these operations, the engine uses one of the following strategies:
 
-- `primary_key`: Used when the `TABLE` defines a primary key (PK) and the PK does not contain any generated fields.
-- `unique_key`: Used when the `TABLE` defines a `UNIQUE` constraint and the fields involved do not include any generated fields.
-- `brute_force`: A fallback option used when neither of the above strategies is applicable. This requires either:
-  - `allowBruteForceOperations` to be enabled at the Data Source level, or
-  - `allow_brute_force` to be enabled at the TABLE level.
+- **`primary_key`**: Used when the table defines a primary key that does not include any generated fields.
+- **`unique_key`**: Used when the table defines a `UNIQUE` constraint, again without involving generated fields.
+- **`brute_force`**: Fallback strategy used when neither of the above applies. This requires one of the following:
+  - `allowBruteForceOperations` enabled at the data source level, or
+  - `allow_brute_force` enabled at the table level.
 
 <Callout type='info'>
-  Defining a `TABLE` with the directive `name_in_source` is similar to naming the table using the full name. However, for the latter, when querying, you must enclose the name in quotes,
-  like `SELECT * FROM pg."itops.app_component"`.
+  Defining a `TABLE` with the `name_in_source` directive is functionally equivalent to referencing the full source table name. 
+  However, in the latter case, when querying, the name must be quoted, e.g., `SELECT * FROM pg."itops.app_component"`.
+</Callout>
+
+<Callout type='default'>
+  Defining complex schemas can be challenging and error-prone, even when relying on LLMs due to the amount of context required.
+
+  To simplify this, we recommend:
+  1. First connect a Kubling instance to the remote data source in **passthrough** mode.
+  2. Use the Kubling API to fetch the auto-generated underlying schema:
+
+  ```
+  http[s]://[kubling_host:kubling_port]/api/v1/admin/ddl/[vdb_name]/[schema_name]
+  ```
+
+  Once the schema is generated, you can safely customize it: add fields, update types, annotate columns, and more.
+</Callout>
+
+### Performance Implications
+
+Using **regular mode** introduces performance considerations, primarily due to limitations in what the DQP (Data Query Processor) can push down to the underlying 
+data source.
+
+In this mode, **most functions, including aggregation functions, are not pushed down**. This is because of extended fields: columns defined in Kubling’s schema 
+that don’t exist in the remote data source.
+
+When a query includes such fields, the query translator strips them out before forwarding the request. As a result, the data returned by the remote source may not fully satisfy all conditions from the original `WHERE` clause. The DQP must then re-evaluate those conditions **locally** after retrieving the data.
+
+This works well for basic filtering but **breaks down for function-based logic**, especially in two key cases:
+
+- **Function Decomposition Complexity**  
+  Kubling allows functions to be applied to **non-pushable fields**, even within filtering conditions. This makes it difficult to decompose a function and push it down only when its arguments are pushable.
+
+- **Aggregation Semantics**  
+  Aggregations like `AVG`, `SUM`, or `COUNT` rely on access to the full set of matching records. For example, computing `AVG(AVG(...))`, 
+  where the inner `AVG` is executed remotely and the outer one in Kubling, is **not equivalent** to a single `AVG(...)` over the full population.  
+  If the remote source returns pre-aggregated (partial) values, Kubling cannot guarantee correctness. 
+  To ensure accuracy, aggregations must be performed **entirely within Kubling**.
+
+In short, **regular mode prioritizes correctness over performance**, and while it maintains flexibility in how queries are written, it often requires **post-processing in Kubling**, which may lead to increased execution time for complex queries.
+
+#### How to Avoid Performance Issues
+
+When working in **regular mode**, there's a simple rule of thumb to help avoid performance bottlenecks:  
+**Always write queries that filter using primary or unique keys defined in the remote data source.**
+
+This practice minimizes the size of result sets fetched over the network, leading to:
+
+- Lower network I/O  
+- Reduced buffer usage in Kubling  
+- Faster query evaluation when non-pushable fields are involved, since fewer rows need processing
+
+In the example above, prioritize filters on columns like `identifier`, `application_identifier`, or `name`, as they are indexed in the source system.  
+Combine them with additional conditions that reduce result set cardinality (i.e., remove irrelevant rows), which helps minimize data transfer and processing overhead.
+
+<Callout type="info">
+  Determining what should be pushed to the remote source versus what should be processed in Kubling involves deeper analysis and may have a huge positive impact on your current setup.  
+  It depends on aspects that can vay from case to case but there is one important thing to consider: Kubling is cheap and runs on stock hardaware, making it an ideal candidate to unload some burden to your databases when Kubling runs close to them, meaning fast and inexpensive networking.  
+  We plan to release a dedicated guide covering optimization strategies for mid- to large-scale deployments.
 </Callout>
 
 ---

@@ -37,6 +37,12 @@ not the whole script file, and the following limitations apply:<br/>
 
 ---
 
+<Callout type="warning">
+  Starting from version `25.3.2`, SQL functions can also be invoked in a DDL context using the `call_func` option.  
+  This change removes the need to distinguish between DDL and SQL function types.  
+  Moving forward, we will likely simplify this classification to only distinguish between standard **SQL functions** and **SQL aggregation functions**, as the latter cannot be used within a DDL context.
+</Callout>
+
 ### DDL Functions
 
 **DDL functions** are defined at the field level within the `TABLE` definition in the DDL, making them an integral part of the `SCHEMA`.

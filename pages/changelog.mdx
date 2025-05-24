@@ -1,5 +1,10 @@
 # Product changelog
 
+## v25.3.2
+- Fixed an issue where essential classes for Spatial operations were incorrectly removed during native image generation. 
+Although the necessary dependencies were present, the classes were marked as unreachable and excluded from the final binary.
+- Added support for using SQL functions within the DDL `call_func` directive.
+
 ## v25.3.1
 - Fixed an issue that created the soft transaction row locks DB even when the feature was disabled at the application level.
 - Added support to mark data sources as contributors to the global health check.
