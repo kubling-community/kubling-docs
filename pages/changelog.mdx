@@ -1,5 +1,15 @@
 # Product changelog
 
+## v25.3.4
+- Fixed an issue where a column defined as `call_func`, when invoking standard SQL functions (introduced in v25.3.2), 
+was not correctly processed when the parameters provided were not part of the query's projected columns. 
+The query engine now automatically expands the projection to include the required fields before passing the query to the translator, 
+ensuring proper execution on the remote data source without affecting the original projection requested in the command.
+
+## v25.3.3
+- Fixed an issue affecting all Database datasources where the schema component of the fully qualified name (`NAMEINSOURCE`) was erroneously removed by 
+the translator before being passed to the remote data source, potentially causing query errors in certain scenarios.
+
 ## v25.3.2
 - Fixed an issue where essential classes for Spatial operations were incorrectly removed during native image generation. 
 Although the necessary dependencies were present, the classes were marked as unreachable and excluded from the final binary.
