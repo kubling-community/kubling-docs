@@ -1,6 +1,12 @@
 import '../styles/styles.css'
- 
-// This default export is required in a new `pages/_app.js` file.
+import { DefaultSeo } from 'next-seo'
+import SEO from '../next-seo.config'
+
 export default function KublingDocs({ Component, pageProps }) {
-  return <Component {...pageProps} />
+  return (
+    <>
+      <DefaultSeo {...SEO} />
+      <Component {...pageProps} />
+    </>
+  )
 }

@@ -1,3 +1,3 @@
-{
+export default {
   "parser": "Parser"
 }

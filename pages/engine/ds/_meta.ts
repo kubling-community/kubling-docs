@@ -1,4 +1,4 @@
-{
+export default {
     "intro": "Introduction",
     "db-data-sources": "Database",
     "redis": "",
@@ -10,4 +10,4 @@
     "kubling": "",
     "composite": "",
     "routing": ""
-    }
+}
