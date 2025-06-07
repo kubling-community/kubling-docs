@@ -1,0 +1,100 @@
+# Kubling Testcontainer
+
+The **Kubling Testcontainer** module allows you to easily start and manage an isolated instance of Kubling as part of your automated tests. It leverages the [Testcontainers](https://www.testcontainers.org/) library to create containerized environments that closely resemble production setups.
+
+This is ideal for:
+- Integration testing with real infrastructure dependencies.
+- Verifying different VDB or bundle configurations.
+- Testing data source interaction, behavior, and module outputs.
+
+> For more on Testcontainers, visit the [official site](https://testcontainers.com).
+
+---
+
+## Using Kubling Testcontainer in Java
+
+The Kubling Testcontainer Java code is available in the following repository:  
+[https://github.com/kubling-community/kubling-teiid-os/tree/master/test-container](https://github.com/kubling-community/kubling-teiid-os/tree/master/test-container)
+
+### 1. Maven Dependency
+
+Add this to your `pom.xml`:
+
+```xml
+<dependency>
+  <groupId>com.kubling</groupId>
+  <artifactId>kubling-test-container</artifactId>
+  <version>25.1.4</version>
+</dependency>
+```
+
+---
+
+### 2. Example Usage
+
+The following example demonstrates how to configure and launch a Kubling container with custom VDB and bundle files:
+
+```java
+static String USER_DIR = System.getProperty("user.dir");
+static String DEFAULT_APP_CONFIG = "app-config.yaml";
+static String DEFAULT_BUNDLE = "kubling-camunda-descriptor.zip";
+static String DEFAULT_CONTAINER_CONFIG_DIR = "app_data";
+
+static String DEFAULT_CONTAINER_APP_CONFIG =
+    String.format("/%s/%s", DEFAULT_CONTAINER_CONFIG_DIR, DEFAULT_APP_CONFIG);
+static String DEFAULT_CONTAINER_BUNDLE =
+    String.format("/%s/%s", DEFAULT_CONTAINER_CONFIG_DIR, DEFAULT_BUNDLE);
+
+static final Network network = Network.newNetwork();
+
+KublingContainer<?> kublingContainer =
+    new KublingContainer<>()
+        .withNetwork(network)
+        .withEnv(Map.of(
+            "ENABLE_WEB_CONSOLE", "FALSE",
+            "SCRIPT_LOG_LEVEL", "DEBUG",
+            "APP_CONFIG", DEFAULT_CONTAINER_APP_CONFIG,
+            "DESCRIPTOR_BUNDLE", DEFAULT_CONTAINER_BUNDLE,
+            "CASSANDRA_ADDRESS", "cassandra"
+        ))
+        .withLogConsumer(new Slf4jLogConsumer(log))
+        .withCopyFileToContainer(
+            MountableFile.forHostPath(String.format("%s/vdb/%s", USER_DIR, DEFAULT_APP_CONFIG)),
+            DEFAULT_CONTAINER_APP_CONFIG
+        )
+        .withCopyFileToContainer(
+            MountableFile.forHostPath(String.format("%s/vdb/%s", USER_DIR, DEFAULT_BUNDLE)),
+            DEFAULT_CONTAINER_BUNDLE
+        )
+        .withExposedPorts(
+            KublingContainer.DEFAULT_NATIVE_PORT,
+            KublingContainer.DEFAULT_HTTP_PORT
+        );
+...
+kublingContainer.start();        
+```
+
+---
+
+## Best Practices
+
+- Keep your VDB files, configuration YAMLs, and bundles under a dedicated `vdb/` test directory.
+- Use `.withCopyFileToContainer` to inject different runtime configurations depending on the test case.
+- Use the `Slf4jLogConsumer` with the `log` object (typically from SLF4J) to surface container logs into your test runner output.
+- Define networks if your tests involve multiple containers (e.g., PostgreSQL, Redis, Cassandra, APIs, etc.).
+- Always call `start()` before interacting with the container.
+
+---
+
+## Notes
+
+- By default, `KublingContainer` uses the latest Community Edition (CE) core image. If you require a specific version, 
+you can pass it as a parameter during instantiation, for example:  
+  ```java
+  new KublingContainer<>(DockerImageName.parse("kubling/kubling-ce:25.3.6"))
+  ```
+
+- If you're testing **Agentic capabilities** through the **Kubling Agent Platform**, be aware that running multiple Kubling instances in parallel 
+can significantly increase resource usage, specifically **requests per minute (RPM)** and **tokens per minute (TPM)**.  
+This may quickly approach or exceed the limits of your account, particularly if you're on a lower usage tier (e.g., Tier 0, 1, or 2).  
+To avoid hitting quotas or throttling, plan and pace your test executions accordingly.

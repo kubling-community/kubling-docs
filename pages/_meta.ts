@@ -10,6 +10,7 @@ export default {
   security: 'Security',
   observability: 'Observability',
   cli: 'CLI',
+  testcontainers: "Testcontainers",
   schemas: 'Configuration files schemas',
   changelog: 'Product Changelog',
   roadmap: 'Product Roadmap',

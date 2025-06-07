@@ -1,5 +1,11 @@
 # Product changelog
 
+## v25.3.6
+- Fixed an issue affecting `COMPOSITE` data source type that depleted connection pool when constructing querying database metadata concurrently from several connections and the same time.
+
+## v25.3.5
+- Updated to new Kubling core version. [See here.](https://github.com/kubling-community/kubling-teiid-os/commit/564a16895f2b8aff11fbc1f56be0fe1b78878077)
+
 ## v25.3.4
 - Fixed an issue where a column defined as `call_func`, when invoking standard SQL functions (introduced in v25.3.2), 
 was not correctly processed when the parameters provided were not part of the query's projected columns. 
