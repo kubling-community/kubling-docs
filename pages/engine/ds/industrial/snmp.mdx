@@ -1,0 +1,764 @@
+import Tag from '../../../../component/Tag'
+import { Callout } from 'nextra/components'
+
+# SNMP Data Source (`SNMP`) <Tag description={"v25.4+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+<Callout type="warning">
+As of version `25.4`, **SNMP** adapter is **read-only**. Only `SELECT` queries are supported.  
+`INSERT`, `UPDATE`, and `DELETE` operations are **not yet available**.
+
+We’re actively working to support write capabilities in upcoming releases.
+</Callout>
+
+Simple Network Management Protocol (SNMP) is a widely adopted protocol used to monitor and manage devices on IP networks—such as switches, routers, servers, 
+and embedded systems. It allows querying of structured device data via lightweight, request-response messages over UDP and TCP.
+
+At the core of SNMP is the **OID** (Object Identifier): a dot-separated numeric path that uniquely identifies a data point exposed by a device. 
+For example, the OID `1.3.6.1.2.1.1.5` typically corresponds to the system's hostname (`sysName`). These identifiers are part of a global, hierarchical tree managed by IANA and device vendors.
+
+Devices expose OIDs through a **Management Information Base (MIB)**, a virtual schema that defines the structure, data types, and semantics of available metrics. 
+Most MIBs are vendor-specific extensions of standardized SNMP trees.
+
+SNMP organizes data into **tables** and **scalar values**, and many real-world use cases rely on iterating full tables (e.g. network interfaces, physical components, power states). 
+Kubling abstracts this complexity by allowing you to model SNMP data directly using `CREATE FOREIGN TABLE` statements.
+
+<Callout type='warning'>
+As of version `25.4`, only **UDP** connections are supported for SNMP.  
+We are working to add **TCP** support, so expect it in a future release.
+</Callout>
+
+## Configuration
+<details>
+<summary>SNMP Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:SnmpSourceConfig"
+properties:
+  version:
+    type: "string"
+    enum:
+    - "V2"
+    - "V3"
+  transport:
+    type: "string"
+    enum:
+    - "UDP"
+    - "TCP"
+  address:
+    type: "string"
+  port:
+    type: "integer"
+  localBindingAddress:
+    type: "string"
+  localBindingPorts:
+    type: "string"
+    description: "A comma-separated list of local UDP ports to bind SNMP requests\
+      \ to. Supports individual ports (e.g., \"1162\") and port ranges (e.g., \"1162-1164\"\
+      ). You can mix both formats: \"1162,1164-1166,1170\". All port numbers must\
+      \ be in the range 1–65535, and ranges must be ordered (start <= end). Kubling\
+      \ will attempt to bind to these ports in order until one is available."
+  community:
+    type: "string"
+  connectionTimeout:
+    type: "integer"
+  connectionRetries:
+    type: "integer"
+  enableSoftTransactions:
+    type: "boolean"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+  oidForHealthCheck:
+    type: "string"
+    description: "The SNMP OID to be used for health checks. Kubling periodically\
+      \ polls this OID to verify that the target device is reachable and responding.\
+      \ By default, it uses '1.3.6.1.2.1.1.1.0' (sysDescr.0), which returns the device\
+      \ description. You can override this with any scalar OID that is known to exist\
+      \ and respond reliably on the target device."
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+  oidPrefix:
+    type: "string"
+  mibJsonFilePath:
+    type: "string"
+    description: "Absolute path to the JSON file generated by gosmi-json-exporter.\
+      \ For details, see: https://github.com/kubling-community/gosmi-json-exporter"
+  v3Config:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SnmpV3Config"
+    properties:
+      username:
+        type: "string"
+        description: "The SNMPv3 username used to authenticate with the target device.\
+          \ Must match a valid user configured on the SNMP agent."
+      localEngineId:
+        type: "string"
+        description: "The local SNMP engine ID, in hexadecimal string format. If not\
+          \ set, the engine ID is derived automatically. Only needed in advanced SNMPv3\
+          \ setups involving Engine ID synchronization."
+      enterpriseId:
+        type: "integer"
+        description: "Enterprise ID used for constructing a local engine ID when it\
+          \ is autogenerated. This is optional and typically only needed when setting\
+          \ up a custom SNMP engine identity."
+      engineBoots:
+        type: "integer"
+        description: "Boot counter value for SNMPv3 engine restarts. Used to prevent\
+          \ replay attacks. Usually left at 0 unless explicitly managing engine state\
+          \ across restarts."
+      authProtocol:
+        type: "string"
+        description: "Authentication protocol used for SNMPv3 message integrity and\
+          \ sender verification. Supported values include MD5, SHA, and extended HMAC-based\
+          \ algorithms."
+        enum:
+        - "MD5"
+        - "SHA"
+        - "HMAC128SHA224"
+        - "HMAC192SHA256"
+        - "HMAC256SHA384"
+        - "HMAC384SHA512"
+      privacyProtocol:
+        type: "string"
+        description: "Privacy (encryption) protocol used to secure SNMPv3 message\
+          \ contents."
+        enum:
+        - "DES"
+        - "v3DES"
+        - "AES128"
+        - "AES192"
+        - "AES256"
+      authenticationPassphrase:
+        type: "string"
+        description: "The passphrase used for SNMPv3 authentication. Required when\
+          \ using an authProtocol."
+      privacyPassphrase:
+        type: "string"
+        description: "The passphrase used for SNMPv3 encryption. Required when using\
+          \ a privacyProtocol."
+  singleEventErrorToleration:
+    type: "boolean"
+    description: "Controls how Kubling handles individual SNMP response errors. When\
+      \ set to false (default), any response event with an error causes the entire\
+      \ operation to fail. When set to true, Kubling tolerates single event errors\
+      \ by skipping the failed OID and continuing to process the remaining ones. Useful\
+      \ for dealing with partially implemented or unstable SNMP agents."
+```
+</details>
+
+Let's start by exploring a configuration example:
+
+```yaml
+dataSources:
+  - name: "snmp"
+    dataSourceType: "SNMP"
+    configObject:
+      version: "V3"
+      address: 100.100.1.2
+      port: 161
+      community: "public"
+      localBindingPorts: "1162"
+      connectionPool:
+        partitions: 1
+        minConnections: 2
+        maxConnections: 5
+      cache:
+        enabled: false
+        ttlSeconds: 43200
+      prefixTableNameToKey: true
+      v3Config:
+        privacyProtocol: DES
+        authProtocol: SHA
+        username: kbl
+        authenticationPassphrase: "my_auth_passphrase"
+        privacyPassphrase: "my_privacy_passphrase"
+    schema:
+      type: "PHYSICAL"
+      cacheDefaultStrategy: "NO_CACHE"
+      ddlFilePaths:
+        - "bundle:schema.ddl"
+```
+
+and it's schema:
+<details>
+<summary>Switch full IF Schema</summary>
+```sql
+CREATE FOREIGN TABLE ifTable
+(
+	ifIndex string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.1', ANNOTATION 'A unique value, greater than zero, for each interface.  It is recommended that values are assigned contiguously starting from 1.  The value for each interface sub-layer must remain constant at least from one re-initialization of the entity''s network management system to the next re- initialization.'),
+	ifDescr string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.2', ANNOTATION 'A textual string containing information about the interface.  This string should include the name of the manufacturer, the product name and the version of the interface hardware/software.'),
+	ifType string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.3', ANNOTATION 'The type of interface.  Additional values for ifType are assigned by the Internet Assigned Numbers Authority (IANA), through updating the syntax of the IANAifType textual convention.'),
+	ifMtu integer OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.4', ANNOTATION 'The size of the largest packet which can be sent/received on the interface, specified in octets.  For interfaces that are used for transmitting network datagrams, this is the size of the largest network datagram that can be sent on the interface.'),
+	ifSpeed integer OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.5', ANNOTATION 'An estimate of the interface''s current bandwidth in bits per second.  For interfaces which do not vary in bandwidth or for those where no accurate estimation can be made, this object should contain the nominal bandwidth.  If the bandwidth of the interface is greater than the maximum value reportable by this object then this object should report its maximum value (4,294,967,295) and ifHighSpeed must be used to report the interace''s speed.  For a sub-layer which has no concept of bandwidth, this object should be zero.'),
+	ifPhysAddress string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.6', ANNOTATION 'The interface''s address at its protocol sub-layer.  For example, for an 802.x interface, this object normally contains a MAC address.  The interface''s media-specific MIB must define the bit and byte ordering and the format of the value of this object.  For interfaces which do not have such an address (e.g., a serial line), this object should contain an octet string of zero length.'),
+	ifAdminStatus string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.7', ANNOTATION 'The desired state of the interface.  The testing(3) state indicates that no operational packets can be passed.  When a managed system initializes, all interfaces start with ifAdminStatus in the down(2) state.  As a result of either explicit management action or per configuration information retained by the managed system, ifAdminStatus is then changed to either the up(1) or testing(3) states (or remains in the down(2) state).'),
+	ifOperStatus string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.8', ANNOTATION 'The current operational state of the interface.  The testing(3) state indicates that no operational packets can be passed.  If ifAdminStatus is down(2) then ifOperStatus should be down(2).  If ifAdminStatus is changed to up(1) then ifOperStatus should change to up(1) if the interface is ready to transmit and receive network traffic; it should change to dormant(5) if the interface is waiting for external actions (such as a serial line waiting for an incoming connection); it should remain in the down(2) state if and only if there is a fault that prevents it from going to the up(1) state; it should remain in the notPresent(6) state if the interface has missing (typically, hardware) components.'),
+	ifLastChange string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.9', ANNOTATION 'The value of sysUpTime at the time the interface entered its current operational state.  If the current state was entered prior to the last re-initialization of the local network management subsystem, then this object contains a zero value.'),
+	ifInOctets long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.10', ANNOTATION 'The total number of octets received on the interface, including framing characters. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifInUcastPkts long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.11', ANNOTATION 'The number of packets, delivered by this sub-layer to a higher (sub-)layer, which were not addressed to a multicast or broadcast address at this sub-layer. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifInNUcastPkts long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.12', ANNOTATION 'The number of packets, delivered by this sub-layer to a higher (sub-)layer, which were addressed to a multicast or broadcast address at this sub-layer. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime. This object is deprecated in favour of ifInMulticastPkts and ifInBroadcastPkts.'),
+	ifInDiscards long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.13', ANNOTATION 'The number of inbound packets which were chosen to be discarded even though no errors had been detected to prevent their being deliverable to a higher-layer protocol.  One possible reason for discarding such a packet could be to free up buffer space. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifInErrors long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.14', ANNOTATION 'For packet-oriented interfaces, the number of inbound packets that contained errors preventing them from being deliverable to a higher-layer protocol.  For character- oriented or fixed-length interfaces, the number of inbound transmission units that contained errors preventing them from being deliverable to a higher-layer protocol. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifInUnknownProtos long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.15', ANNOTATION 'For packet-oriented interfaces, the number of packets received via the interface which were discarded because of an unknown or unsupported protocol.  For character-oriented or fixed-length interfaces that support protocol multiplexing the number of transmission units received via the interface which were discarded because of an unknown or unsupported protocol.  For any interface that does not support protocol multiplexing, this counter will always be 0. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifOutOctets long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.16', ANNOTATION 'The total number of octets transmitted out of the interface, including framing characters. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifOutUcastPkts long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.17', ANNOTATION 'The total number of packets that higher-level protocols requested be transmitted, and which were not addressed to a multicast or broadcast address at this sub-layer, including those that were discarded or not sent. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifOutNUcastPkts long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.18', ANNOTATION 'The total number of packets that higher-level protocols requested be transmitted, and which were addressed to a multicast or broadcast address at this sub-layer, including those that were discarded or not sent. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime. This object is deprecated in favour of ifOutMulticastPkts and ifOutBroadcastPkts.'),
+	ifOutDiscards long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.19', ANNOTATION 'The number of outbound packets which were chosen to be discarded even though no errors had been detected to prevent their being transmitted.  One possible reason for discarding such a packet could be to free up buffer space. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifOutErrors long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.20', ANNOTATION 'For packet-oriented interfaces, the number of outbound packets that could not be transmitted because of errors. For character-oriented or fixed-length interfaces, the number of outbound transmission units that could not be transmitted because of errors. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifOutQLen long OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.21', ANNOTATION 'The length of the output packet queue (in packets).'),
+	ifSpecific string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.22', ANNOTATION 'A reference to MIB definitions specific to the particular media being used to realize the interface.  It is recommended that this value point to an instance of a MIB object in the media-specific MIB, i.e., that this object have the semantics associated with the InstancePointer textual convention defined in RFC 2579.  In fact, it is recommended that the media-specific MIB specify what value ifSpecific should/can take for values of ifType.  If no MIB definitions specific to the particular media are available, the value should be set to the OBJECT IDENTIFIER { 0 0 }.')
+)
+OPTIONS (updatable 'false', snmp_type 'full_table', ANNOTATION 'A list of interface entries.  The number of entries is given by the value of ifNumber.');
+
+CREATE FOREIGN TABLE ifXTable
+(
+    ifIndex integer OPTIONS (snmp_derived_index '1.3.6.1.2.1.31.1.1.1.1:0'),
+	ifName string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.1', ANNOTATION 'The textual name of the interface.  The value of this object should be the name of the interface as assigned by the local device and should be suitable for use in commands entered at the device''s `console''.  This might be a text name, such as `le0'' or a simple port number, such as `1'', depending on the interface naming syntax of the device.  If several entries in the ifTable together represent a single interface as named by the device, then each will have the same value of ifName.  Note that for an agent which responds to SNMP queries concerning an interface on some other (proxied) device, then the value of ifName for such an interface is the proxied device''s local name for it. If there is no local name, or this object is otherwise not applicable, then this object contains a zero-length string.'),
+	ifInMulticastPkts integer OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.2', ANNOTATION 'The number of packets, delivered by this sub-layer to a higher (sub-)layer, which were addressed to a multicast address at this sub-layer.  For a MAC layer protocol, this includes both Group and Functional addresses. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifInBroadcastPkts integer OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.3', ANNOTATION 'The number of packets, delivered by this sub-layer to a higher (sub-)layer, which were addressed to a broadcast address at this sub-layer. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifOutMulticastPkts integer OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.4', ANNOTATION 'The total number of packets that higher-level protocols requested be transmitted, and which were addressed to a multicast address at this sub-layer, including those that were discarded or not sent.  For a MAC layer protocol, this includes both Group and Functional addresses. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifOutBroadcastPkts integer OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.5', ANNOTATION 'The total number of packets that higher-level protocols requested be transmitted, and which were addressed to a broadcast address at this sub-layer, including those that were discarded or not sent. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCInOctets biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.6', ANNOTATION 'The total number of octets received on the interface, including framing characters.  This object is a 64-bit version of ifInOctets. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCInUcastPkts biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.7', ANNOTATION 'The number of packets, delivered by this sub-layer to a higher (sub-)layer, which were not addressed to a multicast or broadcast address at this sub-layer.  This object is a 64-bit version of ifInUcastPkts. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCInMulticastPkts biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.8', ANNOTATION 'The number of packets, delivered by this sub-layer to a higher (sub-)layer, which were addressed to a multicast address at this sub-layer.  For a MAC layer protocol, this includes both Group and Functional addresses.  This object is a 64-bit version of ifInMulticastPkts. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCInBroadcastPkts biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.9', ANNOTATION 'The number of packets, delivered by this sub-layer to a higher (sub-)layer, which were addressed to a broadcast address at this sub-layer.  This object is a 64-bit version of ifInBroadcastPkts. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCOutOctets biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.10', ANNOTATION 'The total number of octets transmitted out of the interface, including framing characters.  This object is a 64-bit version of ifOutOctets. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCOutUcastPkts biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.11', ANNOTATION 'The total number of packets that higher-level protocols requested be transmitted, and which were not addressed to a multicast or broadcast address at this sub-layer, including those that were discarded or not sent.  This object is a 64-bit version of ifOutUcastPkts. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCOutMulticastPkts biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.12', ANNOTATION 'The total number of packets that higher-level protocols requested be transmitted, and which were addressed to a multicast address at this sub-layer, including those that were discarded or not sent.  For a MAC layer protocol, this includes both Group and Functional addresses.  This object is a 64-bit version of ifOutMulticastPkts. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifHCOutBroadcastPkts biginteger OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.13', ANNOTATION 'The total number of packets that higher-level protocols requested be transmitted, and which were addressed to a broadcast address at this sub-layer, including those that were discarded or not sent.  This object is a 64-bit version of ifOutBroadcastPkts. Discontinuities in the value of this counter can occur at re-initialization of the management system, and at other times as indicated by the value of ifCounterDiscontinuityTime.'),
+	ifLinkUpDownTrapEnable string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.14', ANNOTATION 'Indicates whether linkUp/linkDown traps should be generated for this interface. By default, this object should have the value enabled(1) for interfaces which do not operate on ''top'' of any other interface (as defined in the ifStackTable), and disabled(2) otherwise.'),
+	ifHighSpeed integer OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.15', ANNOTATION 'An estimate of the interface''s current bandwidth in units of 1,000,000 bits per second.  If this object reports a value of `n'' then the speed of the interface is somewhere in the range of `n-500,000'' to `n+499,999''.  For interfaces which do not vary in bandwidth or for those where no accurate estimation can be made, this object should contain the nominal bandwidth.  For a sub-layer which has no concept of bandwidth, this object should be zero.'),
+	ifPromiscuousMode boolean OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.16', ANNOTATION 'This object has a value of false(2) if this interface only accepts packets/frames that are addressed to this station. This object has a value of true(1) when the station accepts all packets/frames transmitted on the media.  The value true(1) is only legal on certain types of media.  If legal, setting this object to a value of true(1) may require the interface to be reset before becoming effective. The value of ifPromiscuousMode does not affect the reception of broadcast and multicast packets/frames by the interface.'),
+	ifConnectorPresent boolean OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.17', ANNOTATION 'This object has the value ''true(1)'' if the interface sublayer has a physical connector and the value ''false(2)'' otherwise.'),
+	ifAlias string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.18', ANNOTATION 'This object is an ''alias'' name for the interface as specified by a network manager, and provides a non-volatile ''handle'' for the interface. On the first instantiation of an interface, the value of ifAlias associated with that interface is the zero-length string.  As and when a value is written into an instance of ifAlias through a network management set operation, then the agent must retain the supplied value in the ifAlias instance associated with the same interface for as long as that interface remains instantiated, including across all re- initializations/reboots of the network management system, including those which result in a change of the interface''s ifIndex value. An example of the value which a network manager might store in this object for a WAN interface is the (Telco''s) circuit number/identifier of the interface. Some agents may support write-access only for interfaces having particular values of ifType.  An agent which supports write access to this object is required to keep the value in non-volatile storage, but it may limit the length of new values depending on how much storage is already occupied by the current values for other interfaces.'),
+	ifCounterDiscontinuityTime string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.1.1.19', ANNOTATION 'The value of sysUpTime on the most recent occasion at which any one or more of this interface''s counters suffered a discontinuity.  The relevant counters are the specific instances associated with this interface of any Counter32 or Counter64 object contained in the ifTable or ifXTable.  If no such discontinuities have occurred since the last re- initialization of the local management subsystem, then this object contains a zero value.')
+)
+OPTIONS (updatable 'false', snmp_type 'full_table', ANNOTATION 'A list of interface entries.  The number of entries is given by the value of ifNumber.  This table contains additional objects for the interface table.');
+
+CREATE FOREIGN TABLE ifStackTable
+(
+	ifStackStatus string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.2.1.3'),
+	ifStackHigherLayer integer OPTIONS (snmp_derived_index '1.3.6.1.2.1.31.1.2.1.3:0'),
+	ifStackLowerLayer integer OPTIONS (snmp_derived_index '1.3.6.1.2.1.31.1.2.1.3:1')
+)
+OPTIONS (updatable 'false', snmp_type 'full_table', ANNOTATION 'The table containing information on the relationships between the multiple sub-layers of network interfaces.  In particular, it contains information on which sub-layers run ''on top of'' which other sub-layers, where each sub-layer corresponds to a conceptual row in the ifTable.  For example, when the sub-layer with ifIndex value x runs over the sub-layer with ifIndex value y, then this table contains: ifStackStatus.x.y=active For each ifIndex value, I, which identifies an active interface, there are always at least two instantiated rows in this table associated with I.  For one of these rows, I is the value of ifStackHigherLayer; for the other, I is the value of ifStackLowerLayer.  (If I is not involved in multiplexing, then these are the only two rows associated with I.) For example, two rows exist even for an interface which has no others stacked on top or below it: ifStackStatus.0.x=active ifStackStatus.x.0=active');
+
+CREATE FOREIGN TABLE entityPhysical (
+    index integer OPTIONS (snmp_derived_index '1.3.6.1.2.1.47.1.1.1.1:0'),
+    name string OPTIONS (snmp_oid '1.3.6.1.2.1.47.1.1.1.1'),
+    class string OPTIONS (snmp_oid '1.3.6.1.2.1.47.1.1.1.5'),
+    parentIndex integer OPTIONS (snmp_oid '1.3.6.1.2.1.47.1.1.1.2')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE "system" (
+    sysDescr string OPTIONS (snmp_oid '1.3.6.1.2.1.1.1', ANNOTATION 'Device description (vendor, OS, version)'),
+    sysObjectID string OPTIONS (snmp_oid '1.3.6.1.2.1.1.2', ANNOTATION 'OID identifying the device type'),
+    sysUpTime string OPTIONS (snmp_oid '1.3.6.1.2.1.1.3', ANNOTATION 'Time since last reboot'),
+    sysContact string OPTIONS (snmp_oid '1.3.6.1.2.1.1.4', ANNOTATION 'Admin contact info'),
+    sysName string OPTIONS (snmp_oid '1.3.6.1.2.1.1.5', ANNOTATION 'Hostname'),
+    sysLocation string OPTIONS (snmp_oid '1.3.6.1.2.1.1.6', ANNOTATION 'Physical location'),
+    sysServices integer OPTIONS (snmp_oid '1.3.6.1.2.1.1.7', ANNOTATION 'Service bitmask')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE ipStats (
+    ipInReceives bigint OPTIONS (snmp_oid '1.3.6.1.2.1.4.3'),
+    ipInDelivers bigint OPTIONS (snmp_oid '1.3.6.1.2.1.4.9'),
+    ipOutRequests bigint OPTIONS (snmp_oid '1.3.6.1.2.1.4.10'),
+    ipForwDatagrams bigint OPTIONS (snmp_oid '1.3.6.1.2.1.4.6'),
+    ipInDiscards bigint OPTIONS (snmp_oid '1.3.6.1.2.1.4.4'),
+    ipOutDiscards bigint OPTIONS (snmp_oid '1.3.6.1.2.1.4.11'),
+    ipInAddrErrors bigint OPTIONS (snmp_oid '1.3.6.1.2.1.4.5')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE icmpStats (
+    icmpInMsgs bigint OPTIONS (snmp_oid '1.3.6.1.2.1.5.1'),
+    icmpOutMsgs bigint OPTIONS (snmp_oid '1.3.6.1.2.1.5.14'),
+    icmpInErrors bigint OPTIONS (snmp_oid '1.3.6.1.2.1.5.2'),
+    icmpOutErrors bigint OPTIONS (snmp_oid '1.3.6.1.2.1.5.15'),
+    icmpInEchoReps bigint OPTIONS (snmp_oid '1.3.6.1.2.1.5.8'),
+    icmpOutEchos bigint OPTIONS (snmp_oid '1.3.6.1.2.1.5.21')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE tcpStats (
+    tcpActiveOpens bigint OPTIONS (snmp_oid '1.3.6.1.2.1.6.5'),
+    tcpPassiveOpens bigint OPTIONS (snmp_oid '1.3.6.1.2.1.6.6'),
+    tcpAttemptFails bigint OPTIONS (snmp_oid '1.3.6.1.2.1.6.7'),
+    tcpEstabResets bigint OPTIONS (snmp_oid '1.3.6.1.2.1.6.8'),
+    tcpCurrEstab bigint OPTIONS (snmp_oid '1.3.6.1.2.1.6.9')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE udpStats (
+    udpInDatagrams bigint OPTIONS (snmp_oid '1.3.6.1.2.1.7.1'),
+    udpNoPorts bigint OPTIONS (snmp_oid '1.3.6.1.2.1.7.2'),
+    udpInErrors bigint OPTIONS (snmp_oid '1.3.6.1.2.1.7.3'),
+    udpOutDatagrams bigint OPTIONS (snmp_oid '1.3.6.1.2.1.7.4')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE etherStats (
+    index integer OPTIONS (snmp_derived_index '1.3.6.1.2.1.16.1.1.1.1:0'),
+    dropEvents bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.2'),
+    octets bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.3'),
+    packets bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.4')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE bridge (
+    dot1dBaseBridgeAddress string OPTIONS (snmp_oid '1.3.6.1.2.1.17.1.1'),
+    dot1dBaseNumPorts integer OPTIONS (snmp_oid '1.3.6.1.2.1.17.1.2'),
+    dot1dStpTimeSinceTopologyChange integer OPTIONS (snmp_oid '1.3.6.1.2.1.17.2.4'),
+    dot1dStpTopChanges integer OPTIONS (snmp_oid '1.3.6.1.2.1.17.2.5')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE rmonEtherStats (
+    index integer OPTIONS (snmp_derived_index '1.3.6.1.2.1.16.1.1.1.1:0'),
+    octets bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.3'),
+    packets bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.4'),
+    crcAlignErrors bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.5'),
+    undersizePkts bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.6'),
+    oversizePkts bigint OPTIONS (snmp_oid '1.3.6.1.2.1.16.1.1.1.7')
+)
+OPTIONS (snmp_type 'full_table');
+
+CREATE FOREIGN TABLE ifTestTable
+(
+	ifTestId string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.3.1.1', ANNOTATION 'This object identifies the current invocation of the interface''s test.'),
+	ifTestStatus string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.3.1.2', ANNOTATION 'This object indicates whether or not some manager currently has the necessary ''ownership'' required to invoke a test on this interface.  A write to this object is only successful when it changes its value from ''notInUse(1)'' to ''inUse(2)''. After completion of a test, the agent resets the value back to ''notInUse(1)''.'),
+	ifTestType string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.3.1.3', ANNOTATION 'A control variable used to start and stop operator- initiated interface tests.  Most OBJECT IDENTIFIER values assigned to tests are defined elsewhere, in association with specific types of interface.  However, this document assigns a value for a full-duplex loopback test, and defines the special meanings of the subject identifier: noTest  OBJECT IDENTIFIER ::= { 0 0 } When the value noTest is written to this object, no action is taken unless a test is in progress, in which case the test is aborted.  Writing any other value to this object is only valid when no test is currently in progress, in which case the indicated test is initiated. When read, this object always returns the most recent value that ifTestType was set to.  If it has not been set since the last initialization of the network management subsystem on the agent, a value of noTest is returned.'),
+	ifTestResult string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.3.1.4', ANNOTATION 'This object contains the result of the most recently requested test, or the value none(1) if no tests have been requested since the last reset.  Note that this facility provides no provision for saving the results of one test when starting another, as could be required if used by multiple managers concurrently.'),
+	ifTestCode string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.3.1.5', ANNOTATION 'This object contains a code which contains more specific information on the test result, for example an error-code after a failed test.  Error codes and other values this object may take are specific to the type of interface and/or test.  The value may have the semantics of either the AutonomousType or InstancePointer textual conventions as defined in RFC 2579.  The identifier: testCodeUnknown  OBJECT IDENTIFIER ::= { 0 0 } is defined for use if no additional result code is available.'),
+	ifTestOwner string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.3.1.6', ANNOTATION 'The entity which currently has the ''ownership'' required to invoke a test on this interface.')
+)
+OPTIONS (updatable 'false', snmp_type 'full_table', ANNOTATION 'This table contains one entry per interface.  It defines objects which allow a network manager to instruct an agent to test an interface for various faults.  Tests for an interface are defined in the media-specific MIB for that interface.  After invoking a test, the object ifTestResult can be read to determine the outcome.  If an agent can not perform the test, ifTestResult is set to so indicate.  The object ifTestCode can be used to provide further test- specific or interface-specific (or even enterprise-specific) information concerning the outcome of the test.  Only one test can be in progress on each interface at any one time. If one test is in progress when another test is invoked, the second test is rejected.  Some agents may reject a test when a prior test is active on another interface. Before starting a test, a manager-station must first obtain ''ownership'' of the entry in the ifTestTable for the interface to be tested.  This is accomplished with the ifTestId and ifTestStatus objects as follows: try_again: get (ifTestId, ifTestStatus) while (ifTestStatus != notInUse) /* * Loop while a test is running or some other * manager is configuring a test. */ short delay get (ifTestId, ifTestStatus) } /* * Is not being used right now -- let''s compete * to see who gets it. */ lock_value = ifTestId if ( set(ifTestId = lock_value, ifTestStatus = inUse, ifTestOwner = ''my-IP-address'') == FAILURE) /* * Another manager got the ifTestEntry -- go * try again */ goto try_again; /* * I have the lock */ set up any test parameters. /* * This starts the test */ set(ifTestType = test_to_run); wait for test completion by polling ifTestResult when test completes, agent sets ifTestResult agent also sets ifTestStatus = ''notInUse'' retrieve any additional test results, and ifTestId if (ifTestId == lock_value+1) results are valid A manager station first retrieves the value of the appropriate ifTestId and ifTestStatus objects, periodically repeating the retrieval if necessary, until the value of ifTestStatus is ''notInUse''.  The manager station then tries to set the same ifTestId object to the value it just retrieved, the same ifTestStatus object to ''inUse'', and the corresponding ifTestOwner object to a value indicating itself.  If the set operation succeeds then the manager has obtained ownership of the ifTestEntry, and the value of the ifTestId object is incremented by the agent (per the semantics of TestAndIncr).  Failure of the set operation indicates that some other manager has obtained ownership of the ifTestEntry. Once ownership is obtained, any test parameters can be setup, and then the test is initiated by setting ifTestType. On completion of the test, the agent sets ifTestStatus to ''notInUse''.  Once this occurs, the manager can retrieve the results.  In the (rare) event that the invocation of tests by two network managers were to overlap, then there would be a possibility that the first test''s results might be overwritten by the second test''s results prior to the first results being read.  This unlikely circumstance can be detected by a network manager retrieving ifTestId at the same time as retrieving the test results, and ensuring that the results are for the desired request. If ifTestType is not set within an abnormally long period of time after ownership is obtained, the agent should time-out the manager, and reset the value of the ifTestStatus object back to ''notInUse''.  It is suggested that this time-out period be 5 minutes. In general, a management station must not retransmit a request to invoke a test for which it does not receive a response; instead, it properly inspects an agent''s MIB to determine if the invocation was successful.  Only if the invocation was unsuccessful, is the invocation request retransmitted. Some tests may require the interface to be taken off-line in order to execute them, or may even require the agent to reboot after completion of the test.  In these circumstances, communication with the management station invoking the test may be lost until after completion of the test.  An agent is not required to support such tests. However, if such tests are supported, then the agent should make every effort to transmit a response to the request which invoked the test prior to losing communication.  When the agent is restored to normal service, the results of the test are properly made available in the appropriate objects. Note that this requires that the ifIndex value assigned to an interface must be unchanged even if the test causes a reboot.  An agent must reject any test for which it cannot, perhaps due to resource constraints, make available at least the minimum amount of information after that test completes.');
+
+CREATE FOREIGN TABLE ifRcvAddressTable
+(
+	ifRcvAddressAddress string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.4.1.1', ANNOTATION 'An address for which the system will accept packets/frames on this entry''s interface.'),
+	ifRcvAddressStatus string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.4.1.2', ANNOTATION 'This object is used to create and delete rows in the ifRcvAddressTable.'),
+	ifRcvAddressType string OPTIONS (snmp_oid '1.3.6.1.2.1.31.1.4.1.3', ANNOTATION 'This object has the value nonVolatile(3) for those entries in the table which are valid and will not be deleted by the next restart of the managed system.  Entries having the value volatile(2) are valid and exist, but have not been saved, so that will not exist after the next restart of the managed system.  Entries having the value other(1) are valid and exist but are not classified as to whether they will continue to exist after the next restart.')
+)
+OPTIONS (updatable 'false', snmp_type 'full_table', ANNOTATION 'This table contains an entry for each address (broadcast, multicast, or uni-cast) for which the system will receive packets/frames on a particular interface, except as follows: - for an interface operating in promiscuous mode, entries are only required for those addresses for which the system would receive frames were it not operating in promiscuous mode. - for 802.5 functional addresses, only one entry is required, for the address which has the functional address bit ANDed with the bit mask of all functional addresses for which the interface will accept frames. A system is normally able to use any unicast address which corresponds to an entry in this table as a source address.');
+```
+</details>
+
+### Configuration Goal
+
+This example connects to an SNMPv3-compatible device at `100.100.1.2` on port `161`.
+
+#### Basic Connection
+
+- **`version: "V3"`**  
+  Uses SNMP version 3, which includes authentication and encryption.
+
+- **`address` / `port`**  
+  IP address and SNMP port of the target device. `161` is the standard SNMP port.
+
+#### SNMPv3 Authentication
+
+The `v3Config` block defines SNMPv3 security parameters:
+
+- **`username`** – The SNMPv3 identity configured on the device.
+- **`authProtocol`** / **`privacyProtocol`** – Cryptographic algorithms for authentication and encryption.
+- **`authenticationPassphrase`** / **`privacyPassphrase`** – Corresponding secrets used to verify and decrypt traffic.
+
+#### Local Port Binding
+
+- **`localBindingPorts`**  
+  When using UDP (the default transport for SNMP), Kubling must bind to a local port in order to receive responses from the target device. This setting defines the set of ports available for that binding.
+
+  Kubling checks whether the number of available ports is sufficient to support the configured connection pool. If the number of usable local ports is too low to satisfy the pool’s concurrency settings (`partitions × maxConnections`), the engine will fail to initialize the SNMP source.
+
+  You can specify a single port, a list, or a range using syntax like:  
+  `"1162"`, `"1162,1163"`, or `"1162-1164"`.
+
+#### Connection Pooling
+
+- **`connectionPool`**  
+  Controls concurrency for SNMP sessions:
+  - `partitions: 1` – Number of internal connection pools (typically leave as 1).
+  - `minConnections` / `maxConnections` – Limits for open connections per partition.
+
+## Specific `TABLE` Directives
+
+| Directive               | Type   | Options                                                 | Description                                                                         |
+|-------------------------|--------|---------------------------------------------------------|-------------------------------------------------------------------------------------|
+| `snmp_type`             | String | One of: `full_table`, `static_mapping`, `dynamic_table` | Controls how Kubling walks and maps OIDs into rows and columns. See below.          |
+| `snmp_oid_prefix`       | String | Any valid OID prefix                                    | A base OID prepended to all column-level OIDs in the table definition.              |
+| `snmp_v3_ctx_engine_id` | String | Any Octet String                                        | Sets a specific SNMPv3 Engine ID for the table (used in multi-context setups).      |
+| `snmp_v3_ctx_name`      | String | Any Octet String                                        | Sets a specific SNMPv3 Context Name for the table. Useful for context-aware agents. |
+
+<Callout>
+If you’re unsure which `snmp_type` to use, default to `full_table`. It’s the most common mode and is optimized for SNMP tables with predictable indexing.
+</Callout>
+
+
+---
+
+## Specific `COLUMN` directives
+
+| Directive                 | Type   | Options                                                         | Description                                                                                                                        |
+|---------------------------|--------|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `snmp_oid`                | String | Any valid OID                                                   | The SNMP OID assigned to the column. Can be full or partial, depending on the presence of a `snmp_oid_prefix`.                     |
+| `snmp_derived_index`      | String | Any valid OID followed by an index (e.g. `:0`, `:1`)            | Defines a derived index from an OID, using the format `oid:index`. Useful for multi-index tables. See below for detailed examples. |
+| `snmp_oid_from_db`        | String | OID name from a MIB database specified by `mibDatabaseFilePath` | Allows referencing an OID by name instead of number, using the compiled MIB database.                                              |
+| `snmp_oid_prefix_from_db` | String | OID name or numeric prefix from the MIB database                | Used alongside `snmp_oid_from_db` to define a shared prefix applied to all OIDs in the table.                                      |
+
+<Callout>
+If you're using `snmp_oid_from_db`, ensure that the referenced MIBs are compiled and included via `mibDatabaseFilePath` in the source configuration.
+</Callout>
+
+---
+
+## Table Types
+
+### `full_table`
+
+In `full_table` mode, the adapter performs a single bulk query to the SNMP agent, requesting all the OIDs defined in the table schema. This is the most efficient and schema-aligned way to retrieve structured data and is typically the preferred mode for most devices.
+
+Because SNMP agents may respond with slightly different OID formats (e.g. longer-than-expected suffixes or intermediate indexing layers), Kubling uses a **backtracking approach** to match returned OIDs to their corresponding schema columns. This means it progressively removes segments from the end of each response OID until it finds a match in the defined table.
+
+#### Example
+
+Suppose the schema includes this column:
+
+```sql
+ifOperStatus string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.8')
+```
+
+And the device replies with an OID like:
+
+```
+1.3.6.1.2.1.2.2.1.8.5.99
+```
+
+The adapter will attempt the following matches, in order:
+
+- `1.3.6.1.2.1.2.2.1.8.5.99` → no match  
+- `1.3.6.1.2.1.2.2.1.8.5` → no match  
+- `1.3.6.1.2.1.2.2.1.8` → ✅ match found
+
+Once a match is identified, the trailing parts (e.g. `.5.99`) can be used to populate the index columns, using `snmp_derived_index`.
+
+<Callout>
+This fallback logic ensures compatibility with a wide range of SNMP agents, including those with non-standard or compound indexing structures.
+</Callout>
+
+### `static_mapping`
+
+`static_mapping` mode is designed for **non-tabular SNMP data**, such as system metadata, configuration values, or individual counters.
+
+In this mode, Kubling sends a **single SNMP request (PDU)** containing all the OIDs defined in the table. 
+When the response is received, the adapter attempts to match each **full OID exactly** to a column declared in the schema. 
+There is no backtracking or index extraction—only a strict 1:1 OID-to-column match.
+
+This mode is ideal for tables where each field corresponds to a fixed OID with no indexing.
+
+#### Example
+
+```sql
+CREATE FOREIGN TABLE "system" (
+  sysName       string OPTIONS (snmp_oid '1.3.6.1.2.1.1.5.0'),
+  sysDescr      string OPTIONS (snmp_oid '1.3.6.1.2.1.1.1.0'),
+  sysUpTime     string OPTIONS (snmp_oid '1.3.6.1.2.1.1.3.0')
+)
+OPTIONS (snmp_type 'static_mapping');
+```
+
+Each OID here represents a specific scalar value, such as the device hostname, description, or uptime, and will be matched strictly as written.
+
+<Callout type='info'>
+Use `static_mapping` only when working with flat, index-free structures. For SNMP tables or any indexed data, prefer `full_table`.
+</Callout>
+
+### `dynamic_table`
+
+The `dynamic_table` mode is designed for **exploration and introspection** rather than structured querying. 
+It allows Kubling (or agentic workflows) to walk unknown OID trees starting from a given prefix and retrieve raw values.
+
+This is particularly useful when building autonomous agents that need to explore devices, infer available metrics, and iteratively define or refine schemas.
+
+Unlike `full_table` or `static_mapping`, this mode doesn’t require predefined OIDs. Instead, you must provide a `snmp_oid_prefix`, and Kubling will walk all OIDs under that subtree.
+
+#### Required Columns
+
+`dynamic_table` expects a flexible schema with **special column names** that map to key SNMP walk results:
+
+- **`position`** – the last segment of the OID (e.g. `.5` in `...1.3.6.1.5`).
+- **`value`** – the actual SNMP value returned from the device.
+- **`oid`** – if included, Kubling will populate it with the full OID path for each result.
+
+#### Example
+
+```sql
+CREATE FOREIGN TABLE walkCpu (
+  position string,
+  value string,
+  oid string
+)
+OPTIONS (
+  snmp_type 'dynamic_table',
+  snmp_oid_prefix '1.3.6.1.4.1.2021.11'
+);
+```
+
+This would walk the subtree for CPU-related stats on many Unix-style agents and return the raw OID/value pairs.
+
+<Callout>
+This mode is intended for discovery, debugging, and agent-driven schema generation. It is **not optimized for regular queries** or stable schemas.
+</Callout>
+
+---
+
+## Data Types
+
+SNMP does not expose strongly typed values in the same way Kubling does. All SNMP data is retrieved as raw, loosely typed values, 
+typically as strings, integers, or opaque binary blocks.
+
+One of Kubling’s key features is **data type transformation**: when a value is retrieved from an SNMP agent, the adapter 
+obtains its string representation and attempts to convert it into the appropriate column type as defined in your table schema.
+
+This allows you to work with proper data types, such as `integer`, `boolean`, `long`, or `timestamp`, even though SNMP itself doesn’t support them natively.
+
+<Callout>
+For a full list of supported data type conversions, refer to the [DataTypeManager source code](https://github.com/kubling-community/kubling-teiid-os/blob/master/common-core/src/main/java/com/kubling/teiid/core/types/DataTypeManager.java).
+</Callout>
+
+## Using MIB Databases
+
+Kubling supports defining SNMP tables using **MIB-based OID name resolution**, making your schemas more readable and easier to maintain.
+
+To enable this feature, first generate a JSON-formatted MIB database using [`gosmi-json-exporter`](/engine/ds/industrial/tools/gosmi-json-exporter):
+
+```bash
+gosmi-json-exporter \
+  --mibdir ./mibs \
+  --module IF-MIB \
+  --out ./if-mib.json
+```
+
+Then reference the file in your SNMP source configuration:
+
+```yaml
+configObject:
+  ...
+  mibJsonFilePath: /etc/kubling/mibs/mymib.json
+```
+
+### Declaring Columns with `snmp_oid_from_db`
+
+Once the MIB database is configured, you can define table columns using the `snmp_oid_from_db` directive instead of hardcoding OIDs.
+
+#### 1. **Implicit OID Name Resolution**
+
+If you omit the value, Kubling will use the **column name** to resolve the OID from the MIB:
+
+```sql
+CREATE FOREIGN TABLE ifTestTable (
+  ifTestId     string OPTIONS (snmp_oid_from_db ''),
+  ifTestStatus string OPTIONS (snmp_oid_from_db ''),
+  ifTestType   string OPTIONS (snmp_oid_from_db ''),
+  ifTestResult string OPTIONS (snmp_oid_from_db '')
+)
+```
+
+Each column name (e.g. `ifTestStatus`) is matched against the MIB entries in the configured `mymib.json`.
+
+#### 2. **Explicit OID Name Resolution**
+
+You can also provide an explicit MIB object name when the column name differs:
+
+```sql
+CREATE FOREIGN TABLE myTable (
+  ifName        string OPTIONS (snmp_oid_from_db ''),
+  operationalId string OPTIONS (snmp_oid_from_db 'deviceOpId')
+)
+```
+
+In this case, `deviceOpId` is looked up in the MIB database and resolved to the appropriate OID.
+
+<Callout type="warning">
+Kubling currently supports only **flat JSON** structures when using a MIB database.  
+Avoid specifying `--grouping` or `--depth` options in `gosmi-json-exporter` if you intend to use the resulting JSON with Kubling.
+</Callout>
+
+### Autogenerating DDL from MIBs
+
+The [`gosmi-json-exporter`](/engine/ds/industrial/tools/gosmi-json-exporter) CLI also supports emitting a full Kubling `DDL` file based on MIB definitions, 
+allowing you to quickly bootstrap table definitions from real MIBs.
+
+To generate a Kubling-compatible DDL file:
+
+```bash
+gosmi-json-exporter \
+  --mibdir ./mibs \
+  --module IF-MIB \
+  --dump-tables \
+  --sql-schema \
+  --out ./if-mib.ddl
+```
+
+This will emit one or more table definition statements using `snmp_oid` directives, along with annotations derived from the MIB's description fields.
+
+You can then reference this file in your SNMP data source configuration:
+
+```yaml
+configObject:
+  ...
+schema:
+  ddlFilePaths:
+    - "bundle:my-schema.ddl"
+```
+
+---
+
+## Advanced SNMP Queries in Action
+
+Once SNMP data is modeled in Kubling, it becomes fully queryable using SQL, just like any structured data source.  
+This section highlights real-world queries that go beyond basic polling or monitoring, showcasing the analytical and relational power of Kubling's approach.
+
+---
+
+### 1. Interface Traffic Summary (In/Out/Total)
+
+```sql
+SELECT
+    ifName,
+    ROUND(ifHCInOctets / 1073741824.0, 2) AS gb_in,
+    ROUND(ifHCOutOctets / 1073741824.0, 2) AS gb_out,
+    ROUND((IFNULL(ifHCInOctets,0) + IFNULL(ifHCOutOctets,0)) / 1073741824.0, 2) AS total_gb
+FROM snmpfull.ifXTable
+WHERE ifName LIKE 'gi%'
+ORDER BY total_gb DESC
+```
+
+This query computes traffic in gigabytes across all interfaces whose name starts with `gi` (e.g., Gigabit Ethernet).  
+It demonstrates simple math, filtering, and sorting directly on SNMP counters.
+
+---
+
+### 2. Interfaces with Errors or Discards
+
+```sql
+SELECT
+    x.ifName,
+    b.ifInDiscards,
+    b.ifOutDiscards,
+    b.ifInErrors,
+    b.ifOutErrors,
+    (b.ifInDiscards + b.ifOutDiscards + b.ifInErrors + b.ifOutErrors) AS total_issues
+FROM snmpfull.ifXTable AS x
+JOIN snmpfull.ifTable AS b ON x.ifIndex = b.ifIndex
+WHERE (b.ifInDiscards + b.ifOutDiscards + b.ifInErrors + b.ifOutErrors) > 0
+ORDER BY total_issues DESC
+```
+
+Combines interface names with reliability metrics.  
+This is useful for identifying problem ports or links with chronic errors or discards.
+
+<Callout type="info">
+Most SNMP interface metrics are split across different tables like `ifTable` and `ifXTable`.  
+To correlate human-readable names with performance counters, join them using the shared `ifIndex`.
+</Callout>
+
+---
+
+### 3. Traffic Breakdown by Interface Type
+
+```sql
+SELECT
+    SUBSTRING(ifName, 1, 2) AS interface_type,
+    ROUND(SUM(IFNULL(ifHCInOctets, 0) + IFNULL(ifHCOutOctets, 0)) / 1073741824.0, 2) AS total_gb
+FROM snmpfull.ifXTable
+GROUP BY interface_type
+ORDER BY total_gb DESC
+```
+
+This query aggregates traffic by interface prefix (`gi`, `te`, `po`, etc.), showing usage trends by interface class.  
+It’s useful in infrastructure capacity planning and visual reporting.
+
+---
+
+### 4. Device Uptime in Hours
+
+```sql
+SELECT
+    sysName,
+    sysUpTime,
+    ROUND(sysUpTime / 6000.0 / 60.0 / 60.0, 1) AS uptime_hours
+FROM snmpfull."system"
+ORDER BY uptime_hours DESC
+```
+
+The `sysUpTime` field reports time in hundredths of a second. This query translates it into hours and ranks devices by uptime.
+
+---
+
+### 5. Map Hardware Components to Their Chassis
+
+```sql
+SELECT
+    parent.name AS chassis,
+    child.name AS component,
+    child.class AS type
+FROM snmpfull.entityPhysical AS child
+LEFT JOIN snmpfull.entityPhysical AS parent
+  ON child.parentIndex = parent.index
+WHERE child.class != 'chassis'
+ORDER BY chassis, component
+```
+
+This shows how SNMP data can be treated as hierarchical — useful for mapping physical components (modules, cards) back to their chassis.  
+It also demonstrates **self-joins**, which are uncommon in SNMP tools but fully supported in Kubling.
+
+---
+
+These examples illustrate how Kubling turns structured SNMP tables into powerful, queryable operational datasets.
+
+<Callout>
+SNMP data doesn't have to live in isolation. In Kubling, you can **combine it with inventory systems, databases, sensors, or ERP data**, 
+creating unified operational models like a full data center Bill of Materials (BOM), equipment lifecycle tracking, or cross-protocol health views.
+
+This unlocks use cases well beyond monitoring — including analytics, automation, and agent-driven optimization.
+</Callout>

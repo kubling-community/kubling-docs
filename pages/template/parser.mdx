@@ -34,7 +34,7 @@ Context can also contain `Objects` (whose schema id is `schema:kubling:InnerObje
 {{ kube_clusters.fullList.cluster_we_1 }}
 ```
 
-It is important to note that the parser is not strict when checking the `Object`, therefore if `kube_clusters` or `kube_clusters.fullList` are `null`,
+The parser is not strict when checking the `Object`, therefore if `kube_clusters` or `kube_clusters.fullList` are `null`,
 an empty `string` will be printed.
 
 ### Filters

@@ -22,7 +22,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "pages/engine/ds/industrial/modbus.mdx"  ],
   "exclude": [
     "node_modules"
   ]

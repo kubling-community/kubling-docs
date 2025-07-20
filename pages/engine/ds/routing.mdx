@@ -7,6 +7,58 @@ The **Routing Data Source** is a **proxy data source** that allows you to route 
 
 This is a fundamental piece when designing petabyte-scale decentralized operational data infrastructures.
 
+## Configuration
+<details>
+<summary>Routing Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:SimpleRoutingSourceConfig"
+properties:
+  strict:
+    type: "boolean"
+    description: "Specifies whether the engine should return an error if no rule matches\
+      \ the command. When set to false, the engine will use the default routing behavior."
+  defaultTo:
+    type: "string"
+    description: "Specifies the schema to which the command should be routed if no\
+      \ rule matches, when in non-strict mode. If this value is not provided, the\
+      \ engine defaults to routing the command to the first schema in the import list."
+  imports:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:translation:model:routing:ImportElement"
+      properties:
+        dataSource:
+          type: "string"
+        tableNamePattern:
+          type: "string"
+  rules:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:translation:model:routing:SimpleRoutingRule"
+      properties:
+        tableNamePattern:
+          type: "string"
+        toDataSource:
+          type: "string"
+        field:
+          type: "string"
+        comparison:
+          type: "string"
+          enum:
+          - "EQUAL"
+          - "NOT_EQUAL"
+          - "GREATER_THAN"
+          - "GREATER_THAN_OR_EQUAL"
+          - "LESS_THAN"
+          - "LESS_THAN_OR_EQUAL"
+        value:
+          type: "string"
+```
+</details>
+
 ## When to Use Routing
 
 #### **Scaling non-horizontally-scalable remote data sources**
@@ -89,7 +141,7 @@ Each rule consists of:
 - `value`: The expected value for the field.
 - `toDataSource`: The target data source where matching queries will be routed.
 
-It is important to note that **the order of the rules matters!**  
+Note that **the order of the rules matters!**  
 That is, the **first** rule that matches the criteria will be used to perform the routing, discarding the subsequent rules.
 
 ### Default route

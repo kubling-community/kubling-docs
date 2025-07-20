@@ -17,6 +17,56 @@ system does not have specific filter mechanisms or it is complex to implement, y
 is further inspected by the engine before returning the rows.
 </Callout>
 
+## Configuration
+<details>
+<summary>Script Document Data Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:script:ScriptingSourceConfig"
+properties:
+  contextVariables:
+    type: "object"
+    description: "Additional variables to add to the Script context."
+    additionalProperties:
+      type: "object"
+      id: "schema:kubling:InnerObject"
+  contextOptions:
+    type: "object"
+    description: "Additional options to add to the Script context."
+    additionalProperties:
+      type: "string"
+  module:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+    properties:
+      name:
+        type: "string"
+      zipFilePath:
+        type: "string"
+        description: "URI of the module bundle."
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+```
+</details>
+
 Sample configuration in VDB file:
 ```yaml
 - name: github
@@ -48,7 +98,7 @@ Following directives work only in Document Data Sources (like this one)
 
 <br/>
 
-## Specific field directives
+## Specific `COLUMN` directives
 | Directive                | Type   | Options                                                                                 | Description                                                                                                                                                                                                           |
 |--------------------------|--------|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `synthetic_type`         | String | `parent`, `parent_array_key`                                                            | Type of the synthetic field.<br/>`parent` indicates that exists in and is connected to the parent entity.<br/>`parent_array_key` indicates that the field is used to locate specific elements within `synthetic_path` |

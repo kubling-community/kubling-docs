@@ -1,0 +1,44 @@
+import { Callout } from 'nextra/components'
+
+# Industrial Data Sources
+
+Kubling provides support for select industrial protocols, including **SNMP** and **Modbus**, enabling you to access and model operational technology (OT) data sources with minimal configuration effort.
+
+These protocols were originally designed for control and monitoring, not for analytics or schema-based access. Yet, Kubling makes it possible to treat these sources like any other data system, using familiar SQL constructs to define tables and query live device data.
+
+There’s no need to write protocol-specific logic or custom extractors. Instead, you define structured schemas using `CREATE FOREIGN TABLE` statements, and Kubling handles the complexity of interacting with the underlying devices.
+
+## Why This Matters
+
+Industrial protocols like SNMP and Modbus are widely used in sectors such as manufacturing, energy, and networking. Traditionally, these systems are hard to query, siloed from IT infrastructure, and only accessible through specialized tooling.
+
+Kubling changes that. It lets you expose industrial data sources—such as PLCs, sensors, or embedded network devices—as structured tables that can be queried and joined just like databases. This enables you to include OT assets in your operational schema, enrich them with context, and build insight-driven agentic workflows.
+
+## Benefits
+
+- **Simple Configuration:** Use standard SQL statements to define Modbus or SNMP tables—no low-level knowledge required.
+- **Unified Access Layer:** Query industrial data alongside other systems, using the same distributed engine.
+- **Operational Modeling:** Describe your physical assets with schema-first definitions, bringing structure to previously opaque systems.
+
+<Callout type="info">
+Kubling currently supports **SNMP** and **Modbus**. Support for additional industrial protocols may be added in future releases.
+</Callout>
+
+## Deployment Considerations
+
+Unlike traditional Kubling deployments, where instances typically run in centralized, containerized environments, integrating industrial protocols calls for a different approach.
+
+We recommend deploying Kubling **as close as possible to the physical devices** you're connecting to. This reduces latency, simplifies network access, and ensures stable communication with equipment that often doesn’t tolerate delays or retries.
+
+To support this, we’re working on an **ARM-compatible version of Kubling** designed for lightweight, embedded environments (e.g. Raspberry Pi). These edge nodes can operate independently and federate upward to a parent Kubling instance.
+
+This architecture enables you to build a **federated graph of devices**:
+
+- Each **edge instance** manages a group of nearby industrial sources (e.g. SNMP or Modbus devices).
+- The **parent instance** connects to all edge instances via native Kubling federation.
+- The result is a global schema that spans multiple locations, networks, and technologies—while keeping polling traffic local to each node.
+
+<Callout type="info">
+This deployment model is especially suited for industrial environments where network segmentation, latency sensitivity, or physical proximity make centralized collection impractical.
+</Callout>
+

@@ -14,6 +14,78 @@ Additionally, **not all Redis data structures map easily to Kubling's relational
 
 From the data source configuration perspective, Redis data source is like any other. All the real configuration happens in the Schema definition, via Kubling `directives`.
 
+## Configuration
+<details>
+<summary>Redis Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:RedisSourceConfig"
+properties:
+  host:
+    type: "string"
+  port:
+    type: "integer"
+  database:
+    type: "integer"
+  userName:
+    type: "string"
+    description: "Username used to establish the connection."
+  token:
+    type: "string"
+    description: "Token or password used to establish the connection."
+  ssl:
+    type: "boolean"
+  prefixTableNameToKey:
+    type: "boolean"
+    description: "If enabled, the table name will be prefixed to the key. This helps\
+      \ prevent unintended matches when querying by key using pattern-based filtering,\
+      \ such as 'LIKE'."
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+```
+</details>
+
 Let's start by configuring a simple Redis data source that will contain 3 tables, one of each of the supported types (defined below in each section).
 
 ```yaml

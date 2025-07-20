@@ -210,6 +210,15 @@ Maximum number of SQL jobs running in parallel during the current execution.
 ### `kubling.engine.sql.jobs.enqueued.max` <Tag description={"Gauge"} />
 Maximum number of SQL jobs enqueued during the current execution.
 
+### `kubling.nw.inbound.total` <Tag description={"Counter"} /> <Tag description={"v25.4+"} />
+Total number of inbound network bytes received since the current instance started.
+This is a per-transport metric. Use the attached tags (`transport=native` and `transport=pg`) to determine which transport the value refers to.
+
+### `kubling.nw.outbound.total` <Tag description={"Counter"} /> <Tag description={"v25.4+"} />
+Total number of outbound network bytes sent since the current instance started.
+As with inbound metrics, this is collected per transport. Use the `transport` tag to filter and attribute usage correctly.
+
+
 ## JavaScript related metrics
 
 ### `kubling.js.threads.active` <Tag description={"Gauge"} />

@@ -16,7 +16,90 @@ H2 was chosen over Kubling's internal small database engine (used for metadata s
 - Accessing data does not depend on Kubling, making it easier to extract or view stored information independently.
 - It allows you to treat this data source as any other regular remote data source.
 
-[Check here](/schemas#portable-local-data-source-configuration) for the Portable Local Data Source configuration specification.
+## Configuration
+<details>
+<summary>Portable Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:PortableLocalSourceConfig"
+properties:
+  dataSourceName:
+    type: "string"
+    description: "Internal Engine data source name."
+  serverAddress:
+    type: "string"
+    description: "Address of the remote data source."
+  serverPort:
+    type: "integer"
+    description: "Port where the remote data source is listening for connections."
+  databaseName:
+    type: "string"
+    description: "Remote Data Base name."
+  userName:
+    type: "string"
+    description: "Username used to establish the connection."
+  token:
+    type: "string"
+    description: "Token or password used to establish the connection."
+  maxConnectionPoolSize:
+    type: "integer"
+    description: "Maximum number of connections the Engine will open. Default: 5"
+  minConnectionPoolSize:
+    type: "integer"
+    description: "Minimum number of connections the Engine will keep open. Default:\
+      \ 1"
+  maxConnectionIdleMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool without\
+      \ being used. Once reached, the connection is closed and removed from the pool.Default:\
+      \ 7200000ms (2 hours)"
+  maxConnectionLifeTimeMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool.\
+      \ Once reached, the connection is closed and removed from the pool. In case\
+      \ of pool size is less than minConnectionPoolSize after the removal, a new fresh\
+      \ connection is created.Default: 14400000ms (4 hours)"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  allowBruteForceOperations:
+    type: "boolean"
+    description: "Allows the engine to perform Update and Delete operations using\
+      \ all fields as a fallback when no other way to identify rows is available."
+  enableSoftTransactions:
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+  filePath:
+    type: "string"
+    description: "Path to file where to store the database."
+  filePassword:
+    type: "string"
+  ddl:
+    type: "string"
+    description: "Allows to run a DDL in the REMOTE data source once the connection\
+      \ is established."
+  ddlFilePaths:
+    type: "array"
+    description: "Allows to run multiple DDL, loaded from external file paths, in\
+      \ the REMOTE data source once the connection is established."
+    items:
+      type: "string"
+```
+</details>
 
 Sample configuration in VDB file:
 ```yaml

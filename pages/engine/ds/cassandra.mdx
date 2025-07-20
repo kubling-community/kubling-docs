@@ -18,6 +18,82 @@ Due to these differences, Cassandra is handled in Kubling as a separate data sou
   However, you can still **define additional columns** through the schema configuration.
 </Callout>
 
+## Configuration
+<details>
+<summary>Cassandra Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:CassandraSourceConfig"
+properties:
+  datastaxConfigFilePath:
+    type: "string"
+    description: "Specifies the path to the DataStax configuration file. If provided,\
+      \ this file will take precedence over individual configuration fields such as\
+      \ address, dataCenter, etc."
+  address:
+    type: "string"
+  dataCenter:
+    type: "string"
+  keyspace:
+    type: "string"
+    description: "The default keyspace for all queries. This will be used even if\
+      \ the configuration is loaded from a DataStax configuration file."
+  userName:
+    type: "string"
+  token:
+    type: "string"
+  port:
+    type: "integer"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"
+  allowBruteForceOperations:
+    type: "boolean"
+    description: "Allows the engine to perform Update and Delete operations using\
+      \ all fields as a fallback when no other way to identify rows is available."
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+```
+</details>
+
 ## Configuration example
 ```yaml copy
 dataSources:

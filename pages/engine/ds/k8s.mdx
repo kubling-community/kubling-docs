@@ -5,6 +5,60 @@ import { Callout } from 'nextra/components'
 
 This Data Source allows to interact with Kubernetes cluster resources as if they were just `TABLES`.
 
+
+## Configuration
+Uses the Standard DB Data Source Configuration.
+<details>
+<summary>Kubernetes Source configuration</summary>
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:KubernetesSourceConfig"
+properties:
+  contextVariables:
+    type: "object"
+    description: "Additional context variables."
+    additionalProperties:
+      type: "object"
+      id: "schema:kubling:InnerObject"
+  configFile:
+    type: "string"
+    description: "Kubernetes configuration file (kubeconfig)."
+  masterUrl:
+    type: "string"
+    description: "Kubernetes cluster API URL. Only used when configFile is not present."
+  blankNamespaceStrategy:
+    type: "string"
+    description: "Sets how the module will behave in case of the query received does\
+      \ not specify a namespace.If none specified, the absence of a namespace in the\
+      \ query will fall to the 'default' namespace, as the kubectl does."
+    enum:
+    - "DEFAULT"
+    - "ALL"
+    - "FAIL"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  enableSoftTransactions:
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+```
+</details>
+
 Sample configuration in VDB file:
 ```yaml
 - name: "k8s_1"
@@ -18,8 +72,6 @@ Sample configuration in VDB file:
     ddlFilePaths:
       - "bundle:k8s.ddl"
 ```
-
-[Check here](/schemas#kubernetes-data-source-configuration) the Kubernetes Data Source configuration spec.
 
 ### The importance of blank namespace strategy <Tag description={"v24.5.2+"} />
 
@@ -1400,7 +1452,7 @@ Following directives work only in Document Data Sources (like this one)
 
 ---
 
-## Specific field directives
+## Specific `COLUMN` directives
 | Directive                | Type   | Options                                                                                 | Description                                                                                                                                                                                                           |
 |--------------------------|--------|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `synthetic_type`         | String | `parent`, `parent_array_key`                                                            | Type of the synthetic field.<br/>`parent` indicates that exists in and is connected to the parent entity.<br/>`parent_array_key` indicates that the field is used to locate specific elements within `synthetic_path` |

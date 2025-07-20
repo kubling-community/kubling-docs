@@ -10,7 +10,7 @@ That configuration contains top-level options and the location of the next loadi
 
 In turn, descriptor bundle contains the list of Data Sources, that can be of the type `Module` which are also resolved using the same loading mechanism.
 
-It is important to note that the only local file needed by the engine is the application configuration, since the rest of the artifacts can be fetched from remote origins.
+Note that the only local file needed by the engine is the application configuration, since the rest of the artifacts can be fetched from remote origins.
 
 <Callout>
   All artifacts (or `zip` files) **but the application configuration** are referred as `Module` in the Kubling universe.<br/>A `Module` should follow the CI/CD principle, that is, have a versioning strategy and a 

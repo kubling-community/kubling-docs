@@ -17,6 +17,53 @@ Instead of dealing with multiple scattered schemas, **Composite Data Source** al
 
 ## Configuration
 
+<details>
+<summary>Composite Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:CompositeSourceConfig"
+properties:
+  dataSourceName:
+    type: "string"
+    description: "Internal Engine data source name."
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+  imports:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:dbvirt:translation:model:routing:ImportElement"
+      properties:
+        dataSource:
+          type: "string"
+        tableNamePattern:
+          type: "string"
+  enableSoftTransactions:
+    type: "boolean"
+```
+</details>
+
 The **Composite Data Source** can be configured in two ways:
 1. **Direct Import** – Similar to `passthrough` mode, where schemas are cloned from other data sources.
 2. **Custom Schema (DDL)** – Allows renaming tables, adding fields, or applying transformations.

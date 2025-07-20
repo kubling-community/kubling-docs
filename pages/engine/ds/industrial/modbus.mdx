@@ -1,0 +1,298 @@
+import Tag from '../../../../component/Tag'
+import { Callout } from 'nextra/components'
+
+# Modbus Data Source (`MODBUS`) <Tag description={"v25.4+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+<Callout type="warning">
+As of version `25.4`, **Modbus** adapter is **read-only**. Only `SELECT` queries are supported.  
+`INSERT`, `UPDATE`, and `DELETE` operations are **not yet available**.
+
+We’re actively working to support write capabilities in upcoming releases.
+</Callout>
+
+Modbus is one of the most widely adopted protocols in industrial environments, particularly for low-level devices like sensors, controllers, and embedded systems. 
+It operates over TCP or serial transport and exposes register-based memory rather than structured schemas.
+
+Kubling integrates with Modbus by letting you define logical tables that map to raw register addresses. 
+This provides a powerful way to model and query industrial data using standard SQL, even when the underlying device lacks any notion of a "table" or "schema".
+
+As with SNMP, Kubling handles the protocol complexity for you: reading, decoding, and transforming Modbus registers into usable types, 
+based on the table definitions you declare.
+
+<Callout type="info">
+Current support includes **Modbus over TCP**, using holding/input register access via `CREATE FOREIGN TABLE` declarations.
+</Callout>
+
+## Configuration
+<details>
+<summary>Modbus Source configuration</summary>
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:ModbusSourceConfig"
+properties:
+  address:
+    type: "string"
+  port:
+    type: "integer"
+  transport:
+    type: "string"
+    enum:
+    - "SERIAL"
+    - "TCP"
+  deviceId:
+    type: "integer"
+  timeoutMillis:
+    type: "integer"
+  byteOrder:
+    type: "string"
+    description: "Byte order for multi-register values. BIG_ENDIAN = MSB first (default),\
+      \ LITTLE_ENDIAN = LSB first."
+    enum:
+    - "BIG_ENDIAN"
+    - "LITTLE_ENDIAN"
+  tlsConfig:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ModbusTLSConfig"
+    properties:
+      certificates:
+        type: "string"
+        description: "The PEM-encoded certificate chain as a string. This should include\
+          \ the full client certificate (e.g., content of client.crt). If provided,\
+          \ it overrides 'certificatesFilePath'."
+      certificatesFilePath:
+        type: "string"
+        description: "Path to a PEM-encoded certificate chain file (e.g., /etc/kubling/client.crt).\
+          \ This is used only if 'certificates' is not provided."
+      privateKey:
+        type: "string"
+        description: "The PEM-encoded private key as a string. This should match the\
+          \ client certificate and typically comes from client.key. If provided, it\
+          \ overrides 'privateKeyFilePath'."
+      privateKeyFilePath:
+        type: "string"
+        description: "Path to a PEM-encoded private key file (e.g., /etc/kubling/client.key).\
+          \ This is used only if 'privateKey' is not provided."
+  enableSoftTransactions:
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+```
+</details>
+
+Let's start by exploring a configuration example:
+
+```yaml
+dataSources:
+  - name: "modbus"
+    dataSourceType: "MODBUS"
+    configObject:
+      transport: "TCP"
+      address: localhost
+      port: 8020
+      deviceId: 1
+      tlsConfig:
+        certificatesFilePath: /etc/kubling/server.crt
+        privateKeyFilePath: /etc/kubling/server.key
+      cache:
+        enabled: false
+    schema:
+      type: "PHYSICAL"
+      cacheDefaultStrategy: "NO_CACHE"
+      ddl: |
+        CREATE FOREIGN TABLE local_test (
+          test_id integer OPTIONS (modbus_address '0', modbus_data_type 'int'),        -- 1 reg (2 bytes)
+          status  integer OPTIONS (modbus_address '1', modbus_data_type 'int'),        -- 1 reg
+          type    integer OPTIONS (modbus_address '2', modbus_data_type 'int'),        -- 1 reg
+          result  integer OPTIONS (modbus_address '3', modbus_data_type 'int'),        -- 1 reg
+          owner   string  OPTIONS (modbus_address '4', modbus_data_length '6')         -- 6 regs (12 bytes)
+        )
+```
+
+### Configuration Goal
+
+This example configures a connection to a Modbus device over TCP at `localhost:8020`, targeting device ID `1`.
+
+#### Basic Connection
+
+- **`transport: "TCP"`**  
+  Specifies the transport type. Currently, only `TCP` is supported. `SERIAL` is reserved for future use.
+
+- **`address` / `port`**  
+  IP address (or hostname) and TCP port where the Modbus device is reachable. Default Modbus TCP port is `502`, but here we use `8020` as a custom port.
+
+- **`deviceId`**  
+  The Modbus **Unit ID** (also called slave address). This identifies which device on the bus to communicate with.
+
+#### TLS Configuration
+
+- **`tlsConfig`**  
+  Optional. Enables secure communication with Modbus devices that support TLS (typically via a gateway). You can specify either:
+  - Inline PEM strings (`certificates`, `privateKey`)
+  - File paths to the cert/key (`certificatesFilePath`, `privateKeyFilePath`) — as shown in the example.
+
+<Callout>
+Modbus sources do not expose high-level semantics, just registers. 
+Kubling gives you the tools to describe those registers in a structured, SQL-friendly way. The real value comes in how you define your tables.
+</Callout>
+
+## Specific `COLUMN` directives
+
+| Directive              | Type    | Options                                                                                                                       | Description                                                                                         |
+|------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `modbus_address`       | String  | Any valid register address (e.g. `0`, `30001`)                                                                                 | The **starting address** of the register to read. This is the base offset for extracting the field value. |
+| `modbus_data_type`     | String  | `boolean`, `int`, `uint16`, `int32`, `float`, `float32`, `uint32`, `int64`, `float64`, `double`, `uint64`, `string`, `byte[]` | Describes how the raw register value should be interpreted. Used to infer the number of registers to read if `modbus_data_length` is not specified. |
+| `modbus_data_length`   | Integer | Any positive integer                                                                                                           | Explicitly sets how many registers to read starting from `modbus_address`. Overrides all other type inference mechanisms. |
+
+<Callout type="info">
+When decoding a field, Kubling resolves the number of registers to read using the following precedence:
+1. If `modbus_data_length` is provided → it is used directly.  
+2. Else if `modbus_data_type` is specified → the register length is inferred from it.  
+3. Else → Kubling falls back to infer both the data type and length from the column’s SQL type.
+</Callout>
+
+## Data Type Resolution
+
+When mapping Modbus registers to SQL columns, Kubling uses a layered approach to determine how to extract values from the underlying protocol. If neither `modbus_data_type` nor `modbus_data_length` is provided for a column, Kubling will **infer both** based on the declared SQL type.
+
+This section documents the default logic used for:
+
+- How Modbus types map to register lengths
+- How Kubling types map to default Modbus types
+
+---
+
+## Handling Over-Allocated Reads
+
+Modbus tables in Kubling allow you to define a `modbus_data_length` that exceeds the minimum required length for a given type. 
+In these cases, Kubling will read all the specified registers but only [decode the portion it needs](#2-value-transformation-decoding-formats), discarding any extra bytes.
+
+This behavior can be useful in industrial scenarios where:
+
+- Devices return **fixed-length blocks** that contain padding, unused registers, or metadata
+- Registers are **aligned for hardware constraints**, and only a portion holds meaningful data
+- You need to scan or "probe" a range even if you're using only part of it
+
+### Example
+
+```sql
+CREATE FOREIGN TABLE example (
+  "value" integer OPTIONS (modbus_address '0', modbus_data_type 'int32', modbus_data_length '4')
+);
+```
+
+In the example above:
+
+- Kubling reads **4 registers** (8 bytes) starting at address 0
+- The `int32` decoder uses only the **first 2 registers (4 bytes)** to construct the value
+- The **remaining 4 bytes are discarded**
+
+This allows you to model "weird" layouts without failing, or needing to preprocess the Modbus memory space.
+
+<Callout type='warning'>
+This also means if meaningful data exists beyond the expected range, it will be silently ignored unless you explicitly declare it in another column.
+</Callout>
+---
+
+
+### Modbus Data Types → Register Lengths
+
+The table below lists how many **16-bit registers** are read for each Modbus type when no explicit `modbus_data_length` is specified:
+
+| Modbus Data Type                       | Register Length | Notes                               |
+|----------------------------------------|-----------------|-------------------------------------|
+| `boolean`                              | 1               | 16-bit single-bit encoded           |
+| `int`, `uint16`                        | 1               | 16-bit signed/unsigned integer      |
+| `int32`, `float`, `float32`, `uint32`  | 2               | 32-bit (2 registers)                |
+| `int64`, `float64`, `double`, `uint64` | 4               | 64-bit (4 registers)                |
+| `string`                               | 2               | Default: 4 characters = 2 registers |
+| `byte[]`                               | 2               | Default: 4 bytes = 2 registers      |
+
+---
+
+### Kubling SQL Types → Inferred Modbus Types
+
+If neither `modbus_data_type` nor `modbus_data_length` is defined, Kubling infers both using the SQL column type.
+
+| Kubling SQL Type                                             | Inferred Modbus Type | Notes                                        |
+|--------------------------------------------------------------|----------------------|----------------------------------------------|
+| `boolean`                                                    | `boolean`            |                                              |
+| `tinyint`, `smallint`                                        | `int`                | Mapped to 16-bit signed integer              |
+| `integer`, `serial`                                          | `int32`              | 32-bit integer                               |
+| `bigint`, `biginteger`                                       | `int64`              | 64-bit integer (4 registers)                 |
+| `float`, `real`                                              | `float32`            |                                              |
+| `double`, `decimal`                                          | `float64`            | Used for `double`, `bigdecimal`, or fallback |
+| `char`, `varchar`, `string`, `clob`, `json`, `xml`, `object` | `string`             | Textual and structured types as strings      |
+| `varbinary`, `blob`, `geometry`, `geography`                 | `byte[]`             | Binary and spatial types                     |
+| `date`, `time`, `timestamp`                                  | `int32`              | Expected as encoded numeric formats          |
+
+<Callout>
+Not all Modbus devices support 64-bit values or float encoding natively. You may need to verify support on the specific device you're integrating with.
+</Callout>
+
+## Data Reading vs. Value Transformation
+
+When querying a Modbus data source, Kubling performs two distinct operations for each column:
+
+1. **Register Reading** — how many 16-bit registers to read from the device  
+2. **Value Transformation** — how to decode those raw bytes into a usable SQL value
+
+These two steps are related but not the same. It's important to understand the distinction.
+
+---
+
+### 1. Register Reading (Length)
+
+Kubling first determines how many registers to read based on:
+
+- An explicitly defined `modbus_data_length`, or
+- The implied length from `modbus_data_type`, or
+- A fallback rule based on the column's SQL type (see [Data Type Resolution](#data-type-resolution))
+
+The register length only defines how many bytes to pull, **not how they’ll be interpreted**.
+
+---
+
+### 2. Value Transformation (Decoding Formats)
+
+Once the bytes are read, Kubling decodes them using a limited set of internal decoding formats. These formats define how raw bytes are interpreted, before being transformed into the target SQL type.
+
+Supported decoding formats:
+
+| Modbus Type        | Decoding Format                                          | Notes                                   |
+|--------------------|----------------------------------------------------------|-----------------------------------------|
+| `int`              | `buffer.short() & 0xFFFF`                                | Unsigned 16-bit integer                 |
+| `int32`            | `buffer.int()`                                           | Signed 32-bit integer (2 registers)     |
+| `float`, `float32` | `toFloat(buffer.int())`                                  | IEEE 754 float (2 registers)            |
+| `string`           | UTF-16 string decoded from `buffer.short()` per register | Each 2-byte register holds 2 characters |
+
+If the resulting value can't be converted into the SQL column type, Kubling will raise a transformation error.
+
+#### Example of a mismatch:
+
+```sql
+CREATE FOREIGN TABLE faulty (
+  "status" geometry OPTIONS (modbus_address '0', modbus_data_type 'int')
+);
+```
+
+Here, the Modbus adapter will correctly decode a 16-bit integer, but fail to convert that integer into a `geometry` object, because that transformation is not supported.
+
+<Callout>
+For a full list of supported data type conversions, refer to the [DataTypeManager source code](https://github.com/kubling-community/kubling-teiid-os/blob/master/common-core/src/main/java/com/kubling/teiid/core/types/DataTypeManager.java).
+</Callout>

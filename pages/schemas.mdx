@@ -60,6 +60,21 @@ properties:
                   \ certificates were generated with Kubling CLI)."
           enable:
             type: "boolean"
+          ipFilter:
+            type: "object"
+            id: "schema:kubling:dbvirt:config:app:IPFilter"
+            properties:
+              type:
+                type: "string"
+                description: "The type of the list: WHITELIST or BLACKLIST."
+                enum:
+                - "WHITELIST"
+                - "BLACKLIST"
+              cidrBlocks:
+                type: "array"
+                description: "List of CIDR blocks representing IP ranges (e.g. 192.168.0.0/24)."
+                items:
+                  type: "string"
       nativeProtocol:
         type: "object"
         $ref: "schema:kubling:dbvirt:config:app:Transport"
@@ -157,7 +172,7 @@ properties:
         type: "string"
         description: "Cron expression for periodic transaction DB flush of removed\
           \ segments. Default is every 5 minutes. Use a standard cron format, e.g.,\
-          \ '0 0/5 * * * *'."  
+          \ '0 0/5 * * * *'."
   kublingAgent:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:KublingAgent"
@@ -1243,6 +1258,237 @@ properties:
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
       \ is ignored in the overall assessment."          
+```
+
+## SNMP Data Source Configuration
+
+Applies to the following Data Source types:
+
+- `SNMP`
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:SnmpSourceConfig"
+properties:
+  version:
+    type: "string"
+    enum:
+    - "V2"
+    - "V3"
+  transport:
+    type: "string"
+    enum:
+    - "UDP"
+    - "TCP"
+  address:
+    type: "string"
+  port:
+    type: "integer"
+  localBindingAddress:
+    type: "string"
+  localBindingPorts:
+    type: "string"
+    description: "A comma-separated list of local UDP ports to bind SNMP requests\
+      \ to. Supports individual ports (e.g., \"1162\") and port ranges (e.g., \"1162-1164\"\
+      ). You can mix both formats: \"1162,1164-1166,1170\". All port numbers must\
+      \ be in the range 1–65535, and ranges must be ordered (start <= end). Kubling\
+      \ will attempt to bind to these ports in order until one is available."
+  community:
+    type: "string"
+  connectionTimeout:
+    type: "integer"
+  connectionRetries:
+    type: "integer"
+  enableSoftTransactions:
+    type: "boolean"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+  oidForHealthCheck:
+    type: "string"
+    description: "The SNMP OID to be used for health checks. Kubling periodically\
+      \ polls this OID to verify that the target device is reachable and responding.\
+      \ By default, it uses '1.3.6.1.2.1.1.1.0' (sysDescr.0), which returns the device\
+      \ description. You can override this with any scalar OID that is known to exist\
+      \ and respond reliably on the target device."
+  connectionPool:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    properties:
+      partitions:
+        type: "integer"
+        description: "Internal connections pool partitions. Default: 2"
+      minConnections:
+        type: "integer"
+        description: "Minimum available connections in the pool per partition. The\
+          \ overall total Minimum connections must be calculated per partition, that\
+          \ is: partitions * minConnections. Default: 3"
+      maxConnections:
+        type: "integer"
+        description: "Maximum connections to be added to the pool per partition. Once\
+          \ reached, subsequent connection requests will be enqueued. The overall\
+          \ total Maximum connections must be calculated per partition, that is: partitions\
+          \ * maxConnections. Default: 10"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a connection from the pool. Once reached, an error is thrown\
+          \ if no available connection.Default: 10000ms (10s)"
+  oidPrefix:
+    type: "string"
+  mibJsonFilePath:
+    type: "string"
+    description: "Absolute path to the JSON file generated by gosmi-json-exporter.\
+      \ For details, see: https://github.com/kubling-community/gosmi-json-exporter"
+  v3Config:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SnmpV3Config"
+    properties:
+      username:
+        type: "string"
+        description: "The SNMPv3 username used to authenticate with the target device.\
+          \ Must match a valid user configured on the SNMP agent."
+      localEngineId:
+        type: "string"
+        description: "The local SNMP engine ID, in hexadecimal string format. If not\
+          \ set, the engine ID is derived automatically. Only needed in advanced SNMPv3\
+          \ setups involving Engine ID synchronization."
+      enterpriseId:
+        type: "integer"
+        description: "Enterprise ID used for constructing a local engine ID when it\
+          \ is autogenerated. This is optional and typically only needed when setting\
+          \ up a custom SNMP engine identity."
+      engineBoots:
+        type: "integer"
+        description: "Boot counter value for SNMPv3 engine restarts. Used to prevent\
+          \ replay attacks. Usually left at 0 unless explicitly managing engine state\
+          \ across restarts."
+      authProtocol:
+        type: "string"
+        description: "Authentication protocol used for SNMPv3 message integrity and\
+          \ sender verification. Supported values include MD5, SHA, and extended HMAC-based\
+          \ algorithms."
+        enum:
+        - "MD5"
+        - "SHA"
+        - "HMAC128SHA224"
+        - "HMAC192SHA256"
+        - "HMAC256SHA384"
+        - "HMAC384SHA512"
+      privacyProtocol:
+        type: "string"
+        description: "Privacy (encryption) protocol used to secure SNMPv3 message\
+          \ contents."
+        enum:
+        - "DES"
+        - "v3DES"
+        - "AES128"
+        - "AES192"
+        - "AES256"
+      authenticationPassphrase:
+        type: "string"
+        description: "The passphrase used for SNMPv3 authentication. Required when\
+          \ using an authProtocol."
+      privacyPassphrase:
+        type: "string"
+        description: "The passphrase used for SNMPv3 encryption. Required when using\
+          \ a privacyProtocol."
+  singleEventErrorToleration:
+    type: "boolean"
+    description: "Controls how Kubling handles individual SNMP response errors. When\
+      \ set to false (default), any response event with an error causes the entire\
+      \ operation to fail. When set to true, Kubling tolerates single event errors\
+      \ by skipping the failed OID and continuing to process the remaining ones. Useful\
+      \ for dealing with partially implemented or unstable SNMP agents."    
+```
+
+## Modbus Data Source Configuration
+
+Applies to the following Data Source types:
+
+- `Modbus`
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:ModbusSourceConfig"
+properties:
+  address:
+    type: "string"
+  port:
+    type: "integer"
+  transport:
+    type: "string"
+    enum:
+    - "SERIAL"
+    - "TCP"
+  deviceId:
+    type: "integer"
+  timeoutMillis:
+    type: "integer"
+  byteOrder:
+    type: "string"
+    description: "Byte order for multi-register values. BIG_ENDIAN = MSB first (default),\
+      \ LITTLE_ENDIAN = LSB first."
+    enum:
+    - "BIG_ENDIAN"
+    - "LITTLE_ENDIAN"
+  tlsConfig:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:ModbusTLSConfig"
+    properties:
+      certificates:
+        type: "string"
+        description: "The PEM-encoded certificate chain as a string. This should include\
+          \ the full client certificate (e.g., content of client.crt). If provided,\
+          \ it overrides 'certificatesFilePath'."
+      certificatesFilePath:
+        type: "string"
+        description: "Path to a PEM-encoded certificate chain file (e.g., /etc/kubling/client.crt).\
+          \ This is used only if 'certificates' is not provided."
+      privateKey:
+        type: "string"
+        description: "The PEM-encoded private key as a string. This should match the\
+          \ client certificate and typically comes from client.key. If provided, it\
+          \ overrides 'privateKeyFilePath'."
+      privateKeyFilePath:
+        type: "string"
+        description: "Path to a PEM-encoded private key file (e.g., /etc/kubling/client.key).\
+          \ This is used only if 'privateKey' is not provided."
+  enableSoftTransactions:
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
 ```
 
 ## Composite Data Source Configuration

@@ -1,5 +1,13 @@
 # Product changelog
 
+## v25.4
+- Added support for **SNMP**.
+- Added support for **Modbus**.
+- Introduced class whitelisting to prevent unsafe object deserialization and injection attacks.
+- Added IP filtering per transport, supporting both CIDR whitelisting and blacklisting.
+- Introduced two new traffic metrics (per transport) to track total bytes transferred.
+- Added PostgreSQL system objects (tables and views) to support standard metadata queries. Now, universal DB tools like DBeaver should be able to retrieve database metadata when using the PG transport.
+
 ## v25.3.6
 - Fixed an issue affecting `COMPOSITE` data source type that depleted connection pool when constructing querying database metadata concurrently from several connections and the same time.
 

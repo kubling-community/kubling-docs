@@ -8,6 +8,7 @@ export default {
     "embedded": "",
     "portable": "",
     "kubling": "",
+    "industrial": "Industrial",
     "composite": "",
     "routing": ""
 }

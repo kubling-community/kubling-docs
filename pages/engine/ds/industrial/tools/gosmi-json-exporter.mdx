@@ -1,0 +1,69 @@
+# gosmi-json-exporter
+
+A command-line tool for parsing SNMP MIB modules with GoSMI and exporting structured outputs for Kubling.
+
+## What Is It
+
+`gosmi-json-exporter` lets you extract SNMP MIB data (nodes, tables, scalar values) and convert them into:
+
+- **Raw JSON**: for fast indexing by Kubling’s SNMP Data Source
+- **SQL DDL**: for using as a schema, ready for Kubling
+
+## Installation
+
+```bash
+git clone https://github.com/kubling-community/gosmi-json-exporter
+cd gosmi-json-exporter
+make build
+```
+
+or just download [latest release](https://github.com/kubling-community/gosmi-json-exporter/releases).
+
+## Usage
+
+```bash
+# Output JSON structure to STDOUT
+gosmi-json-exporter \
+  --mibdir ./mibs \
+  --module IF-MIB \
+  --out ./if-mib.json
+
+# Generate SQL schema (DDL) for Kubling
+gosmi-json-exporter \
+  --mibdir ./mibs \
+  --module IF-MIB \
+  --dump-tables \
+  --sql-schema \
+  --out ./if-mib.ddl
+```
+
+## CLI Flags
+
+| Flag           | Description                                                          |
+|----------------|----------------------------------------------------------------------|
+| `--mibdir`     | Directory containing `.mib` files (default: `.`)                    |
+| `--module`     | MIB module name to process (required)                               |
+| `--dump-tables`| Export SNMP table definitions as JSON (default output format)        |
+| `--scalar-mode`| How to export scalar nodes: `none`, `separate`, `grouped`, `all`   |
+| `--group-depth`| When `--scalar-mode=grouped`, how many OID segments to group by     |
+| `--sql-schema` | Emit Kubling-compatible SQL DDL (`CREATE FOREIGN TABLE …`)           |
+| `--out`        | Output file path (default: STDOUT)                                  |
+| `--version`    | Show version and exit                                               |
+
+## Example SQL DDL
+
+```sql
+CREATE FOREIGN TABLE ifTable
+(
+    ifIndex integer OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.1', ANNOTATION '...'),
+    ifDescr string OPTIONS (snmp_oid '1.3.6.1.2.1.2.2.1.2', ANNOTATION '...'),
+    ...
+)
+OPTIONS (updatable 'false', snmp_type 'full_table', ANNOTATION 'Interface table from MIB');
+```
+
+## Limitations
+
+- `snmp_derived_index` is **not supported** automatically, every column is emitted via `snmp_oid`.
+- For derived indexes (like `ifStackTable`, used in this documentation examples) you must manually adjust the DDL. See main `README.md` for guidance.
+- Complex MIB tables with vendor-specific structures may need manual tuning or use of curated MIB sets (e.g., from Observium).

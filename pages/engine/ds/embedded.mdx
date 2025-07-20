@@ -6,8 +6,87 @@ Initially added to Kubling as an internal feature for conducting heavy testing w
 it has since proven useful based on user feedback. 
 It can also be employed for various operational tasks such as storing instance-related information, caching data, managing temporary tables, or synchronizing scripts.
 
-### Configuration
-Uses the [Standard DB Data Source Configuration.](/schemas#standard-db-data-source-configuration)
+## Configuration
+Uses the Standard DB Data Source Configuration.
+<details>
+<summary>InMemory Source configuration</summary>
+
+```yaml
+type: "object"
+id: "schema:kubling:dbvirt:model:vdb:sources:BaseDatabaseSourceConfig"
+properties:
+  dataSourceName:
+    type: "string"
+    description: "Internal Engine data source name."
+  serverAddress:
+    type: "string"
+    description: "Address of the remote data source."
+  serverPort:
+    type: "integer"
+    description: "Port where the remote data source is listening for connections."
+  databaseName:
+    type: "string"
+    description: "Remote Data Base name."
+  userName:
+    type: "string"
+    description: "Username used to establish the connection."
+  token:
+    type: "string"
+    description: "Token or password used to establish the connection."
+  maxConnectionPoolSize:
+    type: "integer"
+    description: "Maximum number of connections the Engine will open. Default: 5"
+  minConnectionPoolSize:
+    type: "integer"
+    description: "Minimum number of connections the Engine will keep open. Default:\
+      \ 1"
+  maxConnectionIdleMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool without\
+      \ being used. Once reached, the connection is closed and removed from the pool.Default:\
+      \ 7200000ms (2 hours)"
+  maxConnectionLifeTimeMilliseconds:
+    type: "integer"
+    description: "Maximum time in milliseconds a connection can live in the pool.\
+      \ Once reached, the connection is closed and removed from the pool. In case\
+      \ of pool size is less than minConnectionPoolSize after the removal, a new fresh\
+      \ connection is created.Default: 14400000ms (4 hours)"
+  cache:
+    type: "object"
+    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  allowBruteForceOperations:
+    type: "boolean"
+    description: "Allows the engine to perform Update and Delete operations using\
+      \ all fields as a fallback when no other way to identify rows is available."
+  enableSoftTransactions:
+    type: "boolean"
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+  ddl:
+    type: "string"
+    description: "Allows to run a DDL in the REMOTE data source once the connection\
+      \ is established."
+  ddlFilePaths:
+    type: "array"
+    description: "Allows to run multiple DDL, loaded from external file paths, in\
+      \ the REMOTE data source once the connection is established."
+    items:
+      type: "string"
+```
+</details>
 
 Sample configuration in VDB file:
 ```yaml

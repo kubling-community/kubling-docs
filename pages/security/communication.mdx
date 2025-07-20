@@ -1,3 +1,6 @@
+import Tag from '../../component/Tag'
+import { Callout } from 'nextra/components'
+
 # Communication security
 Kubling uses a transport-independent securing mechanism, which works at communication level using SSL (or TLS).
 In other words, it is possible to secure native and PostgreSQL transport protocols using the same standard TLS configuration.
@@ -42,3 +45,49 @@ transports:
       storeFilePath: "/certs/server-pg.ks"
       storePassword: "456def"
 ```
+
+---
+
+## Configure IP Whitelist and Blacklist <Tag description={"v25.4+"} />
+
+Kubling supports IP-level **whitelisting** and **blacklisting** for inbound connections at the transport layer. 
+This filtering occurs **before** messages enter the transport pipeline (**but after the TLS negotiation**, if configured), allowing Kubling to reject unwanted traffic as early and efficiently as possible.
+
+Filters are applied per protocol (`nativeProtocol`, `pgProtocol`) and are defined using **CIDR blocks**, which can match single IPs or entire subnets.
+
+Filtering is evaluated immediately when a remote client attempts to connect. If the IP is not allowed (or explicitly blocked), the connection is terminated without processing any payload.
+
+### Example
+
+```yaml
+transports:
+  nativeProtocol:
+    ...
+    ipFilter:
+      type: WHITELIST
+      cidrBlocks:
+        - 127.0.0.1                  # localhost only
+        - 192.168.1.15               # single IP
+        - 10.10.0.0/16               # entire subnet
+        - 172.20.30.0/24             # class C block
+
+  pgProtocol:
+    ...
+    ipFilter:
+      type: BLACKLIST
+      cidrBlocks:
+        - 192.168.1.1                # explicitly deny this IP
+        - 203.0.113.0/24             # deny this public test block
+```
+
+### Notes
+
+- `type` must be either `WHITELIST` or `BLACKLIST` (case-sensitive).
+- CIDR blocks can represent:
+  - A **single IP** (e.g. `192.168.1.15`)
+  - A **range/subnet** (e.g. `10.10.0.0/16`)
+- Each protocol can define independent filters.
+
+<Callout>
+Use whitelists in secure environments where access should be strictly controlled, and blacklists when you only need to exclude known threats or test ranges.
+</Callout>
