@@ -1,5 +1,11 @@
 # Product changelog
 
+## v25.4.1
+- Fixed Cassandra adapter to resolve an issue where, under certain conditions, the total number of visible rows was incorrectly limited to the page size. 
+This was caused by a premature termination of the data stream.
+- Addressed an issue where the console returned an HTTP 500 error when adding new data sources, due to changes in underlying configuration object handling.
+
+
 ## v25.4
 - Added support for **SNMP**.
 - Added support for **Modbus**.

@@ -707,12 +707,21 @@ To correlate human-readable names with performance counters, join them using the
 ### 3. Traffic Breakdown by Interface Type
 
 ```sql
-SELECT
+WITH traffic_summary AS (
+  SELECT
     SUBSTRING(ifName, 1, 2) AS interface_type,
-    ROUND(SUM(IFNULL(ifHCInOctets, 0) + IFNULL(ifHCOutOctets, 0)) / 1073741824.0, 2) AS total_gb
-FROM snmpfull.ifXTable
-GROUP BY interface_type
-ORDER BY total_gb DESC
+    ROUND(
+      SUM(
+        IFNULL(ifHCInOctets, 0) + IFNULL(ifHCOutOctets, 0)
+      ) / 1073741824.0,
+      2
+    ) AS total_gb
+  FROM snmpfull.ifXTable
+  GROUP BY SUBSTRING(ifName, 1, 2)
+)
+SELECT *
+FROM traffic_summary
+ORDER BY total_gb DESC;
 ```
 
 This query aggregates traffic by interface prefix (`gi`, `te`, `po`, etc.), showing usage trends by interface class.  
@@ -732,6 +741,11 @@ ORDER BY uptime_hours DESC
 ```
 
 The `sysUpTime` field reports time in hundredths of a second. This query translates it into hours and ranks devices by uptime.
+
+<Callout type='warning'>
+This query assumes `sysUpTime` is returned as a **numeric counter**. However, some appliances (such as certain Cisco switches) may return a **formatted string**, such as `82 days, 18:05:37.00`.
+Make sure the field is castable to numeric, or handle device-specific variations using your own custom functions.
+</Callout>
 
 ---
 
