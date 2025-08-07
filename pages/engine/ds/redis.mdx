@@ -231,7 +231,9 @@ This approach allows you to:
 - Avoid unexpected matches when filtering by pattern (e.g., `LIKE 'user:%'`).
 - Maintain clean, isolated storage per table inside a shared Redis instance.
 
-> 🔍 From the user’s perspective, **this is completely transparent**. You do not need to include the table name when querying—Kubling will handle key resolution behind the scenes.
+<Callout>
+  From the user’s perspective, **this is completely transparent**. You do not need to include the table name when querying—Kubling will handle key resolution behind the scenes.
+</Callout>
 
 This feature is particularly useful in multi-tenant or multi-entity scenarios where key collisions would otherwise be hard to manage.
 
