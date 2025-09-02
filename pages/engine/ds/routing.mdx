@@ -23,6 +23,26 @@ properties:
     description: "Specifies the schema to which the command should be routed if no\
       \ rule matches, when in non-strict mode. If this value is not provided, the\
       \ engine defaults to routing the command to the first schema in the import list."
+  limitEnforcement:
+    type: "string"
+    description: "Controls how LIMIT clauses are enforced across routed branches.\n\
+      - PER_ROUTE_ONLY: The LIMIT is applied independently to each matching route.\n\
+      - POST_UNION_ONLY: The LIMIT is applied globally after combining results.\n\
+      - PER_ROUTE_AND_UNION: The LIMIT is applied both per route and globally (useful\
+      \ for pagination with fairness)."
+    enum:
+    - "PER_ROUTE_ONLY"
+    - "POST_UNION_ONLY"
+    - "PER_ROUTE_AND_UNION"
+  orderEnforcement:
+    type: "string"
+    description: "Controls how ORDER BY clauses are enforced across routed branches.\n\
+      - PER_ROUTE: Each route applies its own sorting; global ordering is not guaranteed.\n\
+      - POST_UNION: Sorting is applied only after merging results from all routes\
+      \ (ensures global ordering)."
+    enum:
+    - "PER_ROUTE"
+    - "POST_UNION"
   imports:
     type: "array"
     items:
@@ -144,6 +164,112 @@ Each rule consists of:
 Note that **the order of the rules matters!**  
 That is, the **first** rule that matches the criteria will be used to perform the routing, discarding the subsequent rules.
 
+## SELECT Behavior and Result Semantics
+
+Unlike traditional data sources, the `ROUTING` data source delegates **entire subqueries** to the appropriate route based on the routing rules. This results in specific behavior regarding `GROUP BY`, `ORDER BY`, and `LIMIT`, especially when combined with aggregations.
+
+### Aggregation and Grouping Behavior
+
+The engine performs aggregation **per route**, which means each branch calculates its own results. These partial results are then merged.
+
+```sql
+-- Example: Aggregation per route
+SELECT NAME_, COUNT(*) AS deployment_count
+FROM routing.ACT_RE_DEPLOYMENT
+WHERE data_center IN ('DC1', 'DC2')
+GROUP BY NAME_
+```
+
+This query is split into:
+
+```sql
+-- Route 1
+SELECT NAME_, COUNT(*) AS deployment_count
+FROM portable_1.ACT_RE_DEPLOYMENT
+WHERE data_center = 'DC1'
+GROUP BY NAME_
+
+-- Route 2
+SELECT NAME_, COUNT(*) AS deployment_count
+FROM portable_2.ACT_RE_DEPLOYMENT
+WHERE data_center = 'DC2'
+GROUP BY NAME_
+```
+
+After both subqueries are executed, their results are **UNION-ed** in memory. That means the final result **may include duplicate values** or not reflect global aggregations across all sources.
+
+To ensure global aggregation (e.g., if the same NAME_ exists in both routes), you must perform another aggregation in the outer query:
+
+```sql
+WITH partial_counts AS (
+  SELECT NAME_, COUNT(*) AS deployment_count FROM routing.ACT_RE_DEPLOYMENT
+  WHERE data_center IN ('DC1', 'DC2')
+  GROUP BY NAME_
+)
+SELECT NAME_, SUM(deployment_count) as global_count
+FROM partial_counts
+GROUP BY NAME_
+```
+
+### LIMIT Enforcement <Tag description={"v25.4.3+"} />
+
+The `limitEnforcement` parameter determines **how `LIMIT` is applied** when multiple routes match.
+
+| Value               | Meaning                                                                 |
+|--------------------|-------------------------------------------------------------------------|
+| `PER_ROUTE_ONLY`   | The `LIMIT` is applied **per route**, potentially returning N * R rows. |
+| `POST_UNION_ONLY`  | The `LIMIT` is applied only after the union of all route results.       |
+| `PER_ROUTE_AND_UNION` | Applies the `LIMIT` in both cases; useful for pagination fairness.   |
+
+### ORDER Enforcement <Tag description={"v25.4.3+"} />
+
+The `orderEnforcement` parameter defines **where the `ORDER BY` clause is evaluated**.
+
+| Value       | Behavior                                                                 |
+|-------------|--------------------------------------------------------------------------|
+| `PER_ROUTE` | Each route applies its own sort, final result may be unordered globally. |
+| `POST_UNION`| Sorting is applied after combining the results; ensures global ordering. |
+
+In `PER_ROUTE`, ordering is **not guaranteed** globally, and pagination may lead to inconsistencies.
+
+### JOIN Considerations
+
+When writing `JOIN` queries that involve routed tables, the engine attempts to **determine a routing path for each table involved**. If it succeeds, the query is dispatched; otherwise, it fails with a clear error if not default route was specified.
+
+To ensure proper routing:
+
+- **Each routed table must have enough filtering conditions** (e.g., `data_center = 'DC1'`) so that its path can be inferred.
+- If **at least one** routed table in the `JOIN` lacks such a condition, the engine cannot determine where to send the query and will reject it.
+
+#### ✅ This works:
+
+```sql
+SELECT d.NAME_, COUNT(*) as event_count
+FROM routing.ACT_RE_DEPLOYMENT d
+JOIN routing.ACT_USAGE_EVENT u 
+  ON d.ID_ = u.DEPLOYMENT_ID_ AND u.data_center IN ('DC1', 'DC2')
+WHERE d.data_center IN ('DC1', 'DC2')
+GROUP BY d.NAME_
+ORDER BY event_count DESC
+LIMIT 5
+```
+
+In this case, both `ACT_RE_DEPLOYMENT` and `ACT_USAGE_EVENT` have explicit conditions on the routing field (`data_center`), so the engine can route each part independently and join the results correctly.
+
+#### ❌ This fails:
+
+```sql
+SELECT d.NAME_, COUNT(*) as event_count
+FROM routing.ACT_RE_DEPLOYMENT d
+JOIN routing.ACT_USAGE_EVENT u 
+  ON d.ID_ = u.DEPLOYMENT_ID_ AND u.data_center IN ('DC1', 'DC2')
+GROUP BY d.NAME_
+ORDER BY event_count DESC
+LIMIT 5
+```
+
+Here, the table `ACT_RE_DEPLOYMENT` is missing a routing condition (`data_center`), so the engine cannot determine which underlying data source to use. This will result in a runtime error.
+
 ### Default route
 In case you want to route to a default data source when no rule is a match, you can do so by defining a `defaultTo` as follows:
 ```yaml
@@ -159,6 +285,137 @@ In case you want to route to a default data source when no rule is a match, you 
 Note that `defaultTo` applies to **all tables**.
 
 If no rule matches and a default route is not defined, the command will be rejected, and the client will receive an error.
+
+## Best Practices
+
+Working with `ROUTING` data sources can introduce complexity, especially when your query spans multiple routes or involves aggregations and limits. This section outlines patterns, strategies, and configurations that can help you avoid unexpected behaviors and improve query consistency and performance.
+
+### Use CTEs (`WITH`) to Simplify and Isolate Routed Subqueries
+
+Breaking down your logic using `WITH` clauses (common table expressions) can help isolate the logic of each routed operation and control how data is combined later.
+
+**Example:**
+```sql
+WITH usage_by_deployment AS (
+  SELECT DEPLOYMENT_ID_, COUNT(*) AS cnt
+  FROM routing.ACT_USAGE_EVENT
+  WHERE data_center IN ('DC1', 'DC2')
+  GROUP BY DEPLOYMENT_ID_
+)
+SELECT d.NAME_, u.cnt
+FROM routing.ACT_RE_DEPLOYMENT d
+JOIN usage_by_deployment u ON d.ID_ = u.DEPLOYMENT_ID_
+WHERE d.data_center IN ('DC1', 'DC2')
+```
+
+This pattern ensures `ACT_USAGE_EVENT` is evaluated independently and then joined after route selection.
+
+## Preventing Duplicates from Ambiguous Joins
+
+When working with routed tables, the routing key (for example `data_center`) must always be preserved during aggregation and joins.  
+If it is omitted, queries may produce **duplicates or mismatched results**.
+
+Consider the following query:
+
+```sql
+WITH usage_by_deployment AS (
+  SELECT DEPLOYMENT_ID_, COUNT(*) AS cnt
+  FROM routing.ACT_USAGE_EVENT
+  WHERE data_center IN ('DC1', 'DC2')
+  GROUP BY DEPLOYMENT_ID_
+)
+SELECT d.NAME_, d.data_center, u.cnt
+FROM routing.ACT_RE_DEPLOYMENT d
+JOIN usage_by_deployment u ON d.ID_ = u.DEPLOYMENT_ID_
+WHERE d.data_center IN ('DC1', 'DC2')
+```
+
+This query may return duplicates because the CTE **does not group by `data_center`**, so counts from different partitions are collapsed.  
+Additionally, the `JOIN` condition does not include `data_center`, allowing deployments from different data centers with the same ID to be cross-joined.
+
+✅ Correct version:
+
+```sql
+WITH usage_by_deployment AS (
+  SELECT data_center, DEPLOYMENT_ID_, COUNT(*) AS cnt
+  FROM routing.ACT_USAGE_EVENT
+  WHERE data_center IN ('DC1', 'DC2')
+  GROUP BY data_center, DEPLOYMENT_ID_
+)
+SELECT d.NAME_, d.data_center, u.cnt
+FROM routing.ACT_RE_DEPLOYMENT d
+JOIN usage_by_deployment u 
+  ON d.ID_ = u.DEPLOYMENT_ID_ AND d.data_center = u.data_center
+WHERE d.data_center IN ('DC1', 'DC2')
+```
+
+By **preserving `data_center` in the CTE** and **enforcing it in the `JOIN`**, you ensure that only matching partitions are compared, avoiding duplicates and incorrect aggregations.
+
+### Be Careful with Aggregations Over Routed Data
+
+Some aggregate functions, such as `SUM`, `COUNT`, or `MIN`, can safely be applied per route and then aggregated globally without changing the result.  
+
+Others, like `AVG` or `STDDEV`, **cannot be accurately re-aggregated** from intermediate results.  
+
+For example, with `AVG`:
+
+- `AVG(AVG([a, b, c]), AVG([d, e, f]))` ❌  
+- `AVG([a, b, c, d, e, f])` ✅  
+
+The two are not equivalent.  
+
+<Callout>
+  As a best practice, only delegate final aggregation to the outer query (i.e., using a CTE) when the operation is mathematically sound across partitions.
+</Callout>
+
+### Align `ORDER` and `LIMIT` to Your Intent
+
+Use `orderEnforcement` and `limitEnforcement` wisely based on your use case:
+
+- **Fair Pagination Across Routes:**
+  ```yaml
+  limitEnforcement: PER_ROUTE_AND_UNION
+  orderEnforcement: POST_UNION
+  ```
+  This ensures pagination considers the global order but avoids starvation from large routes.
+
+- **Fastest per-route top-N:**  
+  ```yaml
+  limitEnforcement: PER_ROUTE_ONLY
+  orderEnforcement: PER_ROUTE
+  ```
+  This mode is useful for dashboards or previews, where approximate results are acceptable.
+  Keep in mind that the query may return more rows than the specified limit, since the limit is applied independently per route.
+  For example, if `LIMIT 10` is set and there are two routes, the final result could contain up to `20` rows.
+  This is the expected behavior and **not a bug in the engine**.
+
+### Don't Rely on Implicit Joins Across Routes Without Proper Filtering
+
+If multiple routed tables are used in the same query (especially with joins), ensure that **route-determining conditions exist for all involved tables**.
+
+Otherwise, the engine won’t be able to determine routing and will fail.
+
+**✅ Works:**
+```sql
+SELECT d.NAME_, u.USER_ID_
+FROM routing.ACT_RE_DEPLOYMENT d
+JOIN routing.ACT_USAGE_EVENT u ON d.ID_ = u.DEPLOYMENT_ID_
+WHERE d.data_center = 'DC1' AND u.data_center = 'DC2'
+```
+
+**❌ Fails:**
+```sql
+SELECT d.NAME_, u.USER_ID_
+FROM routing.ACT_RE_DEPLOYMENT d, routing.ACT_USAGE_EVENT u
+WHERE d.ID_ = u.DEPLOYMENT_ID_ -- missing route condition for one table
+```
+
+### Prefer Named Schemas with Constants
+
+If your routing field is static per route, consider adding it as a `val_constant` in the schema definition. This makes routing more deterministic and predictable.
+
+---
+
 
 <Callout type="info">
   We are evaluating adding a script-based `ROUTING` data source, which would allow defining routes using functions, similar to how [SQL functions work](/Modules/Functions/SQL#ddl-function-script).  

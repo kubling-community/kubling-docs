@@ -1560,6 +1560,26 @@ properties:
     description: "Specifies the schema to which the command should be routed if no\
       \ rule matches, when in non-strict mode. If this value is not provided, the\
       \ engine defaults to routing the command to the first schema in the import list."
+  limitEnforcement:
+    type: "string"
+    description: "Controls how LIMIT clauses are enforced across routed branches.\n\
+      - PER_ROUTE_ONLY: The LIMIT is applied independently to each matching route.\n\
+      - POST_UNION_ONLY: The LIMIT is applied globally after combining results.\n\
+      - PER_ROUTE_AND_UNION: The LIMIT is applied both per route and globally (useful\
+      \ for pagination with fairness)."
+    enum:
+    - "PER_ROUTE_ONLY"
+    - "POST_UNION_ONLY"
+    - "PER_ROUTE_AND_UNION"
+  orderEnforcement:
+    type: "string"
+    description: "Controls how ORDER BY clauses are enforced across routed branches.\n\
+      - PER_ROUTE: Each route applies its own sorting; global ordering is not guaranteed.\n\
+      - POST_UNION: Sorting is applied only after merging results from all routes\
+      \ (ensures global ordering)."
+    enum:
+    - "PER_ROUTE"
+    - "POST_UNION"
   imports:
     type: "array"
     items:

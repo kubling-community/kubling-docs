@@ -91,7 +91,7 @@ kublingContainer.start();
 - By default, `KublingContainer` uses the latest Community Edition (CE) core image. If you require a specific version, 
 you can pass it as a parameter during instantiation, for example:  
   ```java
-  new KublingContainer<>(DockerImageName.parse("kubling/kubling-ce:latest"))
+  new KublingContainer<>(DockerImageName.parse("kubling/kubling:latest"))
   ```
 
 - If you're testing **Agentic capabilities** through the **Kubling Agent Platform**, be aware that running multiple Kubling instances in parallel 
