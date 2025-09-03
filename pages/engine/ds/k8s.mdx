@@ -122,390 +122,406 @@ following as a starting point.
 ```sql showLineNumbers copy
 CREATE FOREIGN TABLE NODE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the node is registered'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the node resource'),
 
-    spec__configSource json OPTIONS(parser_format 'asJsonPretty'),
-    spec__externalID string,
-    spec__podCIDR string,
-    spec__podCIDRs string,
-    spec__providerID string,
-    spec__unschedulable boolean,
-    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Key-value pairs used to organize and select subsets of nodes'),
 
-    status__addresses json OPTIONS(parser_format 'asJsonPretty'),
-    status__allocatable json OPTIONS(parser_format 'asJsonPretty'),
-    status__capacity json OPTIONS(parser_format 'asJsonPretty'),
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__config json OPTIONS(parser_format 'asJsonPretty'),
-    status__daemonEndpoints json OPTIONS(parser_format 'asJsonPretty'),
-    status__images json OPTIONS(parser_format 'asJsonPretty'),
-    status__nodeInfo json OPTIONS(parser_format 'asJsonPretty'),
-    status__phase string,
-    status__volumesAttached json OPTIONS(parser_format 'asJsonPretty'),
-    status__volumesInUse json,
-    status__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+    spec__configSource json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A reference to an external configuration source for the node'),
+    spec__externalID string OPTIONS(ANNOTATION 'The external ID assigned to the node by the cloud provider'),
+    spec__podCIDR string OPTIONS(ANNOTATION 'CIDR block assigned to the node for pod IPs'),
+    spec__podCIDRs string OPTIONS(ANNOTATION 'List of CIDR blocks assigned to the node for pod networking'),
+    spec__providerID string OPTIONS(ANNOTATION 'Unique identifier assigned by the cloud provider to the node'),
+    spec__unschedulable boolean OPTIONS(ANNOTATION 'Indicates if the node is marked as unschedulable (e.g., drained for maintenance)'),
+    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Additional Kubernetes properties related to the node spec'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    status__addresses json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of addresses assigned to the node, such as internal and external IPs'),
+    status__allocatable json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Resources available for scheduling pods, after system and daemon resources are accounted for'),
+    status__capacity json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Total hardware resources available on the node'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current conditions of the node, including readiness and network availability'),
+    status__config json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Configuration settings for the node'),
+    status__daemonEndpoints json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Endpoints for node daemons such as the Kubelet'),
+    status__images json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of container images available on the node'),
+    status__nodeInfo json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Information about the node, such as OS, kernel version, and Kubelet version'),
+    status__phase string OPTIONS(ANNOTATION 'Current lifecycle phase of the node (e.g., Running, Terminated)'),
+    status__volumesAttached json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of volumes attached to the node'),
+    status__volumesInUse json OPTIONS(ANNOTATION 'List of volumes currently in use on the node'),
+    status__additionalProperties json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Additional Kubernetes properties related to the node status'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the node, combining cluster name and node name'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};node');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};node',
+        ANNOTATION 'Represents a Kubernetes Node, which is a worker machine that runs containerized workloads.',
+        relationship_affects 'POD',
+        relationship_affected_by 'EVENT');
 
 CREATE FOREIGN TABLE NODE_CONDITIONS
 (
-    clusterName string OPTIONS(val_variable 'cluster_name'),
-    clusterUrl string OPTIONS(val_constant '{{ schema.properties.kubernetes_api_url }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
+    clusterName string OPTIONS(val_variable 'cluster_name', ANNOTATION 'The name of the cluster where the node is registered'),
+    clusterUrl string OPTIONS(val_constant '{{ schema.properties.kubernetes_api_url }}', ANNOTATION 'The Kubernetes API server URL for accessing node conditions'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the node resource'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the node resource'),
 
-    lastTransitionTime timestamp,
-    lastUpdateTime timestamp,
-    message string,
-    reason string,
-    status string,
-    type string
+    lastTransitionTime timestamp OPTIONS(ANNOTATION 'The timestamp when the node last transitioned between conditions'),
+    lastUpdateTime timestamp OPTIONS(ANNOTATION 'The timestamp of the last condition update'),
+    message string OPTIONS(ANNOTATION 'Detailed message about the node condition'),
+    reason string OPTIONS(ANNOTATION 'Short reason for the node condition'),
+    status string OPTIONS(ANNOTATION 'Current status of the node condition (True, False, Unknown)'),
+    type string OPTIONS(ANNOTATION 'Type of condition, such as Ready, DiskPressure, or MemoryPressure')
 )
 OPTIONS(updatable false,
-    synthetic_parent '{{ schema.name }}.NODE',
-    synthetic_path 'status__conditions',
-    tags 'kubernetes;{{ schema.properties.cluster_name }};node;conditions');
-
+        synthetic_parent '{{ schema.name }}.NODE',
+        synthetic_path 'status__conditions',
+        tags 'kubernetes;{{ schema.properties.cluster_name }};node;conditions',
+        ANNOTATION 'Represents the conditions of a Kubernetes Node, including readiness, disk pressure, and memory pressure.',
+        relationship_affected_by 'NODE');
 
 CREATE FOREIGN TABLE NAMESPACE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
-    status__phase string,
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the namespace exists'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the namespace resource'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the namespace for identification and grouping'),
+    status__phase string OPTIONS(ANNOTATION 'Current phase of the namespace (e.g., Active, Terminating)'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the namespace, combining cluster name and namespace name'),
     PRIMARY KEY(identifier),
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};namespace');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};namespace',
+        ANNOTATION 'Represents a Kubernetes Namespace, which provides a mechanism for isolating groups of resources within a cluster.',
+        relationship_affects 'POD, DEPLOYMENT, SERVICE',
+        relationship_affected_by 'EVENT');
 
 CREATE FOREIGN TABLE POD
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the pod resource'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace the pod belongs to'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels used to organize and select subsets of pods'),
 
-    spec__activeDeadlineSeconds long,
-    spec__affinity json,
-    spec__containers json OPTIONS(parser_format 'asJsonPretty'),
-    spec__nodeName string,
-    spec__restartPolicy string,
-    spec__tolerations json OPTIONS(parser_format 'asJsonPretty'),
-    spec__volumes json OPTIONS(parser_format 'asJsonPretty'),
-    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+    spec__activeDeadlineSeconds long OPTIONS(ANNOTATION 'The duration in seconds relative to startTime before the pod is actively terminated'),
+    spec__affinity json OPTIONS(ANNOTATION 'Scheduling constraints for the pod, including node and pod affinity rules'),
+    spec__containers json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of containers running in the pod'),
+    spec__nodeName string OPTIONS(ANNOTATION 'The node where the pod is scheduled'),
+    spec__restartPolicy string OPTIONS(ANNOTATION 'Restart policy for all containers within the pod (Always, OnFailure, Never)'),
+    spec__tolerations json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Tolerations that allow the pod to be scheduled on tainted nodes'),
+    spec__volumes json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of volumes attached to the pod'),
+    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Additional Kubernetes properties related to the pod spec'),
 
-    status__message string,
-    status__nominatedNodeName string,
-    status__phase string,
-    status__podIP string,
-    status__reason string,
-    status__startTime timestamp,
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__containerStatuses json OPTIONS(parser_format 'asJsonPretty'),
-    status__initContainerStatuses json OPTIONS(parser_format 'asJsonPretty'),
-    status__ephemeralContainerStatuses json OPTIONS(parser_format 'asJsonPretty'),
-    status__resourceClaimStatuses json OPTIONS(parser_format 'asJsonPretty'),
+    status__message string OPTIONS(ANNOTATION 'Human-readable message about why the pod is in its current state'),
+    status__nominatedNodeName string OPTIONS(ANNOTATION 'The node that the pod is nominated to be scheduled on'),
+    status__phase string OPTIONS(ANNOTATION 'The high-level summary of the pod''s lifecycle (e.g., Pending, Running, Succeeded, Failed)'),
+    status__podIP string OPTIONS(ANNOTATION 'The IP address assigned to the pod'),
+    status__reason string OPTIONS(ANNOTATION 'Brief reason explaining why the pod is in its current state'),
+    status__startTime timestamp OPTIONS(ANNOTATION 'Timestamp when the pod was created'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current service state conditions of the pod (e.g., PodScheduled, Initialized, ContainersReady)'),
+    status__containerStatuses json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Status of each container inside the pod'),
+    status__initContainerStatuses json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Status of each init container inside the pod'),
+    status__ephemeralContainerStatuses json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Status of ephemeral containers running in the pod'),
+    status__resourceClaimStatuses json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Status of the resource claims requested by the pod'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the pod combining cluster name, namespace, and pod name'),
     PRIMARY KEY(identifier),
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pod');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod',
+        ANNOTATION 'Represents a Kubernetes Pod, a logical collection of containers that share networking and storage.',
+        relationship_affects 'POD_CONTAINER, POD_STATUS_CONDITION, SERVICE',
+        relationship_affected_by 'NODE, DEPLOYMENT, REPLICASET, DAEMONSET, EVENT');
 
 CREATE FOREIGN TABLE POD_CONTAINER
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels json OPTIONS(synthetic_type 'parent'),
-    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the pod resource'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the pod'),
+    metadata__labels json OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels assigned to the pod'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier', ANNOTATION 'Identifier of the parent pod'),
 
-    image string NOT NULL,
-    name string NOT NULL,
-    command json,
-    volumeMounts json,
-    resources__requests json,
-    resources__limits json,
+    image string NOT NULL OPTIONS(ANNOTATION 'The container image used for the pod''s container'),
+    name string NOT NULL OPTIONS(ANNOTATION 'The name of the container within the pod'),
+    command json OPTIONS(ANNOTATION 'The command run inside the container'),
+    volumeMounts json OPTIONS(ANNOTATION 'Volumes mounted into the container'),
+    resources__requests json OPTIONS(ANNOTATION 'Resource requests (CPU, Memory) for the container'),
+    resources__limits json OPTIONS(ANNOTATION 'Resource limits (CPU, Memory) for the container'),
+
     UNIQUE(metadata__namespace, metadata__name, name)
 )
-  OPTIONS(updatable true,
+OPTIONS(updatable true,
         synthetic_parent '{{ schema.name }}.POD',
         synthetic_path 'spec__containers',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container',
+        ANNOTATION 'Represents a container running inside a Kubernetes Pod.',
+        relationship_affected_by 'POD');
 
 CREATE FOREIGN TABLE POD_STATUS_CONDITION
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels json OPTIONS(synthetic_type 'parent'),
-    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the pod resource'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the pod'),
+    metadata__labels json OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels assigned to the pod'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier', ANNOTATION 'Identifier of the parent pod'),
 
-    lastTransitionTime timestamp,
-    status string,
-    type string
+    lastTransitionTime timestamp OPTIONS(ANNOTATION 'The timestamp when the pod last transitioned between conditions'),
+    status string OPTIONS(ANNOTATION 'Current status of the pod condition (True, False, Unknown)'),
+    type string OPTIONS(ANNOTATION 'Type of condition, such as Ready, PodScheduled, or ContainersReady')
 
 )
 OPTIONS(updatable false,
         synthetic_parent '{{ schema.name }}.POD',
         synthetic_path 'status__conditions',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;status');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;status',
+        ANNOTATION 'Represents the conditions of a Kubernetes Pod, including scheduling, readiness, and container readiness.',
+        relationship_affected_by 'POD');
 
 CREATE FOREIGN TABLE POD_CONTAINER_VOLS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels json OPTIONS(synthetic_type 'parent'),
-    containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name'),
-    containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image'),
-    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the pod resource'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the pod'),
+    metadata__labels json OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels assigned to the pod'),
+    containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name', ANNOTATION 'The name of the container mounting the volume'),
+    containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image', ANNOTATION 'The image of the container mounting the volume'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier', ANNOTATION 'Identifier of the parent pod'),
 
-    mountPath string NOT NULL,
-    name string NOT NULL,
-    readOnly boolean,
-    identifier string OPTIONS(val_pk 'pod_identifier+containerName+name'),
+    mountPath string NOT NULL OPTIONS(ANNOTATION 'The path inside the container where the volume is mounted'),
+    name string NOT NULL OPTIONS(ANNOTATION 'The name of the volume mount'),
+    readOnly boolean OPTIONS(ANNOTATION 'Indicates if the volume is mounted as read-only'),
+
+    identifier string OPTIONS(val_pk 'pod_identifier+containerName+name', ANNOTATION 'Unique identifier combining pod, container, and volume name'),
     PRIMARY KEY(identifier),
     UNIQUE(metadata__namespace, metadata__name, containerName, name)
 )
-  OPTIONS(updatable true,
+OPTIONS(updatable true,
         synthetic_parent '{{ schema.name }}.POD_CONTAINER',
         synthetic_path 'volumeMounts',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;vols');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;vols',
+        ANNOTATION 'Represents the volumes mounted into containers within a Kubernetes Pod.');
 
 CREATE FOREIGN TABLE POD_CONTAINER_STATUS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels json OPTIONS(synthetic_type 'parent'),
-    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the pod'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the pod'),
+    metadata__labels json OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels assigned to the pod'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier', ANNOTATION 'Unique identifier for the parent pod'),
 
-    name string,
-    ready boolean,
-    started boolean,
-    restartCount integer,
-    allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
-    containerID string,
-    image string,
-    imageID string,
-    lastState json OPTIONS(parser_format 'asJsonPretty'),
-    state json OPTIONS(parser_format 'asJsonPretty'),
-    resources json OPTIONS(parser_format 'asJsonPretty'),
+    name string OPTIONS(ANNOTATION 'The name of the container within the pod'),
+    ready boolean OPTIONS(ANNOTATION 'Indicates whether the container is ready to serve requests'),
+    started boolean OPTIONS(ANNOTATION 'Indicates whether the container has started running'),
+    restartCount integer OPTIONS(ANNOTATION 'The number of times the container has been restarted'),
+    containerID string OPTIONS(ANNOTATION 'The ID of the running container'),
+    image string OPTIONS(ANNOTATION 'The container image used'),
+    imageID string OPTIONS(ANNOTATION 'The unique ID of the container image'),
+    lastState json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The last known state of the container'),
+    state json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The current state of the container'),
 
-    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name', ANNOTATION 'Unique identifier combining cluster, namespace, pod, and container name'),
     PRIMARY KEY(identifier)
 )
 OPTIONS(updatable false,
         synthetic_parent '{{ schema.name }}.POD',
         synthetic_path 'status__containerStatuses',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status',
+        ANNOTATION 'Represents the current status of a running container inside a Kubernetes Pod.');
 
 CREATE FOREIGN TABLE POD_EPHEMERAL_CONTAINER_STATUS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels json OPTIONS(synthetic_type 'parent'),
-    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the pod'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the pod'),
+    metadata__labels json OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels assigned to the pod'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier', ANNOTATION 'Unique identifier for the parent pod'),
 
-    name string,
-    ready boolean,
-    started boolean,
-    restartCount integer,
-    allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
-    containerID string,
-    image string,
-    imageID string,
-    lastState json OPTIONS(parser_format 'asJsonPretty'),
-    state json OPTIONS(parser_format 'asJsonPretty'),
-    resources json OPTIONS(parser_format 'asJsonPretty'),
+    name string OPTIONS(ANNOTATION 'The name of the ephemeral container within the pod'),
+    ready boolean OPTIONS(ANNOTATION 'Indicates whether the ephemeral container is ready'),
+    started boolean OPTIONS(ANNOTATION 'Indicates whether the ephemeral container has started running'),
+    restartCount integer OPTIONS(ANNOTATION 'The number of times the ephemeral container has been restarted'),
+    allocatedResources json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The allocated resources for the ephemeral container'),
+    containerID string OPTIONS(ANNOTATION 'The ID of the running ephemeral container'),
+    image string OPTIONS(ANNOTATION 'The container image used for the ephemeral container'),
+    imageID string OPTIONS(ANNOTATION 'The unique ID of the ephemeral container image'),
+    lastState json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The last known state of the ephemeral container'),
+    state json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The current state of the ephemeral container'),
+    resources json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Resource consumption details for the ephemeral container'),
 
-    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name', ANNOTATION 'Unique identifier combining cluster, namespace, pod, and ephemeral container name'),
     PRIMARY KEY(identifier)
 )
 OPTIONS(updatable false,
         synthetic_parent '{{ schema.name }}.POD',
         synthetic_path 'status__ephemeralContainerStatuses',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status;ephemeral');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status;ephemeral',
+        ANNOTATION 'Represents the current status of an ephemeral container inside a Kubernetes Pod.');
 
 CREATE FOREIGN TABLE POD_INIT_CONTAINER_STATUS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels json OPTIONS(synthetic_type 'parent'),
-    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the pod'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the pod'),
+    metadata__labels json OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels assigned to the pod'),
+    pod_identifier string NOT NULL OPTIONS(synthetic_type 'parent', synthetic_parent_field 'identifier', ANNOTATION 'Unique identifier for the parent pod'),
 
-    name string,
-    ready boolean,
-    started boolean,
-    restartCount integer,
-    allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
-    containerID string,
-    image string,
-    imageID string,
-    lastState json OPTIONS(parser_format 'asJsonPretty'),
-    state json OPTIONS(parser_format 'asJsonPretty'),
-    resources json OPTIONS(parser_format 'asJsonPretty'),
+    name string OPTIONS(ANNOTATION 'The name of the init container within the pod'),
+    ready boolean OPTIONS(ANNOTATION 'Indicates whether the init container is ready'),
+    started boolean OPTIONS(ANNOTATION 'Indicates whether the init container has started running'),
+    restartCount integer OPTIONS(ANNOTATION 'The number of times the init container has been restarted'),
+    allocatedResources json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The allocated resources for the init container'),
+    containerID string OPTIONS(ANNOTATION 'The ID of the running init container'),
+    image string OPTIONS(ANNOTATION 'The container image used for the init container'),
+    imageID string OPTIONS(ANNOTATION 'The unique ID of the init container image'),
+    lastState json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The last known state of the init container'),
+    state json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The current state of the init container'),
+    resources json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Resource consumption details for the init container'),
 
-    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
+    identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name', ANNOTATION 'Unique identifier combining cluster, namespace, pod, and init container name'),
     PRIMARY KEY(identifier)
 )
 OPTIONS(updatable false,
         synthetic_parent '{{ schema.name }}.POD',
         synthetic_path 'status__initContainerStatuses',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status;init');
-
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pod;container;status;init',
+        ANNOTATION 'Represents the current status of an init container inside a Kubernetes Pod.');
 
 CREATE FOREIGN TABLE DEPLOYMENT
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__uid string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
-    spec__template__spec__containers json OPTIONS(parser_format 'asJsonPretty'),
-    spec__selector__matchLabels json OPTIONS(parser_format 'asJsonPretty'),
-    spec__template__metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__availableReplicas integer,
-    status__readyReplicas integer,
-    status__replicas integer,
-    status__updatedReplicas integer,
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the deployment is running'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema name representing the Kubernetes resource'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the deployment'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the deployment'),
+    metadata__uid string OPTIONS(ANNOTATION 'Unique identifier assigned to the deployment'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the deployment'),
+
+    spec__template__spec__containers json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Template defining the containers within the deployment'),
+    spec__selector__matchLabels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Label selectors for identifying target pods'),
+    spec__template__metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the pod template'),
+
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current service state conditions of the deployment'),
+    status__availableReplicas integer OPTIONS(ANNOTATION 'Number of available replicas in the deployment'),
+    status__readyReplicas integer OPTIONS(ANNOTATION 'Number of ready replicas in the deployment. A NULL value indicates no ready replicas, which can be due to a problem with this deployment.'),
+    status__replicas integer OPTIONS(ANNOTATION 'Total number of replicas in the deployment. A NULL value indicates no ready replicas, which can be due to a problem with this deployment.'),
+    status__updatedReplicas integer OPTIONS(ANNOTATION 'Number of updated replicas in the deployment'),
+
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier combining cluster, namespace, and deployment name'),
     PRIMARY KEY(identifier),
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment',
+        ANNOTATION 'Represents a Kubernetes Deployment, which manages replicas of application instances.',
+        relationship_affects 'POD, DEPLOYMENT_CONTAINER_VOLS, REPLICASET',
+        relationship_affected_by 'DEPLOYMENT_CONDITIONS, POD, NAMESPACE, EVENT');
 
 CREATE FOREIGN TABLE DEPLOYMENT_CONDITIONS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__uid string OPTIONS(synthetic_type 'parent'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the deployment.'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the deployment.'),
+    metadata__uid string OPTIONS(synthetic_type 'parent', ANNOTATION 'The unique identifier of the deployment.'),
 
-    lastTransitionTime timestamp,
-    lastUpdateTime timestamp,
-    message string,
-    reason string,
-    status string,
-    type string
+    lastTransitionTime timestamp OPTIONS(ANNOTATION 'The time when the condition last changed.'),
+    lastUpdateTime timestamp OPTIONS(ANNOTATION 'The time when the condition was last updated.'),
+    message string OPTIONS(ANNOTATION 'A human-readable message explaining the condition.'),
+    reason string OPTIONS(ANNOTATION 'A brief machine-readable reason for the condition.'),
+    status string OPTIONS(ANNOTATION 'Indicates whether the condition is true, false, or unknown.'),
+    type string OPTIONS(ANNOTATION 'The type of condition being reported (e.g., Available, Progressing).')
 )
-  OPTIONS(updatable false,
+OPTIONS(updatable false,
         synthetic_parent '{{ schema.name }}.DEPLOYMENT',
         synthetic_path 'status__conditions',
-        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;conditions');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;conditions',
+        ANNOTATION 'Stores the status conditions of a Deployment, providing insights into rolling updates, progress, and failures.');
 
 CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels string OPTIONS(updatable false, synthetic_type 'parent'),
-    metadata__uid string OPTIONS(synthetic_type 'parent'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the deployment.'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the deployment.'),
+    metadata__labels string OPTIONS(updatable false, synthetic_type 'parent', ANNOTATION 'Labels attached to the deployment.'),
+    metadata__uid string OPTIONS(synthetic_type 'parent', ANNOTATION 'The unique identifier of the deployment.'),
 
-    image string NOT NULL,
-    name string NOT NULL,
-    command json,
-    volumeMounts json,
+    image string NOT NULL OPTIONS(ANNOTATION 'The container image used in the deployment.'),
+    name string NOT NULL OPTIONS(ANNOTATION 'The name of the container within the deployment.'),
+    command json OPTIONS(ANNOTATION 'The command executed within the container.'),
+    volumeMounts json OPTIONS(ANNOTATION 'Volumes mounted in the container.'),
+
     identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+name' ),
     PRIMARY KEY(identifier),
     UNIQUE(metadata__namespace, metadata__name, name)
 )
-  OPTIONS(updatable true,
+OPTIONS(updatable true,
         synthetic_parent '{{ schema.name }}.DEPLOYMENT',
         synthetic_path 'spec__template__spec__containers',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;container');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;container',
+        ANNOTATION 'Represents a container in a Deployment, defining its image, commands, and volume mounts.');
 
 CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER_VOLS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent'),
-    metadata__labels string OPTIONS(synthetic_type 'parent'),
-    metadata__uid string OPTIONS(synthetic_type 'parent'),
-    containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name'),
-    containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the deployment.'),
+    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the deployment.'),
+    metadata__labels string OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels attached to the deployment.'),
+    metadata__uid string OPTIONS(synthetic_type 'parent', ANNOTATION 'The unique identifier of the deployment.'),
+    containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name', ANNOTATION 'The container name associated with the volume.'),
+    containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image', ANNOTATION 'The container image associated with the volume.'),
 
-    mountPath string NOT NULL,
-    name string NOT NULL,
-    readOnly boolean,
+    mountPath string NOT NULL OPTIONS(ANNOTATION 'The path where the volume is mounted inside the container.'),
+    name string NOT NULL OPTIONS(ANNOTATION 'The name of the volume.'),
+    readOnly boolean OPTIONS(ANNOTATION 'Indicates whether the volume is mounted as read-only.'),
+
     identifier string OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name+containerName+name' ),
     PRIMARY KEY(identifier),
     UNIQUE(metadata__namespace, metadata__name, containerName, name)
 )
-  OPTIONS(updatable true,
+OPTIONS(updatable true,
         synthetic_parent '{{ schema.name }}.DEPLOYMENT_CONTAINER',
         synthetic_path 'volumeMounts',
         synthetic_allow_bulk_insert false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;container;vols');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};deployment;container;vols',
+        ANNOTATION 'Represents the volume mounts of containers within a Deployment, detailing storage configurations.');
 
 CREATE FOREIGN TABLE PERSISTENT_VOLUME
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the persistent volume.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the persistent volume.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the persistent volume.'),
 
-    spec__accessModes json,
-    spec__azureDisk json OPTIONS(parser_format 'asJsonPretty'),
-    spec__azureFile json OPTIONS(parser_format 'asJsonPretty'),
-    spec__capacity json OPTIONS(parser_format 'asJsonPretty'),
-    spec__csi json OPTIONS(parser_format 'asJsonPretty'),
-    spec__hostPath json OPTIONS(parser_format 'asJsonPretty'),
-    spec__local json OPTIONS(parser_format 'asJsonPretty'),
-    spec__nodeAffinity json OPTIONS(parser_format 'asJsonPretty'),
-    spec__persistentVolumeReclaimPolicy string,
-    spec__storageClassName string,
-    spec__volumeAttributesClassName string,
-    spec__volumeMode string,
-    spec__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+    spec__accessModes json OPTIONS(ANNOTATION 'The access modes for the volume (e.g., ReadWriteOnce, ReadOnlyMany).'),
+    spec__capacity json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The storage capacity of the volume.'),
+    spec__storageClassName string OPTIONS(ANNOTATION 'The storage class name associated with this persistent volume.'),
+    spec__volumeMode string OPTIONS(ANNOTATION 'The mode of the volume (Filesystem or Block).'),
 
-    status__lastPhaseTransitionTime timestamp,
-    status__message string,
-    status__phase string,
-    status__reason string,
-    status__additionalProperties json OPTIONS(parser_format 'asJsonPretty'),
+    status__phase string OPTIONS(ANNOTATION 'The current phase of the volume (Available, Bound, Released, Failed).'),
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
     PRIMARY KEY(identifier),
@@ -513,35 +529,24 @@ CREATE FOREIGN TABLE PERSISTENT_VOLUME
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pv');
-
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pv',
+        ANNOTATION 'Represents a Kubernetes Persistent Volume (PV), which provides storage independent of Pod lifecycles.',
+        relationship_affects 'PERSISTENT_VOLUME_CLAIM');
 
 CREATE FOREIGN TABLE PERSISTENT_VOLUME_CLAIM
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the persistent volume claim.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the persistent volume claim.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the persistent volume claim.'),
 
-    spec__accessModes json OPTIONS(parser_format 'asJsonPretty'),
-    spec__dataSource json OPTIONS(parser_format 'asJsonPretty'),
-    spec__dataSourceRef json OPTIONS(parser_format 'asJsonPretty'),
-    spec__resources json OPTIONS(parser_format 'asJsonPretty'),
-    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
-    spec__storageClassName string,
-    spec__volumeAttributesClassName string,
-    spec__volumeMode string,
-    spec__volumeName string,
+    spec__accessModes json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The access modes for the claim (e.g., ReadWriteOnce).'),
+    spec__storageClassName string OPTIONS(ANNOTATION 'The storage class requested by this claim.'),
+    spec__volumeMode string OPTIONS(ANNOTATION 'The mode of the volume (Filesystem or Block).'),
+    spec__volumeName string OPTIONS(ANNOTATION 'The name of the persistent volume bound to this claim.'),
 
-    status__accessModes json OPTIONS(parser_format 'asJsonPretty'),
-    status__allocatedResourceStatuses json OPTIONS(parser_format 'asJsonPretty'),
-    status__allocatedResources json OPTIONS(parser_format 'asJsonPretty'),
-    status__capacity json OPTIONS(parser_format 'asJsonPretty'),
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__currentVolumeAttributesClassName string,
-    status__modifyVolumeStatus json OPTIONS(parser_format 'asJsonPretty'),
-    status__phase string,
+    status__phase string OPTIONS(ANNOTATION 'The current phase of the claim (Pending, Bound, Lost).'),
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
     PRIMARY KEY(identifier),
@@ -549,895 +554,960 @@ CREATE FOREIGN TABLE PERSISTENT_VOLUME_CLAIM
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};pvc');
-
+        tags 'kubernetes;{{ schema.properties.cluster_name }};pvc',
+        ANNOTATION 'Represents a Kubernetes Persistent Volume Claim (PVC), which requests storage resources from available Persistent Volumes.',
+        relationship_affected_by 'PERSISTENT_VOLUME',
+        relationship_affects 'POD');
 
 CREATE FOREIGN TABLE STATEFULSET
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the StatefulSet.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the StatefulSet.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the StatefulSet.'),
 
-    spec__minReadySeconds integer,
-    spec__ordinals json OPTIONS(parser_format 'asJsonPretty'),
-    spec__persistentVolumeClaimRetentionPolicy json OPTIONS(parser_format 'asJsonPretty'),
-    spec__podManagementPolicy string,
-    spec__replicas integer,
-    spec__revisionHistoryLimit integer,
-    spec__serviceName string,
-    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
-    spec__template json OPTIONS(parser_format 'asJsonPretty'),
-    spec__updateStrategy json OPTIONS(parser_format 'asJsonPretty'),
-    spec__volumeClaimTemplates json OPTIONS(parser_format 'asJsonPretty'),
+    spec__replicas integer OPTIONS(ANNOTATION 'The desired number of pod replicas in the StatefulSet.'),
+    spec__serviceName string OPTIONS(ANNOTATION 'The name of the associated headless service.'),
+    spec__updateStrategy json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The update strategy for the StatefulSet.'),
 
-    status__availableReplicas integer,
-    status__collisionCount integer,
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__currentReplicas integer,
-    status__currentRevision string,
-    status__observedGeneration long,
-    status__readyReplicas integer,
-    status__replicas integer,
-    status__updateRevision string,
-    status__updatedReplicas integer,
+    status__replicas integer OPTIONS(ANNOTATION 'The current number of pod replicas.'),
+    status__readyReplicas integer OPTIONS(ANNOTATION 'The number of ready replicas in the StatefulSet.'),
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
     PRIMARY KEY(identifier),
-
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};statefulset');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};statefulset',
+        ANNOTATION 'Represents a Kubernetes StatefulSet, which manages stateful applications that require persistent storage and stable network identities.');
 
 CREATE FOREIGN TABLE SERVICE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the Service.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the Service.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the Service.'),
 
-    spec__clusterIP string,
-    spec__clusterIPs json,
-    spec__externalIPs json,
-    spec__externalName string,
-    spec__healthCheckNodePort integer,
-    spec__loadBalancerClass string,
-    spec__loadBalancerIP string,
-    spec__ports json OPTIONS(parser_format 'asJsonPretty'),
-    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
-    spec__type string,
+    spec__clusterIP string OPTIONS(ANNOTATION 'The internal cluster IP address of the Service.'),
+    spec__clusterIPs json OPTIONS(ANNOTATION 'List of cluster IPs assigned to the Service.'),
+    spec__externalIPs json OPTIONS(ANNOTATION 'List of external IPs assigned to the Service.'),
+    spec__externalName string OPTIONS(ANNOTATION 'External DNS name assigned to the Service.'),
+    spec__healthCheckNodePort integer OPTIONS(ANNOTATION 'Port number used for health checks in LoadBalancer Services.'),
+    spec__loadBalancerClass string OPTIONS(ANNOTATION 'Indicates the class of load balancer implementation for the Service.'),
+    spec__loadBalancerIP string OPTIONS(ANNOTATION 'The external load balancer IP assigned to the Service.'),
+    spec__ports json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of ports exposed by the Service.'),
+    spec__selector json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Label selector to determine which Pods receive traffic from the Service.'),
+    spec__type string OPTIONS(ANNOTATION 'Defines the type of Service (ClusterIP, NodePort, LoadBalancer, ExternalName).'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};service');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};service',
+        ANNOTATION 'Represents a Kubernetes Service, which defines network access to a set of Pods using a stable IP and DNS.',
+        relationship_affects 'POD',
+        relationship_affected_by 'NAMESPACE, NETWORK_POLICY');
 
 CREATE FOREIGN TABLE NETWORK_INGRESS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the Ingress resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the Ingress resource.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the Ingress resource.'),
 
-    spec__backend json OPTIONS(parser_format 'asJsonPretty'),
-    spec__ingressClassName string,
-    spec__rules json OPTIONS(parser_format 'asJsonPretty'),
-    spec__tls json OPTIONS(parser_format 'asJsonPretty'),
+    spec__backend json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Default backend if no rules match.'),
+    spec__ingressClassName string OPTIONS(ANNOTATION 'The Ingress class used to handle this resource.'),
+    spec__rules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of host-based routing rules.'),
+    spec__tls json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'TLS settings for secure connections.'),
 
-    status__loadBalancer json OPTIONS(parser_format 'asJsonPretty'),
+    status__loadBalancer json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current status of the external load balancer.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};network;ingress');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};network;ingress',
+        ANNOTATION 'Represents an Ingress resource, which manages external access to Services within a cluster using HTTP/S routing.');
 
 CREATE FOREIGN TABLE NETWORK_POLICY
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the Network Policy.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the Network Policy.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the Network Policy.'),
 
-    spec__egress json OPTIONS(parser_format 'asJsonPretty'),
-    spec__ingress json OPTIONS(parser_format 'asJsonPretty'),
-    spec__podSelector json OPTIONS(parser_format 'asJsonPretty'),
-    spec__policyTypes json,
+    spec__egress json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Rules that define allowed outbound connections.'),
+    spec__ingress json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Rules that define allowed inbound connections.'),
+    spec__podSelector json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Selector for which Pods the policy applies to.'),
+    spec__policyTypes json OPTIONS(ANNOTATION 'Defines whether the policy applies to Ingress, Egress, or both.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};network;policy');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};network;policy',
+        ANNOTATION 'Represents a Kubernetes Network Policy, which defines firewall rules for controlling inbound and outbound traffic to Pods.',
+        relationship_affects 'POD, SERVICE');
 
 CREATE FOREIGN TABLE DAEMONSET
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the DaemonSet.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the DaemonSet.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the DaemonSet.'),
 
-    spec__minReadySeconds integer,
-    spec__revisionHistoryLimit integer,
-    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
-    spec__template json OPTIONS(parser_format 'asJsonPretty'),
-    spec__updateStrategy json OPTIONS(parser_format 'asJsonPretty'),
+    spec__minReadySeconds integer OPTIONS(ANNOTATION 'Minimum time a Pod should be ready before considering it available.'),
+    spec__revisionHistoryLimit integer OPTIONS(ANNOTATION 'Number of old DaemonSet revisions kept.'),
+    spec__selector json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Selector to determine which Pods belong to this DaemonSet.'),
+    spec__template json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Pod template used to create new Pods.'),
+    spec__updateStrategy json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Defines how updates to Pods are handled.'),
 
-    status__collisionCount integer,
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__currentNumberScheduled integer,
-    status__desiredNumberScheduled integer,
-    status__numberAvailable integer,
-    status__numberMisscheduled integer,
-    status__numberReady integer,
-    status__numberUnavailable integer,
-    status__observedGeneration long,
-    status__updatedNumberScheduled integer,
+    status__currentNumberScheduled integer OPTIONS(ANNOTATION 'Number of Pods currently scheduled.'),
+    status__desiredNumberScheduled integer OPTIONS(ANNOTATION 'Desired number of Pods.'),
+    status__numberAvailable integer OPTIONS(ANNOTATION 'Number of Pods available to serve traffic.'),
+    status__numberReady integer OPTIONS(ANNOTATION 'Number of Pods that are ready.'),
+    status__numberUnavailable integer OPTIONS(ANNOTATION 'Number of Pods currently unavailable.'),
+    status__updatedNumberScheduled integer OPTIONS(ANNOTATION 'Number of Pods updated to the latest version.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};daemonset');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};daemonset',
+        ANNOTATION 'Represents a Kubernetes DaemonSet, which ensures that a copy of a Pod runs on each node.',
+        relationship_affects 'POD',
+        relationship_affected_by 'NODE');
 
 CREATE FOREIGN TABLE REPLICASET
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the Kubernetes cluster.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the ReplicaSet.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace of the ReplicaSet.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels attached to the ReplicaSet.'),
 
-    spec__minReadySeconds integer,
-    spec__replicas integer,
-    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
-    spec__template json OPTIONS(parser_format 'asJsonPretty'),
+    spec__minReadySeconds integer OPTIONS(ANNOTATION 'Minimum time a Pod should be ready before considering it available.'),
+    spec__replicas integer OPTIONS(ANNOTATION 'The desired number of Pod replicas.'),
+    spec__selector json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Selector to determine which Pods belong to this ReplicaSet.'),
+    spec__template json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Pod template used to create new Pods.'),
 
-    status__availableReplicas integer,
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__fullyLabeledReplicas integer,
-    status__observedGeneration long,
-    status__replicas integer,
-    status__readyReplicas integer,
+    status__availableReplicas integer OPTIONS(ANNOTATION 'Number of available Pods.'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current status conditions of the ReplicaSet.'),
+    status__fullyLabeledReplicas integer OPTIONS(ANNOTATION 'Number of Pods that match the expected labels.'),
+    status__observedGeneration long OPTIONS(ANNOTATION 'The most recent generation observed by the controller.'),
+    status__replicas integer OPTIONS(ANNOTATION 'The total number of Pods managed by the ReplicaSet.'),
+    status__readyReplicas integer OPTIONS(ANNOTATION 'Number of ready Pods.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};replicaset');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};replicaset',
+        ANNOTATION 'Represents a Kubernetes ReplicaSet, which ensures a specified number of replicas of a Pod are running.',
+        relationship_affects 'POD',
+        relationship_affected_by 'DEPLOYMENT');
 
 CREATE FOREIGN TABLE SECRET
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the secret exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this secret.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the secret.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where the secret is located.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the secret for categorization.'),
 
-    stringData json OPTIONS(parser_format 'asJsonPretty'),
-    data json OPTIONS(parser_format 'asJsonPretty'),
-    immutable boolean,
-    type string,
+    stringData json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'String-based secret data, typically used for plain-text values.'),
+    data json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Binary-based secret data, often used for encoded values.'),
+    immutable boolean OPTIONS(ANNOTATION 'Indicates whether the secret is immutable, preventing changes after creation.'),
+    type string OPTIONS(ANNOTATION 'The type of secret, which determines its usage (e.g., Opaque, TLS, Docker credentials).'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the secret based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};secret');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};secret',
+        ANNOTATION 'Represents a Kubernetes Secret, which securely stores sensitive information such as passwords, tokens, and certificates.',
+        relationship_affects 'POD',
+        relationship_affected_by 'RBAC_ROLE_BINDING, SERVICE_ACCOUNT');
 
 CREATE FOREIGN TABLE CERTIFICATE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the certificate exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this certificate.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the certificate signing request (CSR).'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the certificate for categorization.'),
 
-    spec__expirationSeconds integer,
-    spec__extra json OPTIONS(parser_format 'asJsonPretty'),
-    spec__groups json,
-    spec__request string,
-    spec__signerName string,
-    spec__uid string,
-    spec__usages json,
-    spec__username string,
+    spec__expirationSeconds integer OPTIONS(ANNOTATION 'The duration (in seconds) after which the certificate expires.'),
+    spec__extra json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Additional metadata associated with the certificate request.'),
+    spec__groups json OPTIONS(ANNOTATION 'Groups associated with the user making the certificate request.'),
+    spec__request string OPTIONS(ANNOTATION 'The base64-encoded certificate signing request (CSR).'),
+    spec__signerName string OPTIONS(ANNOTATION 'The name of the signer responsible for approving the CSR.'),
+    spec__uid string OPTIONS(ANNOTATION 'The unique identifier of the certificate request.'),
+    spec__usages json OPTIONS(ANNOTATION 'The intended usage of the certificate (e.g., digital signature, key encipherment).'),
+    spec__username string OPTIONS(ANNOTATION 'The username of the entity requesting the certificate.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the certificate based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};certificate');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};certificate',
+        ANNOTATION 'Represents a Kubernetes CertificateSigningRequest (CSR), which is used to request and manage TLS certificates.',
+        relationship_affects 'SECRET');
 
 CREATE FOREIGN TABLE ENDPOINT_SLICE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the endpoint slice exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this endpoint slice.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the EndpointSlice.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where the EndpointSlice is located.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the EndpointSlice for categorization.'),
 
-    addressType string,
-    endpoints json OPTIONS(parser_format 'asJsonPretty'),
-    ports json OPTIONS(parser_format 'asJsonPretty'),
+    addressType string OPTIONS(ANNOTATION 'The type of addresses in the EndpointSlice (IPv4, IPv6, or FQDN).'),
+    endpoints json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The list of endpoints included in this slice, representing network locations.'),
+    ports json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The list of ports associated with the endpoints in this slice.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the EndpointSlice based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};endpointslice');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};endpointslice',
+        ANNOTATION 'Represents a Kubernetes EndpointSlice, which provides a scalable way to track network endpoints within a cluster.',
+        relationship_affects 'SERVICE',
+        relationship_affected_by 'POD');
 
 CREATE FOREIGN TABLE RESOURCE_CLASS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the resource class exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this resource class.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the ResourceClass.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the ResourceClass for categorization.'),
 
-    driverName string,
-    parametersRef json OPTIONS(parser_format 'asJsonPretty'),
-    suitableNodes json OPTIONS(parser_format 'asJsonPretty'),
+    driverName string OPTIONS(ANNOTATION 'The name of the storage driver associated with this ResourceClass.'),
+    parametersRef json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Reference to parameters that define how the resource should be provisioned.'),
+    suitableNodes json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Nodes that are suitable for provisioning resources using this class.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the ResourceClass based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};resourceclass');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};resourceclass',
+        ANNOTATION 'Represents a Kubernetes ResourceClass, which defines resource provisioning strategies for workload scheduling.');
 
 CREATE FOREIGN TABLE RESOURCE_CLAIM
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the resource claim exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this resource claim.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the ResourceClaim.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where the ResourceClaim is located.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the ResourceClaim for categorization.'),
 
-    spec__allocationMode string,
-    spec__resourceClassName string,
-    spec__parametersRef json OPTIONS(parser_format 'asJsonPretty'),
+    spec__allocationMode string OPTIONS(ANNOTATION 'Defines how the resource is allocated (e.g., Immediate or WaitForFirstConsumer).'),
+    spec__resourceClassName string OPTIONS(ANNOTATION 'The name of the ResourceClass associated with this claim.'),
+    spec__parametersRef json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Reference to parameters defining claim-specific configurations.'),
 
-    status__allocation json OPTIONS(parser_format 'asJsonPretty'),
-    status__deallocationRequested boolean,
-    status__driverName string,
-    status__reservedFor json OPTIONS(parser_format 'asJsonPretty'),
+    status__allocation json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Information about the allocated resource instance.'),
+    status__deallocationRequested boolean OPTIONS(ANNOTATION 'Indicates if the claim is scheduled for deallocation.'),
+    status__driverName string OPTIONS(ANNOTATION 'Name of the storage driver managing this resource claim.'),
+    status__reservedFor json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Details on workload(s) reserving this resource.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the ResourceClaim based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};resourceclaim');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};resourceclaim',
+        ANNOTATION 'Represents a Kubernetes ResourceClaim, which allows workloads to request dynamically provisioned resources.');
 
 CREATE FOREIGN TABLE POD_SCHEDULING_CONTEXT
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the pod scheduling context exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this pod scheduling context.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the PodSchedulingContext.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where the PodSchedulingContext is located.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the PodSchedulingContext for categorization.'),
 
-    spec__potentialNodes json OPTIONS(parser_format 'asJsonPretty'),
-    spec__selectedNode string,
+    spec__potentialNodes json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of potential nodes considered for scheduling the pod.'),
+    spec__selectedNode string OPTIONS(ANNOTATION 'The node selected for running the pod.'),
 
-    status__resourceClaims json OPTIONS(parser_format 'asJsonPretty'),
+    status__resourceClaims json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Resource claims associated with this pod scheduling context.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the PodSchedulingContext based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};podschedulingcontext');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};podschedulingcontext',
+        ANNOTATION 'Represents a Kubernetes PodSchedulingContext, which provides scheduling insights for dynamically provisioned resources.',
+        relationship_affects 'POD',
+        relationship_affected_by 'NODE, EVENT');
 
 CREATE FOREIGN TABLE EVENT
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
-    metadata__creationTimestamp timestamp,
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the event exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this event.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the event.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where the event occurred.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the event for categorization.'),
+    metadata__creationTimestamp timestamp OPTIONS(ANNOTATION 'The timestamp when the event was created.'),
 
-    action string,
-    deprecatedCount integer,
-    deprecatedFirstTimestamp timestamp,
-    deprecatedLastTimestamp timestamp,
-    deprecatedSource json OPTIONS(parser_format 'asJsonPretty'),
-    eventTime json,
-    note string,
-    reason string,
-    regarding json OPTIONS(parser_format 'asJsonPretty'),
-    related json OPTIONS(parser_format 'asJsonPretty'),
-    reportingController string,
-    reportingInstance string,
-    series json OPTIONS(parser_format 'asJsonPretty'),
-    type string,
+    action string OPTIONS(ANNOTATION 'The action that triggered the event.'),
+    deprecatedCount integer OPTIONS(ANNOTATION 'The number of times this event has occurred.'),
+    deprecatedFirstTimestamp timestamp OPTIONS(ANNOTATION 'The first time this event was recorded.'),
+    deprecatedLastTimestamp timestamp OPTIONS(ANNOTATION 'The last time this event was recorded.'),
+    deprecatedSource json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Source of the event (e.g., kubelet, controller).'),
+    eventTime json OPTIONS(ANNOTATION 'Precise time of the event occurrence.'),
+    note string OPTIONS(ANNOTATION 'A human-readable description of the event.'),
+    reason string OPTIONS(ANNOTATION 'A short reason for the event occurrence.'),
+    regarding json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The object that the event is regarding.'),
+    related json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Any related objects to this event.'),
+    reportingController string OPTIONS(ANNOTATION 'The component responsible for reporting the event.'),
+    reportingInstance string OPTIONS(ANNOTATION 'Instance of the component reporting the event.'),
+    series json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Series data for related repeated events.'),
+    type string OPTIONS(ANNOTATION 'The type of event (Normal or Warning).'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the Event based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};event');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};event',
+        ANNOTATION 'Represents a Kubernetes Event, which provides insights into significant cluster activities.',
+        relationship_affects 'POD, NODE, NAMESPACE, DEPLOYMENT',
+        relationship_generates 'LOGS');
 
 CREATE FOREIGN TABLE FLOW_SCHEMA
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where the flow schema exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this flow schema.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the FlowSchema.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to the FlowSchema for categorization.'),
 
-    spec__distinguisherMethod json OPTIONS(parser_format 'asJsonPretty'),
-    spec__matchingPrecedence integer,
-    spec__priorityLevelConfiguration json OPTIONS(parser_format 'asJsonPretty'),
-    spec__rules json OPTIONS(parser_format 'asJsonPretty'),
+    spec__distinguisherMethod json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Method used to distinguish between requesters in priority classes.'),
+    spec__matchingPrecedence integer OPTIONS(ANNOTATION 'Precedence of the flow schema for request matching.'),
+    spec__priorityLevelConfiguration json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Priority level configuration for requests.'),
+    spec__rules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Rules defining which requests match this flow schema.'),
 
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Conditions describing the state of the flow schema.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the FlowSchema based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};flowschema');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};flowschema',
+        ANNOTATION 'Represents a Kubernetes FlowSchema, which defines request priority and fair sharing in API request flows.',
+        relationship_affects 'PRIORITY_LEVEL_CONFIGURATION');
 
 CREATE FOREIGN TABLE PRIORITY_LEVEL_CONFIGURATION
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this PriorityLevelConfiguration exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this PriorityLevelConfiguration.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the PriorityLevelConfiguration.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this priority level configuration.'),
 
-    spec__exempt json OPTIONS(parser_format 'asJsonPretty'),
-    spec__type string,
-    spec__limited json OPTIONS(parser_format 'asJsonPretty'),
+    spec__exempt json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Configuration for exempt priority levels.'),
+    spec__type string OPTIONS(ANNOTATION 'The type of priority level (e.g., Exempt, Limited).'),
+    spec__limited json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Defines constraints for limited priority levels.'),
 
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Conditions describing the state of this priority level configuration.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the PriorityLevelConfiguration based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};prioritylevelconfiguration');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};prioritylevelconfiguration',
+        ANNOTATION 'Represents a Kubernetes PriorityLevelConfiguration, which defines priority levels for request handling.',
+        relationship_affected_by 'FLOW_SCHEMA');
 
 CREATE FOREIGN TABLE VALIDATING_WEBHOOK_CONFIGURATION
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this ValidatingWebhookConfiguration exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this ValidatingWebhookConfiguration.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the ValidatingWebhookConfiguration.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this webhook configuration.'),
 
-    webhooks json OPTIONS(parser_format 'asJsonPretty'),
+    webhooks json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of webhook configurations defining validation rules.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the ValidatingWebhookConfiguration based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};validatingwebhookconfiguration');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};validatingwebhookconfiguration',
+        ANNOTATION 'Represents a Kubernetes ValidatingWebhookConfiguration, which validates API requests before they are persisted.',
+        relationship_affects 'API_SERVICE');
 
 CREATE FOREIGN TABLE MUTATING_WEBHOOK_CONFIGURATION
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this MutatingWebhookConfiguration exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this MutatingWebhookConfiguration.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the MutatingWebhookConfiguration.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this webhook configuration.'),
 
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Conditions describing the state of this webhook configuration.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the MutatingWebhookConfiguration based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};mutatingwebhookconfiguration');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};mutatingwebhookconfiguration',
+        ANNOTATION 'Represents a Kubernetes MutatingWebhookConfiguration, which modifies API requests before they are persisted.',
+        relationship_affects 'API_SERVICE');
 
 CREATE FOREIGN TABLE HORIZONTAL_POD_AUTOSCALER
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this HorizontalPodAutoscaler exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this HorizontalPodAutoscaler.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the HorizontalPodAutoscaler.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this HorizontalPodAutoscaler is located.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this autoscaler.'),
 
-    spec__minReplicas integer,
-    spec__maxReplicas integer,
-    spec__metrics json OPTIONS(parser_format 'asJsonPretty'),
-    spec__scaleTargetRef json OPTIONS(parser_format 'asJsonPretty'),
+    spec__minReplicas integer OPTIONS(ANNOTATION 'The minimum number of replicas that the autoscaler should maintain.'),
+    spec__maxReplicas integer OPTIONS(ANNOTATION 'The maximum number of replicas that the autoscaler should scale up to.'),
+    spec__metrics json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Metrics used to determine autoscaling.'),
+    spec__scaleTargetRef json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Reference to the target workload being scaled.'),
 
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__currentMetrics json OPTIONS(parser_format 'asJsonPretty'),
-    status__currentReplicas integer,
-    status__desiredReplicas integer,
-    status__lastScaleTime timestamp,
-    status__observedGeneration long,
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Conditions describing the state of the autoscaler.'),
+    status__currentMetrics json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current metrics data for autoscaling.'),
+    status__currentReplicas integer OPTIONS(ANNOTATION 'The current number of replicas in the target workload.'),
+    status__desiredReplicas integer OPTIONS(ANNOTATION 'The desired number of replicas calculated by the autoscaler.'),
+    status__lastScaleTime timestamp OPTIONS(ANNOTATION 'The last time the autoscaler performed a scaling action.'),
+    status__observedGeneration long OPTIONS(ANNOTATION 'The last observed generation of the autoscaler resource.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the HorizontalPodAutoscaler based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};horizontalpodautoscaler');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};horizontalpodautoscaler',
+        ANNOTATION 'Represents a Kubernetes HorizontalPodAutoscaler (HPA), which automatically scales the number of pod replicas based on resource metrics.',
+        relationship_affects 'DEPLOYMENT, REPLICASET, STATEFULSET',
+        relationship_affected_by 'METRICS_SERVER');
 
 CREATE FOREIGN TABLE STORAGE_CLASS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this StorageClass exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this StorageClass.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the StorageClass.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this storage class.'),
 
-    allowVolumeExpansion boolean,
-    allowedTopologies json OPTIONS(parser_format 'asJsonPretty'),
-    mountOptions json OPTIONS(parser_format 'asJsonPretty'),
-    parameters json OPTIONS(parser_format 'asJsonPretty'),
-    provisioner string,
-    reclaimPolicy string,
-    volumeBindingMode string,
+    allowVolumeExpansion boolean OPTIONS(ANNOTATION 'Indicates whether the volume can be resized.'),
+    allowedTopologies json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Constraints on which nodes the volumes can be provisioned.'),
+    mountOptions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of mount options for dynamically provisioned volumes.'),
+    parameters json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Parameters for the provisioner that creates volumes.'),
+    provisioner string OPTIONS(ANNOTATION 'The name of the volume provisioner used for this storage class.'),
+    reclaimPolicy string OPTIONS(ANNOTATION 'Policy determining what happens to a volume after deletion (e.g., Retain, Delete).'),
+    volumeBindingMode string OPTIONS(ANNOTATION 'Defines when volume binding and dynamic provisioning occur.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the StorageClass based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};storageclass');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};storageclass',
+        ANNOTATION 'Represents a Kubernetes StorageClass, which defines storage parameters for dynamically provisioned volumes.',
+        relationship_affects 'PERSISTENT_VOLUME');
 
 CREATE FOREIGN TABLE CSI_DRIVER
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this CSI Driver exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this CSI Driver.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the CSI Driver.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this CSI driver.'),
 
-    spec__attachRequired boolean,
-    spec__fsGroupPolicy string,
-    spec__podInfoOnMount boolean,
-    spec__requiresRepublish boolean,
-    spec__seLinuxMount boolean,
-    spec__storageCapacity boolean,
-    spec__tokenRequests json OPTIONS(parser_format 'asJsonPretty'),
-    spec__volumeLifecycleModes json OPTIONS(parser_format 'asJsonPretty'),
+    spec__attachRequired boolean OPTIONS(ANNOTATION 'Indicates whether an attach operation is required before mounting the volume.'),
+    spec__fsGroupPolicy string OPTIONS(ANNOTATION 'Defines the policy for modifying file system group ownership on mounted volumes.'),
+    spec__podInfoOnMount boolean OPTIONS(ANNOTATION 'Indicates if pod information should be sent to the CSI driver during mount operations.'),
+    spec__requiresRepublish boolean OPTIONS(ANNOTATION 'Specifies if the driver requires a node to be notified when volume attachments change.'),
+    spec__seLinuxMount boolean OPTIONS(ANNOTATION 'Indicates if the driver supports SELinux mount options.'),
+    spec__storageCapacity boolean OPTIONS(ANNOTATION 'Determines if the driver supports dynamic storage capacity tracking.'),
+    spec__tokenRequests json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Defines token request settings for CSI authentication.'),
+    spec__volumeLifecycleModes json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Lists the volume lifecycle modes supported by the CSI driver.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the CSI Driver based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};csidriver');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};csidriver',
+        ANNOTATION 'Represents a Kubernetes CSI Driver, which defines how Kubernetes interacts with external storage systems using Container Storage Interface (CSI).',
+        relationship_affects 'CSI_NODE, CSI_STORAGE_CAPACITY');
 
 CREATE FOREIGN TABLE CSI_NODE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this CSI Node exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this CSI Node.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the CSI Node.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this CSI node.'),
 
-    spec__drivers json OPTIONS(parser_format 'asJsonPretty'),
+    spec__drivers json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of CSI drivers installed on this node.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the CSI Node based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};csinode');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};csinode',
+        ANNOTATION 'Represents a Kubernetes CSI Node, which provides information about CSI drivers installed on a Kubernetes node.',
+        relationship_affects 'CSI_STORAGE_CAPACITY');
 
 CREATE FOREIGN TABLE CSI_STORAGE_CAPACITY
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this CSI Storage Capacity exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this CSI Storage Capacity.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the CSI Storage Capacity resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this CSI Storage Capacity resource exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this CSI storage capacity resource.'),
 
-    capacity json OPTIONS(parser_format 'asJsonPretty'),
-    maximumVolumeSize json OPTIONS(parser_format 'asJsonPretty'),
-    nodeTopology json OPTIONS(parser_format 'asJsonPretty'),
-    storageClassName string,
+    capacity json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Defines the available capacity for a given storage class on a node.'),
+    maximumVolumeSize json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The maximum size of a single volume that can be dynamically provisioned.'),
+    nodeTopology json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Specifies the topology constraints for where storage volumes can be provisioned.'),
+    storageClassName string OPTIONS(ANNOTATION 'The name of the StorageClass associated with this CSI storage capacity.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the CSI Storage Capacity based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};csistoragecapacity');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};csistoragecapacity',
+        ANNOTATION 'Represents a Kubernetes CSI Storage Capacity, which tracks the available storage capacity for a CSI driver on a given node.',
+        relationship_affected_by 'CSI_NODE, CSI_DRIVER');
 
 CREATE FOREIGN TABLE VOLUME_ATTACHMENT
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this VolumeAttachment exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this VolumeAttachment.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the VolumeAttachment resource.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this VolumeAttachment.'),
 
-    spec__attacher string,
-    spec__nodeName string,
-    spec__source json OPTIONS(parser_format 'asJsonPretty'),
+    spec__attacher string OPTIONS(ANNOTATION 'The name of the volume attacher responsible for attaching the volume to the node.'),
+    spec__nodeName string OPTIONS(ANNOTATION 'The name of the Kubernetes node where the volume is attached.'),
+    spec__source json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Information about the volume being attached.'),
 
-    status__attachError json OPTIONS(parser_format 'asJsonPretty'),
-    status__attached boolean,
-    status__attachmentMetadata json OPTIONS(parser_format 'asJsonPretty'),
-    status__detachError json OPTIONS(parser_format 'asJsonPretty'),
+    status__attachError json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Details of any errors encountered while attaching the volume.'),
+    status__attached boolean OPTIONS(ANNOTATION 'Indicates whether the volume is successfully attached.'),
+    status__attachmentMetadata json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Metadata about the volume attachment, such as mount paths.'),
+    status__detachError json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Details of any errors encountered while detaching the volume.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the VolumeAttachment based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};volumeattachment');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};volumeattachment',
+        ANNOTATION 'Represents a Kubernetes VolumeAttachment, which tracks the attachment of external storage volumes to nodes.',
+        relationship_affects 'PERSISTENT_VOLUME_CLAIM');
 
 CREATE FOREIGN TABLE JOB
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this Job exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this Job.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the Job resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this Job exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this Job.'),
 
-    spec__activeDeadlineSeconds long,
-    spec__backoffLimit integer,
-    spec__backoffLimitPerIndex integer,
-    spec__completionMode string,
-    spec__completions integer,
-    spec__manualSelector boolean,
-    spec__maxFailedIndexes integer,
-    spec__parallelism integer,
-    spec__podFailurePolicy json OPTIONS(parser_format 'asJsonPretty'),
-    spec__podReplacementPolicy string,
-    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
-    spec__suspend boolean,
-    spec__template json OPTIONS(parser_format 'asJsonPretty'),
-    spec__ttlSecondsAfterFinished integer,
+    spec__activeDeadlineSeconds long OPTIONS(ANNOTATION 'The maximum duration a job can run before being terminated.'),
+    spec__backoffLimit integer OPTIONS(ANNOTATION 'The number of retries before considering a job as failed.'),
+    spec__backoffLimitPerIndex integer OPTIONS(ANNOTATION 'The number of retries per failed index within the job.'),
+    spec__completionMode string OPTIONS(ANNOTATION 'Defines the completion mode for indexed jobs (e.g., NonIndexed or Indexed).'),
+    spec__completions integer OPTIONS(ANNOTATION 'The total number of completions required for the job to succeed.'),
+    spec__manualSelector boolean OPTIONS(ANNOTATION 'Indicates if manual pod selection should be used.'),
+    spec__maxFailedIndexes integer OPTIONS(ANNOTATION 'The maximum number of failed indexes allowed before marking the job as failed.'),
+    spec__parallelism integer OPTIONS(ANNOTATION 'The number of pods that can run in parallel.'),
+    spec__podFailurePolicy json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Policy that defines how pod failures should be handled.'),
+    spec__podReplacementPolicy string OPTIONS(ANNOTATION 'Defines the pod replacement policy when scheduling new job pods.'),
+    spec__selector json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Selector that defines how the job matches existing pods.'),
+    spec__suspend boolean OPTIONS(ANNOTATION 'Indicates whether the job is suspended.'),
+    spec__template json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The pod template defining the workload specifications.'),
+    spec__ttlSecondsAfterFinished integer OPTIONS(ANNOTATION 'The time after completion before the job is automatically deleted.'),
 
-    status__active integer,
-    status__completedIndexes string,
-    status__completionTime timestamp,
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__failed integer,
-    status__failedIndexes string,
-    status__ready integer,
-    status__startTime timestamp,
-    status__succeeded integer,
-    status__terminating integer,
-    status__uncountedTerminatedPods json OPTIONS(parser_format 'asJsonPretty'),
+    status__active integer OPTIONS(ANNOTATION 'The number of currently active job pods.'),
+    status__completedIndexes string OPTIONS(ANNOTATION 'Indexes of completed job pods when using Indexed completion mode.'),
+    status__completionTime timestamp OPTIONS(ANNOTATION 'The timestamp when the job was completed.'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current state conditions of the job.'),
+    status__failed integer OPTIONS(ANNOTATION 'The number of failed job pods.'),
+    status__failedIndexes string OPTIONS(ANNOTATION 'Indexes of failed job pods when using Indexed completion mode.'),
+    status__ready integer OPTIONS(ANNOTATION 'The number of ready job pods.'),
+    status__startTime timestamp OPTIONS(ANNOTATION 'The timestamp when the job was started.'),
+    status__succeeded integer OPTIONS(ANNOTATION 'The number of successfully completed job pods.'),
+    status__terminating integer OPTIONS(ANNOTATION 'The number of terminating job pods.'),
+    status__uncountedTerminatedPods json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Tracks terminated pods that are not counted in status.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the Job based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};job');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};job',
+        ANNOTATION 'Represents a Kubernetes Job, which runs a batch process to completion.',
+        relationship_affects 'POD');
 
 CREATE FOREIGN TABLE CRON_JOB
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this CronJob exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this CronJob.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the CronJob resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this CronJob exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this CronJob.'),
 
-    spec__concurrencyPolicy string,
-    spec__failedJobsHistoryLimit integer,
-    spec__jobTemplate json OPTIONS(parser_format 'asJsonPretty'),
-    spec__schedule string,
-    spec__startingDeadlineSeconds long,
-    spec__successfulJobsHistoryLimit integer,
-    spec__suspend boolean,
-    spec__timeZone string,
+    spec__concurrencyPolicy string OPTIONS(ANNOTATION 'Defines how concurrent executions of a job should be handled (e.g., Allow, Forbid, Replace).'),
+    spec__failedJobsHistoryLimit integer OPTIONS(ANNOTATION 'The number of failed jobs to retain in history.'),
+    spec__jobTemplate json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Template specifying the job that the CronJob creates.'),
+    spec__schedule string OPTIONS(ANNOTATION 'The cron schedule for running jobs (e.g., "*/5 * * * *").'),
+    spec__startingDeadlineSeconds long OPTIONS(ANNOTATION 'The time limit for starting the job if it missed its scheduled time.'),
+    spec__successfulJobsHistoryLimit integer OPTIONS(ANNOTATION 'The number of successfully completed jobs to retain in history.'),
+    spec__suspend boolean OPTIONS(ANNOTATION 'Indicates whether the CronJob is currently suspended.'),
+    spec__timeZone string OPTIONS(ANNOTATION 'The time zone in which the schedule should be interpreted.'),
 
-    status__active json OPTIONS(parser_format 'asJsonPretty'),
-    status__lastScheduleTime timestamp,
-    status__lastSuccessfulTime timestamp,
+    status__active json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of currently active jobs spawned by this CronJob.'),
+    status__lastScheduleTime timestamp OPTIONS(ANNOTATION 'The last time the job was successfully scheduled.'),
+    status__lastSuccessfulTime timestamp OPTIONS(ANNOTATION 'The last time the job completed successfully.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the CronJob based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};cronjob');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};cronjob',
+        ANNOTATION 'Represents a Kubernetes CronJob, which runs scheduled jobs at defined intervals using cron expressions.',
+        relationship_affects 'JOB');
 
 CREATE FOREIGN TABLE POD_DISRUPT_BUDGET
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this PodDisruptionBudget exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this PodDisruptionBudget.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the PodDisruptionBudget resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this PodDisruptionBudget exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this PodDisruptionBudget.'),
 
-    spec__maxUnavailable string,
-    spec__minAvailable string,
-    spec__unhealthyPodEvictionPolicy string,
-    spec__selector json OPTIONS(parser_format 'asJsonPretty'),
+    spec__maxUnavailable string OPTIONS(ANNOTATION 'The maximum number or percentage of pods that can be unavailable during a voluntary disruption.'),
+    spec__minAvailable string OPTIONS(ANNOTATION 'The minimum number or percentage of pods that must remain available during a disruption.'),
+    spec__unhealthyPodEvictionPolicy string OPTIONS(ANNOTATION 'Defines whether unhealthy pods should be evicted or retained.'),
+    spec__selector json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A label selector to match the set of pods covered by this budget.'),
 
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__currentHealthy integer,
-    status__desiredHealthy integer,
-    status__disruptedPods json OPTIONS(parser_format 'asJsonPretty'),
-    status__disruptionsAllowed integer,
-    status__expectedPods integer,
-    status__observedGeneration long,
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current state conditions of the PodDisruptionBudget.'),
+    status__currentHealthy integer OPTIONS(ANNOTATION 'The current number of healthy pods that match the selector.'),
+    status__desiredHealthy integer OPTIONS(ANNOTATION 'The desired number of healthy pods that should be maintained.'),
+    status__disruptedPods json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Tracks pods that were recently disrupted.'),
+    status__disruptionsAllowed integer OPTIONS(ANNOTATION 'The number of additional voluntary disruptions that can be performed.'),
+    status__expectedPods integer OPTIONS(ANNOTATION 'The total number of pods expected to be running.'),
+    status__observedGeneration long OPTIONS(ANNOTATION 'The most recent generation observed for this PodDisruptionBudget.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the PodDisruptionBudget based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};poddisruptbudget');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};poddisruptbudget',
+        ANNOTATION 'Represents a Kubernetes PodDisruptionBudget, which is used to limit the number of pods that can be voluntarily evicted at a time.',
+        relationship_affects 'POD',
+        relationship_affected_by 'DEPLOYMENT, REPLICASET, DAEMONSET');
 
 CREATE FOREIGN TABLE RBAC_ROLE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this Role exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this Role.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the Role resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this Role exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this Role.'),
 
-    rules json OPTIONS(parser_format 'asJsonPretty'),
+    simpleRules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of policy rules that define permissions for this Role.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the Role based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;role');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;role',
+        ANNOTATION 'Represents a Kubernetes Role, which defines a set of permissions within a specific namespace.',
+        relationship_affects 'RBAC_ROLE_BINDING');
 
 CREATE FOREIGN TABLE RBAC_ROLE_BINDING
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this RoleBinding exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this RoleBinding.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the RoleBinding resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this RoleBinding exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this RoleBinding.'),
 
-    roleRef json OPTIONS(parser_format 'asJsonPretty'),
-    subjects json OPTIONS(parser_format 'asJsonPretty'),
+    roleRef json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Reference to the Role being bound.'),
+    subjects json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of users, groups, or service accounts that are bound to the Role.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the RoleBinding based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;rolebinding');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;rolebinding',
+        ANNOTATION 'Represents a Kubernetes RoleBinding, which grants permissions defined in a Role to specific users, groups, or service accounts.',
+        relationship_affected_by 'RBAC_ROLE');
 
 CREATE FOREIGN TABLE RBAC_CLUSTER_ROLE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this ClusterRole exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this ClusterRole.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the ClusterRole resource.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this ClusterRole.'),
 
-    rules json OPTIONS(parser_format 'asJsonPretty'),
+    simpleRules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of policy rules that define permissions for this ClusterRole.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the ClusterRole based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;clusterrole');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;clusterrole',
+        ANNOTATION 'Represents a Kubernetes ClusterRole, which defines a set of permissions that apply cluster-wide.',
+        relationship_affects 'RBAC_CLUSTER_ROLE_BINDING');
 
 CREATE FOREIGN TABLE RBAC_CLUSTER_ROLE_BINDING
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this ClusterRoleBinding exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this ClusterRoleBinding.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the ClusterRoleBinding resource.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this ClusterRoleBinding.'),
 
-    roleRef json OPTIONS(parser_format 'asJsonPretty'),
-    subjects json OPTIONS(parser_format 'asJsonPretty'),
+    roleRef json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Reference to the ClusterRole being bound.'),
+    subjects json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of users, groups, or service accounts that are bound to the ClusterRole.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the ClusterRoleBinding based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;clusterrolebinding');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};rbac;clusterrolebinding',
+        ANNOTATION 'Represents a Kubernetes ClusterRoleBinding, which grants cluster-wide permissions to specific users, groups, or service accounts.',
+        relationship_affected_by 'RBAC_CLUSTER_ROLE');
 
 CREATE FOREIGN TABLE PRIORITY_CLASS
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this PriorityClass exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this PriorityClass.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the PriorityClass resource.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this PriorityClass.'),
 
-    description string,
-    globalDefault boolean,
-    preemptionPolicy string,
-    "value" integer,
+    description string OPTIONS(ANNOTATION 'A human-readable description of this PriorityClass.'),
+    globalDefault boolean OPTIONS(ANNOTATION 'Indicates whether this PriorityClass is the global default for pods that do not request a specific priority.'),
+    preemptionPolicy string OPTIONS(ANNOTATION 'Defines how preemption should be handled for pods using this priority.'),
+    "value" integer OPTIONS(ANNOTATION 'The actual priority value assigned to this PriorityClass.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the PriorityClass based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};priorityclass');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};priorityclass',
+        ANNOTATION 'Represents a Kubernetes PriorityClass, which defines priority levels for scheduling pods.',
+        relationship_affects 'POD, NODE');
 
 CREATE FOREIGN TABLE API_SERVICE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this APIService exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this APIService.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the APIService resource.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this APIService.'),
 
-    spec__caBundle string,
-    spec__group string,
-    spec__groupPriorityMinimum integer,
-    spec__insecureSkipTLSVerify boolean,
-    spec__service json OPTIONS(parser_format 'asJsonPretty'),
-    spec__version string,
-    spec__versionPriority integer,
+    spec__caBundle string OPTIONS(ANNOTATION 'A PEM-encoded CA bundle for verifying TLS connections to the APIService.'),
+    spec__group string OPTIONS(ANNOTATION 'The API group associated with this APIService.'),
+    spec__groupPriorityMinimum integer OPTIONS(ANNOTATION 'The priority of this group relative to others when handling API requests.'),
+    spec__insecureSkipTLSVerify boolean OPTIONS(ANNOTATION 'Indicates whether TLS verification should be skipped for this APIService.'),
+    spec__service json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A reference to the Kubernetes Service backing this APIService.'),
+    spec__version string OPTIONS(ANNOTATION 'The API version exposed by this APIService.'),
+    spec__versionPriority integer OPTIONS(ANNOTATION 'The priority of this API version relative to others within the same group.'),
 
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Current state conditions of the APIService.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the APIService based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};apiservice');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};apiservice',
+        ANNOTATION 'Represents a Kubernetes APIService, which extends the Kubernetes API with additional endpoints.',
+        relationship_affected_by 'VALIDATING_WEBHOOK_CONFIGURATION, MUTATING_WEBHOOK_CONFIGURATION');
 
 CREATE FOREIGN TABLE CONFIGMAP
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this ConfigMap exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this ConfigMap.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the ConfigMap resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this ConfigMap exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this ConfigMap.'),
 
-    binaryData json OPTIONS(parser_format 'asJsonPretty'),
-    data json OPTIONS(parser_format 'asJsonPretty'),
-    immutable boolean,
+    binaryData json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Binary data stored in this ConfigMap.'),
+    data json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'String key-value pairs stored in this ConfigMap.'),
+    immutable boolean OPTIONS(ANNOTATION 'Indicates whether this ConfigMap is immutable.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the ConfigMap based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};configmap');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};configmap',
+        ANNOTATION 'Represents a Kubernetes ConfigMap, which is used to store configuration data as key-value pairs.',
+        relationship_affects 'POD, DEPLOYMENT');
 
 CREATE FOREIGN TABLE LIMIT_RANGE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this LimitRange exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this LimitRange.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the LimitRange resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this LimitRange exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this LimitRange.'),
 
-    spec__limits json OPTIONS(parser_format 'asJsonPretty'),
+    spec__limits json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Defines resource limits that apply to containers and pods.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the LimitRange based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};limitrange');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};limitrange',
+        ANNOTATION 'Represents a Kubernetes LimitRange, which defines constraints on resource usage within a namespace.');
 
 CREATE FOREIGN TABLE LEASE
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__namespace string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}', ANNOTATION 'The name of the cluster where this Lease exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema associated with this Lease.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the Lease resource.'),
+    metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this Lease exists.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this Lease.'),
 
-    spec__acquireTime timestamp,
-    spec__holderIdentity string,
-    spec__leaseDurationSeconds integer,
-    spec__leaseTransitions integer,
-    spec__renewTime timestamp,
+    spec__acquireTime timestamp OPTIONS(ANNOTATION 'The time when the lease was acquired.'),
+    spec__holderIdentity string OPTIONS(ANNOTATION 'The identity of the holder of this Lease.'),
+    spec__leaseDurationSeconds integer OPTIONS(ANNOTATION 'The duration in seconds that the Lease is valid.'),
+    spec__leaseTransitions integer OPTIONS(ANNOTATION 'The number of times the lease has changed hands.'),
+    spec__renewTime timestamp OPTIONS(ANNOTATION 'The time when the lease was last renewed.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the Lease based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__namespace, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};lease');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};lease',
+        ANNOTATION 'Represents a Kubernetes Lease, which is used for leader election and coordination mechanisms.');
 
 CREATE FOREIGN TABLE CUSTOM_RESOURCE_DEFINITION
 (
-    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}'),
-    schema string OPTIONS(val_constant '{{ schema.name }}'),
-    metadata__name string,
-    metadata__labels json OPTIONS(parser_format 'asJsonPretty'),
+    clusterName string OPTIONS(val_constant '{{ schema.properties.cluster_name }}',
+                               ANNOTATION 'The name of the cluster where this CustomResourceDefinition (CRD) exists.'),
+    schema string OPTIONS(val_constant '{{ schema.name }}',
+                          ANNOTATION 'The schema associated with this CustomResourceDefinition.'),
+    metadata__name string OPTIONS(ANNOTATION 'The name of the CustomResourceDefinition resource.'),
+    metadata__labels json OPTIONS(parser_format 'asJsonPretty',
+                                  ANNOTATION 'Labels assigned to this CustomResourceDefinition.'),
 
-    spec__conversion json OPTIONS(parser_format 'asJsonPretty'),
-    spec__group string,
-    spec__names json OPTIONS(parser_format 'asJsonPretty'),
-    spec__preserveUnknownFields boolean,
-    spec__scope string,
-    spec__versions json OPTIONS(parser_format 'asJsonPretty'),
+    spec__conversion json OPTIONS(parser_format 'asJsonPretty',
+                                  ANNOTATION 'Defines how the CRD should handle version conversion.'),
+    spec__group string OPTIONS(ANNOTATION 'The API group that this CRD belongs to.'),
+    spec__names json OPTIONS(parser_format 'asJsonPretty',
+                             ANNOTATION 'Defines the names used for this CustomResourceDefinition (plural, singular, short names, kind).'),
+    spec__preserveUnknownFields boolean OPTIONS(ANNOTATION 'Indicates whether unknown fields should be preserved in custom resources of this type.'),
+    spec__scope string OPTIONS(ANNOTATION 'Defines whether the CRD is namespace-scoped or cluster-scoped.'),
+    spec__versions json OPTIONS(parser_format 'asJsonPretty',
+                                ANNOTATION 'List of supported versions for this CRD.'),
 
-    status__acceptedNames json OPTIONS(parser_format 'asJsonPretty'),
-    status__conditions json OPTIONS(parser_format 'asJsonPretty'),
-    status__storedVersions json,
+    status__acceptedNames json OPTIONS(parser_format 'asJsonPretty',
+                                       ANNOTATION 'The names that have been accepted for this CRD by the API server.'),
+    status__conditions json OPTIONS(parser_format 'asJsonPretty',
+                                    ANNOTATION 'Current conditions of the CRD, describing its state and readiness.'),
+    status__storedVersions json OPTIONS(ANNOTATION 'Versions of the CRD currently stored in etcd.'),
 
-    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name' ),
+    identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name',
+                                       ANNOTATION 'Unique identifier for the CRD based on cluster and name.'),
     PRIMARY KEY(identifier),
 
     UNIQUE(clusterName, metadata__name)
 )
 OPTIONS(updatable true,
         supports_idempotency false,
-        tags 'kubernetes;{{ schema.properties.cluster_name }};crd;customresourcedefinition');
+        tags 'kubernetes;{{ schema.properties.cluster_name }};crd;customresourcedefinition',
+        ANNOTATION 'Represents a Kubernetes CustomResourceDefinition (CRD), which allows defining custom API resources that extend Kubernetes functionality.',
+        relationship_generates 'CUSTOM_RESOURCES');
 ```
 </details>
 
