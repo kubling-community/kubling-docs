@@ -46,7 +46,7 @@ properties:
             properties:
               storeType:
                 type: "string"
-                description: "SSL certificate store type (do not change if certificates\
+                description: "TLS certificate store type (do not change if certificates\
                   \ were generated with Kubling CLI)."
               storeFilePath:
                 type: "string"
@@ -90,6 +90,36 @@ properties:
     properties:
       descriptorBundle:
         type: "string"
+  http:
+    type: "object"
+    id: "schema:kubling:dbvirt:config:app:HttpApplicationProperties"
+    properties:
+      tls:
+        type: "object"
+        id: "schema:kubling:dbvirt:config:app:HttpTlsProperties"
+        properties:
+          storeType:
+            type: "string"
+            description: "TLS certificate store type (do not change if certificates\
+              \ were generated with Kubling CLI)."
+          storeFilePath:
+            type: "string"
+            description: "Location of the certificate store file."
+          storePassword:
+            type: "string"
+            description: "Certificate store password."
+          entryAlias:
+            type: "string"
+            description: "Certificate store entry name/alias (do not change if certificates\
+              \ were generated with Kubling CLI)."
+          minimumTlsVersion:
+            type: "string"
+            description: "Minimum TLS protocol version accepted by the server. Use\
+              \ TLS_1_2 to allow TLS 1.2 and TLS 1.3; use TLS_1_3 to require TLS 1.3\
+              \ only. Default: TLS_1_3."
+            enum:
+            - "TLS_1_2"
+            - "TLS_1_3"
   console:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:Console"
@@ -248,23 +278,56 @@ properties:
               \ environment variable."
             additionalProperties:
               type: "string"
-```
+  instrumentation:
+    type: "object"
+    id: "schema:kubling:dbvirt:config:app:InstrumentationProperties"
+    properties:
+      azureMonitor:
+        type: "object"
+        id: "schema:kubling:dbvirt:config:app:instrumentation:AzureMonitorProperties"
+        properties:
+          enabled:
+            type: "boolean"
+          connectionString:
+            type: "string"
+      openTelemetry:
+        type: "object"
+        id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryConfig"
+        properties:
+          enabled:
+            type: "boolean"
+          stepInMillis:
+            type: "integer"
+          url:
+            type: "string"
+          resourceAttributes:
+            type: "object"
+            additionalProperties:
+              type: "string"
+          headers:
+            type: "object"
+            additionalProperties:
+              type: "string"
+          temporality:
+            type: "string"
+            enum:
+            - "DELTA"
+            - "CUMULATIVE"
+      dataDog:
+        type: "object"
+        id: "schema:kubling:dbvirt:config:app:instrumentation:DatadogConfig"
+        properties:
+          enabled:
+            type: "boolean"
+          stepInMillis:
+            type: "integer"
+          url:
+            type: "string"
+          apiKey:
+            type: "string"
+          hostTag:
+            type: "string"
 
-### Sample
-```yaml
-transports:
-  nativeProtocol:
-    bindAddress: {{ NATIVE_PROTOCOL_BIND_ADDRESS }}
-    portNumber: {{ NATIVE_PROTOCOL_PORT }}
-    secure: false
-  pgProtocol:
-    bindAddress: "0.0.0.0"
-    portNumber: 35432
-    secure: false
-vdb:
-  descriptorBundle: {{ DESCRIPTOR_BUNDLE }}
-
-propertiesFilePath: {{ PROPS_FILE }}
 ```
 
 ## Descriptor bundle information file (`bundle-info.yaml`)
@@ -311,6 +374,10 @@ properties:
         module:
           type: "object"
           $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+  initScriptFilePath:
+    type: "string"
+    description: "Bundle-level initialization Script. It runs after all Data Sources\
+      \ are loaded and their metadata processed and available."
   actionsDirectory:
     type: "string"
     description: "Directory with action descriptor files, relative to this bundle\
@@ -329,6 +396,45 @@ properties:
     items:
       type: "object"
       $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+  endpointScripts:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:endpoint:script:EndpointScripts"
+    properties:
+      maxContexts:
+        type: "integer"
+        description: "Maximum Script contexts to be added to the pool per partition.\
+          \ Once reached, subsequent function execution requests will be enqueued.\
+          \ The overall total Maximum Script contexts must be calculated per partition,\
+          \ that is: partitions * maxContexts. Default: 50"
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum wait time in milliseconds the thread will wait in the\
+          \ queue for a Script context from the pool. Once reached, an error is thrown\
+          \ if no available context.Default: 10000ms (10s)"
+      endpoints:
+        type: "array"
+        items:
+          type: "object"
+          id: "schema:kubling:dbvirt:model:endpoint:script:EndpointScript"
+          properties:
+            endpointVersion:
+              type: "string"
+              description: "Endpoint version."
+            endpointName:
+              type: "string"
+              description: "Name of the HTTP endpoint."
+            scriptFilePath:
+              type: "string"
+              description: "Relative path to the function script, based on the location\
+                \ of this bundle information within the module."
+            httpMethod:
+              type: "string"
+              enum:
+              - "DELETE"
+              - "GET"
+              - "PATCH"
+              - "POST"
+              - "PUT"
 ```
 
 ### Sample
@@ -1005,6 +1111,10 @@ properties:
       \ the REMOTE data source once the connection is established."
     items:
       type: "string"
+  migrationDir:
+    type: "string"
+    description: "Specifies a directory containing migration scripts. When set, the\
+      \ ddlFilePaths configuration option is ignored."
 ```
 
 ## Redis Data Source Configuration

@@ -1,5 +1,14 @@
 # Product changelog
 
+## v25.5
+- Added JavaScript HTTP endpoints, allowing you to define custom paths and handle them directly within your scripts.
+- Added a new way of defining instrumentation at the application level, with support for OpenTelemetry and DataDog formats, including endpoints for pushing metrics.
+- Added the `SYSREGISTRY` system table, exposing internal information used for traceability across immutable instances.
+- Added support for HTTP TLS certificates, affecting all HTTP-based endpoints.
+- Changed the container’s base image to [distroless CC](https://github.com/GoogleContainerTools/distroless/tree/main/cc), due to an error reported in some environments with memory constraints where the garbage collector attempted to call non-existent system functions.
+- Portable Local data source now supports flyway migrations.
+- Fixed an issue with the MySQL data source that prevented Kubling from initializing correctly due to an incorrectly constructed connection string.
+
 ## v25.4.3
 - **Kubling is now completely free, no more Community or Enterprise editions. A single, unified distribution going forward.**.
 - Fixed batch/bulk `UPDATE` handling in the `routing` data source.

@@ -1,0 +1,84 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+import { FileTree } from 'nextra/components'
+
+# Script <Tag description={"v25.5+"} />
+
+Endpoint scripts are defined in the main descriptor bundle. When configured, Kubling creates a dedicated script context manager to prevent endpoints from exhausting system resources by limiting the number of parallel contexts (threads) allowed.
+
+Let’s start with an example structure:
+
+<FileTree>
+  <FileTree.File name="bundle-info.yaml" />
+  <FileTree.Folder name="endpoint">
+    <FileTree.File name="get_it.js" />
+    <FileTree.File name="post_it.js" />
+    <FileTree.File name="delete_it.js" />
+    <FileTree.File name="patch_it.js" />
+    <FileTree.File name="put_it.js" />
+  </FileTree.Folder>
+</FileTree>
+
+### `bundle-info.yaml`
+
+```yaml showLineNumbers
+virtualDatabases:
+  - 'vdb/EndpointsVDB.yaml'
+
+endpointScripts:
+  maxContexts: 20
+  maxWaitMilliseconds: 5000
+  endpoints:
+    - endpointVersion: v1
+      endpointName: "getIt"
+      scriptFilePath: "endpoint/get_it.js"
+    - endpointVersion: v1
+      httpMethod: POST
+      endpointName: "postIt"
+      scriptFilePath: "endpoint/post_it.js"
+    - endpointVersion: v1
+      httpMethod: DELETE
+      endpointName: "deleteIt"
+      scriptFilePath: "endpoint/delete_it.js"
+    - endpointVersion: v1
+      httpMethod: PATCH
+      endpointName: "patchIt"
+      scriptFilePath: "endpoint/patch_it.js"
+    - endpointVersion: v1
+      httpMethod: PUT
+      endpointName: "putIt"
+      scriptFilePath: "endpoint/put_it.js"
+```
+
+Although the configuration is mostly self-explanatory, it's important to note that if `httpMethod` is not specified, Kubling assumes it is `GET`.
+
+### Example: `get_it.js`
+
+Endpoint scripts work similarly to other JavaScript-based components in Kubling (such as data sources or SQL functions), with the key difference being the set of **contextual objects injected at runtime**.
+
+```js
+logger.info(httpRequest.method());
+logger.info(httpRequest.body());
+
+var result = DBEngine.executeQuery("MinimalVDB", "SELECT * FROM SYSMETRICS.METRICS");
+httpResponse.text(result.inspect);
+```
+
+In this minimal example:
+
+- The script logs the HTTP method and request body.
+- It uses the internal `DBEngine` client to run a SQL query against the `MinimalVDB`.
+- The result is returned as plain text in the response body.
+
+Endpoints are always exposed at the root level. However, Kubling **requires** versioning for every endpoint.  
+This means you must explicitly define the `endpointVersion` for each script, and it will become the **URL prefix** of your endpoint.
+
+For example, with `endpointVersion: v1` and `endpointName: getIt`, the resulting endpoint path will be:
+
+```
+/v1/getIt
+```
+
+<Callout type="info">
+See details of the request and response members [in the script member reference page.](/engine/script-context-members#endpoint-script).
+</Callout>

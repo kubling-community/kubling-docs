@@ -1,5 +1,6 @@
 import { Callout } from 'nextra/components'
 import Tag from '../../../component/Tag'
+import { FileTree } from 'nextra/components'
 
 ## Portable Local Data Source (`PORTABLE_LOCAL`) <Tag description={"v24.5.7+"} />
 
@@ -98,6 +99,10 @@ properties:
       \ the REMOTE data source once the connection is established."
     items:
       type: "string"
+  migrationDir:
+    type: "string"
+    description: "Specifies a directory containing migration scripts. When set, the\
+      \ ddlFilePaths configuration option is ignored."
 ```
 </details>
 
@@ -135,5 +140,84 @@ Sample configuration in VDB file:
 As this data source is based on H2, some limitations apply. For more information, check [H2's official documentation](https://www.h2database.com/html/advanced.html#limits_limitations).
 
 <Callout type='warning'>
-  As per our test results, and to maintain optimal performance, we recommend keeping this data source under 1GB in size.
+  Based on our internal testing, and to maintain optimal performance, we recommend keeping this data source under **1 GB** in size when operating under memory constraints. Complex queries may require memory that is also used by the engine itself.
+
+  If you plan to work with larger database files, we strongly suggest enabling local disk buffering (via the `buffer.useDisk` option in the application configuration). This allows Kubling to minimize memory usage and ensures more resources are available for the embedded H2 engine.
 </Callout>
+
+## Schema migrations <Tag description={"v25.5+"} />
+
+Local H2 database schemas can be migrated using an embedded mechanism based on the battle-tested [Flyway](https://github.com/flyway/flyway).
+
+When `migrationDir` is specified, the engine performs a Flyway-based migration using the SQL files located in the given directory. For example:
+
+<FileTree>
+  <FileTree.File name="bundle-info.yaml" />
+  <FileTree.Folder name="vdb">
+    <FileTree.File name="MigrationsVDB.yaml" />
+    <FileTree.Folder name="migration">
+      <FileTree.File name="V1__create_tables.sql" />
+      <FileTree.File name="V2__insert_seed_data.sql" />
+      <FileTree.File name="V3__add_new_column.sql" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+You can then reference the directory like this: `migrationDir: "bundle:migration"`.
+
+### Audit Table
+
+Flyway requires a table to track migration state. For this purpose, Kubling automatically creates a table named `KUBLING_MIGRATION_AUDIT`, which **must not be modified externally**.
+
+<Callout type='info'>
+  Note that `ddlFilePaths` is ignored when `migrationDir` is used — the two mechanisms are mutually exclusive.
+
+  For stateful, non-ephemeral Kubling instances that rely on a local database, we strongly recommend using migrations instead of embedding schema creation logic in a single H2 DDL file.
+</Callout>
+
+## Recommendations
+
+Here are some best practices and useful notes when using Flyway-based migrations in Kubling:
+
+### Use Versioned Files with Clear Naming
+Follow Flyway’s naming convention:
+`V<version_number>__<description>.sql`
+
+Examples:
+- `V1__create_tables.sql`
+- `V2__add_indexes.sql`
+- `V3__insert_initial_data.sql`
+
+This helps track schema evolution clearly and consistently.
+
+### One Logical Change per Migration
+Keep each migration file focused on a single change (e.g., creating a table, adding a column).  
+This improves readability and makes it easier to troubleshoot if a migration fails.
+
+### What Happens If a Migration Fails?
+- **Kubling will abort the engine initialization process and exit with an error message.**
+- Flyway stops the process immediately at the failing script.
+- Successful migrations remain applied.
+- The failing migration is not marked as executed and will be retried on the next engine startup.
+- **There is no automatic rollback**. If rollback is required, it must be defined inside the SQL script using transactional logic.
+
+### No Manual Schema Changes
+Avoid modifying the database schema outside of migrations.  
+Manual changes may cause checksum errors or future migrations to fail.
+
+### Do Not Modify the Audit Table
+The table `KUBLING_MIGRATION_AUDIT` is managed internally and must not be edited or cleared manually.
+
+### Retrying a Failed Migration
+To retry:
+1. Fix the faulty migration file.
+2. Restart the engine.
+3. Flyway will reapply the failed script and continue with the sequence.
+
+Do **not** rename or remove the failing file, as this will break integrity checks.
+
+### Test Before Production
+If running a stateful or non-ephemeral Kubling instance, always test migrations in a staging environment to avoid irreversible schema changes.
+
+### Version Control Your Migrations
+Migration files are part of your application’s state. Always include them in version control to keep environments consistent.

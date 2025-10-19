@@ -30,6 +30,8 @@ For local development environments we recommend using the binary file whose dist
 
 In pipelines, workflows or in case you prefer using containers, you can [find them here](https://hub.docker.com/r/kubling/dbvirt-cli/tags).
 
+---
+
 ## Commands
 
 ### &bull; `bundle`
@@ -39,11 +41,11 @@ It aggregates various utilities for working with bundle files, like Modules.
 #### &rarr; `genmod`
 Generates a JavaScript Module file.
 
-| <div style={{width: "120px"}}>Name</div> | Type         | Description                                                               | Default Value |
+| <div style={{width: "170px"}}>Name</div> | Type         | Description                                                               | Default Value |
 |------------------------------------------|--------------|---------------------------------------------------------------------------|---------------|
 | Directory Path                           | Parameter(0) | Path to the root of the directory containing Module's code.               |               |
-| -o, --output                             | Option       | Full file name of the generated bundle zip file.                          |               |
-| -p, --parse                              | Option       | When enabled, all JavaScript files are parsed before bundle is generated. | `false`       |
+| `-o`, `--output`                         | Option       | Full file name of the generated bundle zip file.                          |               |
+| `-p`, `--parse`                          | Option       | When enabled, all JavaScript files are parsed before bundle is generated. | `false`       |
 
 Sample usage:
 ```sh
@@ -68,6 +70,8 @@ kdv test integration /dbvirt-samples/appmodel/integration-test-plan.yaml
 
 More about the test framework in the [next section](/CLI/test-framework).
 
+---
+
 ### &bull; `cert`
 Utilities for working with Kubling Server and Client certificates.
 
@@ -77,18 +81,58 @@ Creates a pair of certificate stores to use in Server and Client.
 
 KeyStore type used during generation is `PKCS12`, whereas for the digital signature, the `SHA512withRSA` encryption is used.
 
-| <div style={{width: "120px"}}>Name</div> | Type   | Description                                                     | Default Value   |
-|------------------------------------------|--------|-----------------------------------------------------------------|-----------------|
-| -v, --validity                           | Option | SERVER and CLIENT certificate store validity expressed in days. | 180             |
-| -s, --server                             | Option | Full file name of the generated SERVER certificate store.       | ./server.ks     |
-| -c, --client                             | Option | Full file name of the generated CLIENT certificate store.       | ./client.ks     |
-| -p, --clientPass                         | Option | CLIENT certificate store password.                              | (Random String) |
-| -x, --serverPass                         | Option | SERVER certificate store password.                              | (Random String) |
-| -o, --overwrite                          | Option | Overwrite store files if they already exist.                    | `false`         |
+| <div style={{width: "170px"}}>Name</div> | Type   | Description                                                                                                                                               | Default Value            |
+|------------------------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|
+| `-v`, `--validity`                       | Option | SERVER and CLIENT certificate store validity expressed in days.                                                                                           | `180`                    |
+| `-s`, `--server`                         | Option | Full path to the generated SERVER keystore (contains private key and chain).                                                                              | `./server.ks`            |
+| `-st`, `--serverTrust`                   | Option | Full path to the generated SERVER truststore (used for verifying client certs in mTLS).                                                                   | `./server-truststore.ks` |
+| `-c`, `--client`                         | Option | Full path to the generated CLIENT truststore (trusts server CA).                                                                                          | `./client-truststore.ks` |
+| `-cc`, `--clientCred`                    | Option | Full path to the generated CLIENT keystore (`.p12`) containing client private key and certificate chain.                                                  | `./client.p12`           |
+| `-p`, `--clientPass`                     | Option | CLIENT keystore/truststore password.                                                                                                                      | (Random String)          |
+| `-x`, `--serverPass`                     | Option | SERVER keystore/truststore password.                                                                                                                      | (Random String)          |
+| `-H`, `--san`                            | Option | Subject Alternative Names (SANs) for the certificate. Supports multiple values separated by comma or space (e.g. `localhost,127.0.0.1`). Repeatable flag. | _Empty_                  |
+| `--san-file`                             | Option | Optional file path pointing to a list of SAN entries (one per line). Lines starting with `#` are ignored.                                                 | _None_                   |
+| `-o`, `--overwrite`                      | Flag   | Overwrite store files if they already exist.                                                                                                              | `false`                  |
 
 Sample usage:
 ```sh
 kdv cert create -s /certs/server.ks -c /certs/client.ks -x myserverpass -p myclientpass -o
+```
+
+##### Generated Certificate Files Overview
+
+The certificate generation process produces multiple files, each with a specific purpose depending on whether the file is used by the **server (Kubling instance)** or the **client** in mutual TLS (mTLS) scenarios.
+
+| File                   | Contains                                                            | Used By           | Purpose / EKU Role                                                                                                                 |
+|------------------------|---------------------------------------------------------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `server.ks`            | Server certificate + private key + full chain (root + intermediate) | Kubling Server    | Transport-level certificate `transports.[protocol].sslConfig.storeFilePath`                                                        |
+| `server-truststore.ks` | Root CA that issued the client certificate                          | Kubling Server    | Used by Kubling Server to trust client certificate/s when in mTLS mode.                                                            |
+| `client.p12`           | Client certificate + private key + full chain                       | Client (for mTLS) | Used by clients to establish a mTLS connection. Use `p12` as extension for compatibility                                           |
+| `client-truststore.ks` | Root CA that issued the server certificate                          | Client            | Used by clients to trust server certificate, i.e. [via props file](/clients/drivers/native_jdbc#client-networking-properties-file) |
+
+<Callout type="info">
+In mTLS (mutual TLS), both the server and the client validate each other using their respective truststores.  
+Each side must **trust the CA** that signed the other side’s certificate.
+</Callout>
+
+#### &rarr; `create-http`
+Creates a pair of certificate stores to use in Kubling HTTP Server.
+
+KeyStore type used during generation is `PKCS12`, whereas for the digital signature, the `SHA512withRSA` encryption is used.
+
+| <div style={{width: "170px"}}>Name</div> | Type   | Description                                                                                                           | Default Value        |
+|------------------------------------------|--------|-----------------------------------------------------------------------------------------------------------------------|----------------------|
+| `-v`, `--validity`                       | Option | Certificate store validity expressed in days.                                                                         | `180`               |
+| `-s`, `--server`                         | Option | Full path to the generated **SERVER keystore** (contains server private key and certificate chain).                   | `./server-http.ks`   |
+| `-c`, `--client`                         | Option | Full path to the generated **CLIENT truststore** (used to validate server certificate).                               | `./client-http-trust.ks` |
+| `-p`, `--pass`                           | Option | Password for both server and client certificate stores.                                                               | _(Random String)_    |
+| `-H`, `--san`                            | Option | Subject Alternative Names (DNS names or IP addresses). Can be provided as a comma/space-separated list or repeated.   | _(None)_            |
+| `--san-file`                             | Option | Path to a file containing SAN entries (one per line). Lines beginning with `#` are ignored.                          | _(None)_            |
+| `-o`, `--overwrite`                      | Flag   | Overwrite existing certificate store files if they already exist.                                                     | `false`             |
+
+Sample usage:
+```sh
+kdv cert create-http -s /certs/server-http.ks -c /certs/client-http-trust.ks -p mypass -o
 ```
 
 ## Using the containerized version

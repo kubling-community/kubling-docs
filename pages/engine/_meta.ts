@@ -7,7 +7,7 @@ export default {
   "ds": "Data Sources",
   "aggregators": "Aggregators",
   "cache": "",
-  "endpoints": "",
+  "ep": "Endpoints",
   "properties": "",
   "transactions": "Transactions",
   "ss": "System Schemas"

@@ -15,7 +15,7 @@ However, you can also add it via Maven dependency:
 <dependency>
     <groupId>com.kubling</groupId>
     <artifactId>kubling-client</artifactId>
-    <version>25.4.2</version>
+    <version>25.2.1</version>
 </dependency>
 ```
 
@@ -90,10 +90,43 @@ connection.setAutoCommit(true);
 org.teiid.ssl.keyStoreType=PKCS12
 
 #
+# The key store algorithm, defaults to
+# the system property "ssl.TrustManagerFactory.algorithm"
+#
+
+#org.teiid.ssl.algorithm=
+
+#
+# Path to the key store.
+#
+# This property is required only if performing mTLS authentication that requires a specific private key.
+#
+
+org.teiid.ssl.keyStore=/sample/path/client.p12
+
+#
+# The key store password
+#
+
+org.teiid.ssl.keyStorePassword=mypass
+
+#
+# The key alias(not required, if given named certificate is used)
+#
+
+#org.teiid.ssl.keyAlias=
+
+#
+# The key password(not required, used if the key password is different than the keystore password)
+#
+
+#org.teiid.ssl.keyPassword=
+
+#
 # Path to the client certificate, required when org.teiid.ssl.trustAll is set to false
 #
 
-org.teiid.ssl.trustStore=/sample/path/client.ks
+org.teiid.ssl.trustStore=/sample/path/client-truststore.ks
 
 #
 # The trust store password. It is always required when certificates were generated using kdv

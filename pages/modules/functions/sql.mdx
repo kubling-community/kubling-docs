@@ -228,6 +228,12 @@ queryFunctions:
     aggregationFunction: true
 ```
 
+<Callout type="warning">
+Starting from version `25.5`, the way script contexts are managed for functions has been improved.
+The `partitions` and `minContexts` options are now **deprecated**.  
+You should configure only the `maxContexts` and `maxWaitMilliseconds` parameters going forward.
+</Callout>
+
 ## 📂 Platform-related functions directories
 Ideally, a functions module should contain all the necessary functions for all the Data Sources. 
 That is why it is highly recommended to keep them separate in directories.

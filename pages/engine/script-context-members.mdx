@@ -1,4 +1,5 @@
 import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # Script Context Member
 
@@ -259,6 +260,7 @@ Allows to execute queries by directly accessing the Engine. It is important to n
 | Function                                                                  | Description                                                                                                                                             |
 |---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `executeQuery(vdbName : string, query : string) : QueryResultProxyObject` | Executes a data-retrieval query (`SELECT`) using one of the internal opened sessions. It returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
+| `executeUpdate(vdbName : string, query : string) : integer`               | Executes an update command (`INSERT`, `UPDATE`, `DELETE`, `UPSERT`) using one of the internal opened sessions. It returns the affected rows.            |
 
 ### resultSetScript
 
@@ -377,6 +379,55 @@ An `object` used to exchange information between the script and the session mana
 | `addPrincipal(name : string)` | Associates a principal name to the session.                                                                                  |
 | `addRole(name : string)`      | Associates a role name to the session.                                                                                       |
 
+## Endpoint Script
+
+### `httpRequest`
+
+An `object` that provides full access to the incoming HTTP request made by a remote client.  
+It exposes standard request metadata, headers, query/form parameters, and the message body.
+
+| Function                                 | Description                                                                                       |
+|------------------------------------------|---------------------------------------------------------------------------------------------------|
+| `method() : string`                      | Returns the HTTP method of the request (e.g., `GET`, `POST`, `DELETE`).                          |
+| `contentType() : string`                 | Returns the value of the `Content-Type` header, or `null` if not present.                        |
+| `contentLength() : number`              | Returns the length of the request body in bytes, or `-1` if unknown.                             |
+| `headerNames() : string[]`              | Returns a list of all header names present in the request.                                       |
+| `header(name : string) : string`        | Returns the first header value for the given `name`, or `null` if not present.                   |
+| `headers(name : string) : string[]`     | Returns all header values for the given name.                                                    |
+| `parameterNames() : string[]`           | Returns a list of all query/form parameter names.                                                |
+| `param(name : string) : string`         | Returns the first value for the specified parameter, or `null` if not found.                     |
+| `paramValues(name : string) : string[]` | Returns all values for the specified parameter name.                                             |
+| `body() : string`                       | Returns the full request body as a UTF-8 string. Cached after the first access.                  |
+| `bodyAs(charset : string) : string`     | Returns the request body using the specified charset (e.g., `"ISO-8859-1"`). Defaults to UTF-8.  |
+
+### `httpResponse`
+
+An `object` used to build the HTTP response to be sent back to the client.  
+Supports text, JSON, HTML, and binary (base64) content, along with full control over headers, status codes, and cookies.
+
+| Function                                                                    | Description                                                                                                      |
+|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| `status() : number`                                                         | Returns the current HTTP status code.                                                                            |
+| `status(code : number) : httpResponse`                                      | Sets the HTTP status code (e.g., `200`, `404`, `500`).                                                           |
+| `header(name : string, value : string) : httpResponse`                      | Sets or replaces a header.                                                                                       |
+| `addHeader(name : string, value : string) : httpResponse`                   | Adds an additional value to a multi-valued header.                                                               |
+| `removeHeader(name : string) : httpResponse`                                | Removes the specified header.                                                                                    |
+| `headerNames() : string[]`                                                  | Returns all header names.                                                                                        |
+| `headers(name : string) : string[]`                                         | Returns all values for the specified header.                                                                     |
+| `contentType() : string`                                                    | Returns the current `Content-Type` value.                                                                        |
+| `contentType(type : string) : httpResponse`                                 | Sets the `Content-Type` (e.g., `application/json`, `text/html`).                                                 |
+| `charset() : string`                                                        | Returns the current character encoding. Default is `UTF-8`.                                                      |
+| `charset(charset : string) : httpResponse`                                  | Sets the character encoding (e.g., `ISO-8859-1`).                                                                |
+| `text(body : string) : httpResponse`                                        | Sets the response body as plain text. Sets `Content-Type` to `text/plain; charset=UTF-8` unless already defined. |
+| `html(body : string) : httpResponse`                                        | Sets the response body as HTML. Sets `Content-Type` to `text/html; charset=UTF-8` unless already defined.        |
+| `json(value : object) : httpResponse`                                       | Serializes an object or JSON string and sets it as the response body. Sets `Content-Type` to `application/json`. |
+| `base64(body : string, mimeType : string) : httpResponse`                   | Sends a binary body encoded as Base64. Optionally sets the MIME type.                                            |
+| `noContent() : httpResponse`                                                | Clears the body and sets status to `204` if not already set.                                                     |
+| `cookie(name : string, value : string) : httpResponse`                      | Adds a basic cookie with default attributes.                                                                     |
+| `cookie(name : string, value : string, attributes : object) : httpResponse` | Adds a cookie with attributes. See below.                                                                        |
+| `cookies() : object[]`                                                      | Returns a list of cookies that will be sent in the response.                                                     |
+
+
 ## General
 
 #### `ListProxyObject`
@@ -386,15 +437,15 @@ Its functions are only proxies that point to the original, non-script-compatible
 
 | Function                      | Description                                                                                                                                                                                                                  |
 |-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `forEach(action)`             | Direct support for the standard `forEach` form when the particular script context or the language does not support it. For example, in JavaScript it is recommended the usage of `array.forEach((element) => ...);` instead. |
+| `isEmpty() : boolean`         | Returns `true` if the array has no elements.                                                                                                                                                                                 |
 | `array() : object[]`          | Returns all elements as an array of `object`.                                                                                                                                                                                |
+| `stringify() : string[]`      | Returns an array containing the string representation of the elements in the array.                                                                                                                                          |
+| `iterable() : <object>`       | Returns an iterable wrapper that is resolved by the script context as a native feature. For example, in JavaScript it will allow you to use a `for (variable of iterable)` loop.                                             |
 | `get(pos : integer) : object` | Returns the `object` at the specified position in the array.                                                                                                                                                                 |
 | `getFirst() : object`         | Returns the first `object` of the array.                                                                                                                                                                                     |
 | `getLast() : object`          | Returns the last `object` of the array.                                                                                                                                                                                      |
-| `iterable() : <object>`       | Returns an iterable wrapper that is resolved by the script context as a native feature. For example, in JavaScript it will allow you to use a `for (variable of iterable)` loop.                                             |
-| `forEach(action)`             | Direct support for the standard `forEach` form when the particular script context or the language does not support it. For example, in JavaScript it is recommended the usage of `array.forEach((element) => ...);` instead. |
 | `size() : integer`            | Returns the number of elements in the array.                                                                                                                                                                                 |
-| `isEmpty() : boolean`         | Returns `true` if the array has no elements.                                                                                                                                                                                 |
-| `stringify() : string[]`      | Returns an array containing the string representation of the elements in the array.                                                                                                                                          |
 
 #### `QueryFilterProxyObject`
 
@@ -505,3 +556,4 @@ An `object` that contains the result set of query.
 | `countFields : integer`                | Returns the number of columns (fields) contained in the result set.                                                                 |
 | `fieldNames : ListProxyObject<string>` | List of field names returned by the query.                                                                                          |
 | `rows : ListProxyObject<object>`       | Returns the actual rows of the result set. Each element is an native `object`, therefore fields can be accessed using dot-notation. |
+| `inspect : string`                     | Human-readable preview of the result set for debugging. <Tag description={"v25.5+"}/>                                               |

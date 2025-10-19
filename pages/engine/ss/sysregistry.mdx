@@ -1,0 +1,74 @@
+import Tag from '../../../component/Tag'
+
+# SYSREGISTRY Schema <Tag description={"v24.5+"} />
+
+The `SYSREGISTRY` schema provides information about Kubling instance configuration elements.
+
+## Tables and Views
+
+### `SYSREGISTRY.ENGINE`
+
+This table provides a general overview of the current engine instance and its configuration details.
+
+| Column Name              | Type      | Description                                                        |
+|--------------------------|-----------|--------------------------------------------------------------------|
+| `instanceName`           | `string`  | Name of the engine instance                                        |
+| `appConfigFilePath`      | `string`  | Path to the main application configuration file                    |
+| `appConfigFileChecksum`  | `string`  | SHA-256 checksum of the file at `appConfigFilePath`                |
+| `nativeTransportAddress` | `string`  | Local address for the native protocol transport                    |
+| `nativeTransportSecure`  | `boolean` | Whether native transport uses TLS/SSL                              |
+| `pgTransportAddress`     | `string`  | Local address for the PostgreSQL wire protocol                     |
+| `pgTransportSecure`      | `boolean` | Whether the PostgreSQL transport uses TLS/SSL                      |
+| `bufferEncryption`       | `boolean` | Indicates whether buffer encryption is enabled                     |
+| `bufferDirectory`        | `string`  | Path to the buffer data directory                                  |
+| `propertiesFilePath`     | `string`  | Path to the `properties` file referenced in the application config |
+| `propertiesFileChecksum` | `string`  | SHA-256 checksum of the file at `propertiesFilePath`               |
+
+
+### `SYSREGISTRY.DESCRIPTOR_BUNDLE`
+
+This table provides information about the engine's main configuration descriptor bundle.
+
+| Column Name | Type     | Description                                |
+|-------------|----------|--------------------------------------------|
+| `name`      | `string` | Name of the bundle file                    |
+| `location`  | `string` | Full path to the bundle file               |
+| `checksum`  | `string` | SHA-256 checksum of the file at `location` |
+
+### `SYSREGISTRY.DESCRIPTOR_DATASOURCE`
+
+Data sources listed in the `DESCRIPTOR_BUNDLE`.
+
+| Column Name      | Type     | Description                                                                                                           |
+|------------------|----------|-----------------------------------------------------------------------------------------------------------------------|
+| `vdb`            | `string` | Virtual database name                                                                                                 |
+| `name`           | `string` | Data source name                                                                                                      |
+| `type`           | `string` | Data source type                                                                                                      |
+| `configChecksum` | `string` | SHA-256 checksum of the `vdb` configuration file (the YAML file listed in `bundle-info.yaml` under `virtualDatabases`) |
+
+### `SYSREGISTRY.SQL_FUNCTIONS_MODULE`
+
+SQL function modules listed in the bundle.
+
+| Column Name | Type     | Description                                 |
+|-------------|----------|---------------------------------------------|
+| `name`      | `string` | Name of the SQL functions bundle            |
+| `location`  | `string` | Path or URL of the SQL functions bundle     |
+
+### `SYSREGISTRY.ACTION_TEMPLATES_FUNCTIONS_MODULE`
+
+Action template function modules listed in the bundle.
+
+| Column Name | Type     | Description                                         |
+|-------------|----------|-----------------------------------------------------|
+| `name`      | `string` | Name of the action template functions bundle        |
+| `location`  | `string` | Path or URL of the template functions bundle        |
+
+### `SYSREGISTRY.SCHEDULED_SCRIPT`
+
+Active scheduled scripts in the engine.
+
+| Column Name | Type     | Description                           |
+|-------------|----------|---------------------------------------|
+| `location`  | `string` | Script location within the bundle     |
+| `cron`      | `string` | CRON expression defining the schedule |

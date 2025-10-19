@@ -1,6 +1,12 @@
 import { Callout } from 'nextra/components'
 import Tag from '../../component/Tag'
 
+<Callout type='warning'>
+  Starting from version `25.5`, the configuration schema for instrumentation has changed.  
+  As a result, environment variables like `INST_AZ_MON_KEY` have been **deprecated** in favor of a more expressive and structured configuration approach.  
+  Please refer to the [main application configuration](/schemas#main-application-configuration) for details.
+</Callout>
+
 # Health Endpoint
 
 The health endpoint indicates whether the engine is `UP` or `DOWN`.
@@ -263,9 +269,50 @@ Metrics in this format can be obtained from `GET` `http[s]://[address]:8282/obse
     that is, the server pulls metrics from configured targets by scraping their endpoints which is, from the Kubling Engine stand pot of view, the preferred option.
 </Callout>
 
-## Azure Monitor
-Metrics can be **pushed** to Azure Monitor using a built-in client. To activate it, you only need to pass an Application Insights instrumentation key via
-`INST_AZ_MON_KEY` environment variable.
+## OpenTelemetry <Tag description={"v25.5+"} />
 
-See [the official documentation](https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) for more information about Application Insights.
+Kubling encourages the use of **OpenTelemetry** for metric collection, as its format is supported by nearly all modern monitoring platforms.  
+If your provider does not support the OTLP protocol natively, you can always use an intermediate [collector](https://opentelemetry.io/docs/collector/).
 
+This approach keeps the Kubling binary lightweight. Adding native support for every monitoring tool would unnecessarily bloat the final binary size.
+
+Enabling OpenTelemetry is straightforward. In your main application configuration, simply enable it like so:
+
+```yaml
+instrumentation:
+  openTelemetry:
+    enabled: true
+    # Example for New Relic
+    url: "https://otlp.eu01.nr-data.net/v1/metrics"
+    headers:
+      api-key: "abc..."
+```
+
+The configuration is flexible enough to support most providers, with the ability to define custom HTTP headers for the requests.
+
+## DataDog <Tag description={"v25.5+"} />
+
+Due to its widespread adoption, DataDog is also supported via a native embedded exporter.
+Configuration is simple and minimal:
+
+```yaml
+instrumentation:
+ dataDog:
+   enabled: true
+   apiKey: 'abc...'
+   url: https://app.datadoghq.eu
+```
+
+## Azure Monitoring <Tag description={"DEPRECATED"} />
+
+It is still possible to enable the native **Azure Monitor** exporter, although it is **deprecated** and will be removed in a future release.
+
+The configuration mechanism has changed in version `25.5`, and now lives under the `instrumentation` section of the main application configuration:
+
+```yaml
+instrumentation:
+  azureMonitor:
+    enabled: true
+    connectionString: ...
+```
+<Callout type="warning"> This exporter is no longer maintained and is scheduled for removal. Consider migrating to <strong>OpenTelemetry</strong> for future compatibility. </Callout>

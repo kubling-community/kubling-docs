@@ -1,4 +1,5 @@
 export default {
-  "communication": "Communication",
+  "communication": "Communication (transport)",
+  "http": "HTTP",
   "rbac": "RBAC"
 }

@@ -1,0 +1,58 @@
+import { Callout } from 'nextra/components'
+
+# Queries
+Allow to dynamically expose services that return a collection of rows using a SQL query.<br/>
+Let's break down the definition of an endpoint using the following sample:
+
+<Callout type="info">
+  The examples below assume that the functions are part of a module named `mymod`.
+</Callout>
+
+```yaml showLineNumbers copy
+{% set vdb = "k8s" %}
+{% set tables = mymod__getTablesByTags(vdb=_context.vdb, schema="all", tags="kubernetes;deployment") %}
+---
+
+type: sqlDirect
+virtualDatabase: {{ vdb }}
+
+neededFields:
+  - namespace
+
+query: |
+  {% set first = true %}
+  {% for table in tables %}
+    {{ "UNION ALL" | filterValWhenVarFalse(var="first", flip=true) }}
+    SELECT * FROM {{ table }} WHERE metadata__namespace = '{{ namespace }}'
+  {% endfor %}
+    ORDER BY clusterName
+```
+
+This endpoint returns Kubernetes Deployments of **all** clusters defined as Data Source, running in a specified namespace.
+
+The first line just sets a value to the `vdb` variable. Although it is not really useful here since the value does not change, it allows add custom logic when
+having multiple Virtual Databases.
+
+Second line is really interesting, since we get the list of `TABLE` names, of all `SCHEMAS` whose tags **contain** `kubernetes` and `deployment`.
+
+`sqlDirect` type (the only one supported by now), tells the engine that the `query` field contains a valid Kubling SQL query.
+
+In the line `8`, we define the input parameter fields needed by this endpoint, only one in this case. When defined, the engine expects the request sent by the client containing
+a body document, in `JSON` or `YAML` format, with values for these fields.<br/>
+When the template is parsed, these fields are injected in the template context.
+
+What we want to have as a resulting query, is just a `UNION` query that aggregates results from multiple `TABLES`. To do so, we use a 
+[loop](/template#for-loop) to iterate over tables.
+
+The `UNION ALL` keyword is placed between two `SELECT` expressions, therefore it must be omitted when printing the first `SELECT`. To achieve that, we use a 
+very simple filter function called `filterValWhenVarFalse`, that returns `null` when the context variable passed as `var` param  is `false` and the actual filtered
+value when it is `true`. When `flip` param is `true`, the `boolean` value is flipped each time the filter is called.<br/>
+More information about filters [here](/template#filters).
+
+### Calling a Query Endpoint
+The URL for calling a query endpoint is `http[s]://[address]:8282/api/v1/query/perform/[query_name]` where `query_name` is the name of the `YAML` file (without the extension).
+
+Example: `POST` `http://localhost:8282/api/v1/query/perform/get_all_deployments` with body as follows:
+```json copy
+{ "namespace": "08abb0fc-f7af-4fe8-98d4-e76729567dc8" }
+```

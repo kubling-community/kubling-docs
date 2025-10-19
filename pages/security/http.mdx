@@ -1,0 +1,18 @@
+import Tag from '../../component/Tag'
+import { Callout } from 'nextra/components'
+
+# HTTP Security <Tag description={"v25.5+"} />
+
+In addition to the native transport used to connect to the Query Engine, Kubling also exposes several HTTP-based endpoints — from [metrics](/observability/metrics) to [custom endpoints](/engine/ep/intro).
+
+These HTTP endpoints can also be secured with TLS by configuring a certificate at the [application level](/schemas#main-application-configuration):
+
+```yaml
+http:
+  tls:
+    storeFilePath: "/certs/server-http.ks"
+    storePassword: "myhttpserverpass"
+```
+
+If clients need to verify the server certificate, be sure to generate the proper trust pair.
+We recommend using the [Kubling CLI](/cli/overview#-create-http), which simplifies the process and produces certificates ready to be used in both the server and clients.

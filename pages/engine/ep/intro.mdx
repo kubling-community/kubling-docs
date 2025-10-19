@@ -1,0 +1,24 @@
+import Tag from '../../../component/Tag'
+
+# Endpoints
+
+Although SQL is a well-established and simple language that can be learned in just a few days, Kubling was originally designed to integrate with other systems, 
+rather than being directly accessed by end users.
+
+However, modern applications rarely interact with databases using plain SQL queries. To address this, we incorporated a mechanism similar to the way virtual databases 
+are defined, allowing Kubling to expose HTTP endpoints for interacting with VDBs, schemas, and entities, offering a more flexible and accessible way to work with data.
+
+Endpoints are divided into two different categories: templates and scripts.
+
+## Templates
+
+Templates are then subdivided into two types: Queries and Actions
+
+Template endpoints logic are defined using `YAML` files, parsed as [templates](/template), and registered to the engine endpoints list during initialization.
+`YAML` files must be located in the [Descriptor Bundle](/Concepts/artifacts#descriptor-bundle).
+
+## Scripts <Tag description={"v25.5+"} />
+
+When template expresiveness is not enough, you can also define custom endpoint using the Kubling's scripting JavaScript context.
+As any other extension point using script contexts, it comes at a cost, since each request is executed in a thread and consumes resources, meaning that you will have
+less resources for Kubling's core (SQL Jobs).
