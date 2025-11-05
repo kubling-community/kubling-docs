@@ -1,13 +1,108 @@
 import { Callout } from 'nextra/components'
 import Tag from '../../component/Tag'
 
-<Callout type='warning'>
-  Starting from version `25.5`, the configuration schema for instrumentation has changed.  
-  As a result, environment variables like `INST_AZ_MON_KEY` have been **deprecated** in favor of a more expressive and structured configuration approach.  
-  Please refer to the [main application configuration](/schemas#main-application-configuration) for details.
-</Callout>
+# Metrics
 
-# Health Endpoint
+## Configuration
+
+<details>
+<summary>Metrics configuration section</summary>
+```yaml
+metrics:
+  type: "object"
+  id: "schema:kubling:dbvirt:config:app:instrumentation:MetricsProperties"
+  properties:
+    metricsCommonTags:
+      type: "object"
+      description: "Tags added to exposed metrics. Useful for identifying engine\
+        \ instances."
+      additionalProperties:
+        type: "string"
+    azureMonitor:
+      type: "object"
+      id: "schema:kubling:dbvirt:config:app:instrumentation:AzureMonitorProperties"
+      properties:
+        enabled:
+          type: "boolean"
+        connectionString:
+          type: "string"
+    openTelemetry:
+      type: "object"
+      id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryConfig"
+      properties:
+        enabled:
+          type: "boolean"
+          description: "Enables or disables OpenTelemetry instrumentation for\
+            \ this component. When set to false, no telemetry data (metrics,\
+            \ traces, or logs) will be emitted. Default: false."
+        stepInMillis:
+          type: "integer"
+          description: "The collection or reporting interval in milliseconds.\
+            \ Controls how often aggregated telemetry data is emitted. Lower\
+            \ values increase resolution but also CPU and network usage. Default:\
+            \ 5000 ms."
+        url:
+          type: "string"
+          description: "The target OTLP endpoint where telemetry data will be\
+            \ exported. Supports both HTTP and gRPC protocols depending on exporter\
+            \ configuration. Example: http://localhost:4318 or grpc://localhost:4317."
+        resourceAttributes:
+          type: "object"
+          description: "A set of additional resource-level attributes applied\
+            \ to all telemetry emitted by this instance."
+          additionalProperties:
+            type: "string"
+        headers:
+          type: "object"
+          description: "Additional HTTP or gRPC headers to include in each telemetry\
+            \ export request. Commonly used for authentication tokens or custom\
+            \ tenant headers."
+          additionalProperties:
+            type: "string"
+        temporality:
+          type: "string"
+          description: "The aggregation temporality used for metrics. Determines\
+            \ whether reported values are cumulative since process start (CUMULATIVE)\
+            \ or represent deltas since the last export (DELTA). Default: CUMULATIVE."
+          enum:
+          - "DELTA"
+          - "CUMULATIVE"
+    dataDog:
+      type: "object"
+      id: "schema:kubling:dbvirt:config:app:instrumentation:DatadogConfig"
+      properties:
+        enabled:
+          type: "boolean"
+        stepInMillis:
+          type: "integer"
+        url:
+          type: "string"
+        apiKey:
+          type: "string"
+        hostTag:
+          type: "string"
+```
+</details>
+
+Example
+```yaml
+instrumentation:
+  metrics:
+    metricsCommonTags:
+      host: "kubling_local_dev"
+      instance_name: "mysql"
+    openTelemetry:
+      enabled: true
+      stepInMillis: 5000
+      resourceAttributes:
+        some: resource
+      temporality: CUMULATIVE
+      url: "http://127.0.0.1:4318/v1/metrics"
+      headers:
+        Content-Type: "application/x-protobuf"
+```
+
+## Health Endpoint
 
 The health endpoint indicates whether the engine is `UP` or `DOWN`.
 
@@ -224,6 +319,34 @@ This is a per-transport metric. Use the attached tags (`transport=native` and `t
 Total number of outbound network bytes sent since the current instance started.
 As with inbound metrics, this is collected per transport. Use the `transport` tag to filter and attribute usage correctly.
 
+### `kubling.bm.mem.usage` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
+Estimated memory currently used by the Buffer Manager.
+
+### `kubling.bm.disk.write.total` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
+Total number of write operations performed by the Buffer Manager to disk.
+
+### `kubling.bm.disk.read.total` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
+Total number of read operations performed by the Buffer Manager from disk.
+
+### `kubling.bm.disk.usage` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
+Total disk space currently used by the Buffer Manager (in bytes).
+
+## Soft Transactions related metrics
+
+### `kubling.stx.count` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
+Cumulative number of Soft Transactions operations initiated since engine startup.
+
+### `kubling.stx.current` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
+Number of Soft Transactions operations currently open and active.
+
+### `kubling.stx.db.size` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
+Current size (in bytes) of the Soft Transactions internal database.
+
+### `kubling.stx.row.locks.current` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
+Number of rows currently locked by ongoing Soft Transactions.
+
+### `kubling.stx.rollback.count` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
+Cumulative number of rollback operations performed on Soft Transactions since engine startup.
 
 ## JavaScript related metrics
 
@@ -280,12 +403,13 @@ Enabling OpenTelemetry is straightforward. In your main application configuratio
 
 ```yaml
 instrumentation:
-  openTelemetry:
-    enabled: true
-    # Example for New Relic
-    url: "https://otlp.eu01.nr-data.net/v1/metrics"
-    headers:
-      api-key: "abc..."
+  metrics:
+    openTelemetry:
+      enabled: true
+      # Example for New Relic
+      url: "https://otlp.eu01.nr-data.net/v1/metrics"
+      headers:
+        api-key: "abc..."
 ```
 
 The configuration is flexible enough to support most providers, with the ability to define custom HTTP headers for the requests.
@@ -297,13 +421,20 @@ Configuration is simple and minimal:
 
 ```yaml
 instrumentation:
- dataDog:
-   enabled: true
-   apiKey: 'abc...'
-   url: https://app.datadoghq.eu
+  metrics:
+    dataDog:
+      enabled: true
+      apiKey: 'abc...'
+      url: https://app.datadoghq.eu
 ```
 
 ## Azure Monitoring <Tag description={"DEPRECATED"} />
+
+<Callout type='warning'>
+  Starting from version `25.5`, the configuration schema for instrumentation has changed.  
+  As a result, environment variables like `INST_AZ_MON_KEY` have been **deprecated** in favor of a more expressive and structured configuration approach.  
+  Please refer to the [main application configuration](/schemas#main-application-configuration) for details.
+</Callout>
 
 It is still possible to enable the native **Azure Monitor** exporter, although it is **deprecated** and will be removed in a future release.
 
@@ -311,8 +442,9 @@ The configuration mechanism has changed in version `25.5`, and now lives under t
 
 ```yaml
 instrumentation:
-  azureMonitor:
-    enabled: true
-    connectionString: ...
+  metrics:
+    azureMonitor:
+      enabled: true
+      connectionString: ...
 ```
 <Callout type="warning"> This exporter is no longer maintained and is scheduled for removal. Consider migrating to <strong>OpenTelemetry</strong> for future compatibility. </Callout>

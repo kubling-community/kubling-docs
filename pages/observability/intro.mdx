@@ -1,0 +1,47 @@
+# Observability
+
+Kubling, as any other well-designed modern application, structures its observability around the three major pillars of instrumentation:
+
+1. **Logs** – Detailed, timestamped records of events that occur within the system.
+2. **Metrics** – Numerical indicators representing system behavior over time (e.g., memory usage, request rates).
+3. **Traces** – Contextual data showing the lifecycle of requests or operations across distributed components.
+
+This separation allows operators and developers to reason clearly about system behavior, troubleshoot issues, and extract insights from different layers — from high-level service health to low-level execution paths.
+
+## OpenTelemetry
+
+As of version `25.6`, Kubling fully adopted [OpenTelemetry](https://opentelemetry.io/) as the foundation for its observability stack. This decision brings several advantages:
+
+- **Standardization**: OpenTelemetry is supported by most major observability and APM platforms (e.g., Grafana, Prometheus, DataDog, New Relic, etc.).
+- **Vendor-neutral**: You can export metrics, logs, and traces to any compatible system — either directly or through an intermediate [collector](https://opentelemetry.io/docs/collector/).
+- **Unified configuration**: Logs, metrics, and traces are now configured in a cohesive way, making it easier to reason about instrumentation.
+
+## Configuration
+
+Observability is configured at the [application level](/schemas#main-application-configuration) under the `instrumentation` section, with enough flexibility to support a wide range of use cases.
+
+Each observability pillar (logs, metrics, traces) has its own configuration section, which you'll find detailed throughout this documentation. However, there are some **shared OpenTelemetry attributes** that apply globally across all telemetry data. These are configured under the `openTelemetryCommonAttributes` element and are strongly recommended for environments with multiple services, clusters, or deployment contexts.
+
+### `openTelemetryCommonAttributes`
+
+This section lets you explicitly define core metadata that will be attached automatically to **all logs, metrics, and traces** emitted by Kubling. These attributes follow [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/) and are used by most observability platforms to group, filter, and explore telemetry.
+
+| Attribute          | Type   | Description                                                                                         | Default Value                                                                                       | Example                        |
+|--------------------|--------|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------|
+| `serviceName`      | string | Logical name of the service emitting telemetry. Identifies the origin of logs, metrics, and traces. | `"kubling"`                                                                                         | `"kubling"`                    |
+| `serviceNamespace` | string | Namespace used to logically group related services (e.g. by project, location, or purpose).         | `"kubling"`                                                                                         | `"kai-mad-1"` or `"dcim"`      |
+| `serviceInstance`  | string | Unique identifier for this specific service instance (e.g. container ID, hostname, or device ID).   | If not defined, Kubling uses the engine `instanceName`, which defaults to a random string if unset. | `"node-123"` or `"switch-47"`  |
+| `environment`      | string | Logical deployment environment of the service. Useful for filtering by lifecycle stage.             | –                                                                                                   | `"dev"`, `"staging"`, `"prod"` |
+
+When configured, these values are automatically injected into:
+
+- **Trace spans** (as span attributes like `service.name`, `service.namespace`, etc.)
+- **Metrics** (as resource attributes in OTLP exporters)
+- **Logs** (when using structured logging format)
+
+---
+
+Next, head over to the corresponding sections to configure:
+- [Logs](/observability/logs)
+- [Metrics](/observability/metrics)
+- [Tracing](/observability/tracing)

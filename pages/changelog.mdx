@@ -1,5 +1,10 @@
 # Product changelog
 
+## v25.6
+- Full support for OpenTelemetry added: logs, metrics, and traces can now be exported to remote collectors or observability platforms.
+- Introduced the `SOFT_TRANSACTIONS.TXDB` system table, exposing the current state and metadata of all registered Soft Transactions within the instance.
+- Added new exposed metrics related to the Buffer Manager and Soft Transactions for enhanced observability.
+
 ## v25.5
 - Added JavaScript HTTP endpoints, allowing you to define custom paths and handle them directly within your scripts.
 - Added a new way of defining instrumentation at the application level, with support for OpenTelemetry and DataDog formats, including endpoints for pushing metrics.

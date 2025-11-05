@@ -185,11 +185,6 @@ properties:
   propertiesFilePath:
     type: "string"
     description: "Properties file location."
-  metricsCommonTags:
-    type: "object"
-    description: "Tags added to exposed metrics. Useful for identifying engine instances."
-    additionalProperties:
-      type: "string"
   softTransactions:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:SoftTransactionProperties"
@@ -282,51 +277,198 @@ properties:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:InstrumentationProperties"
     properties:
-      azureMonitor:
+      metrics:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:instrumentation:AzureMonitorProperties"
+        id: "schema:kubling:dbvirt:config:app:instrumentation:MetricsProperties"
         properties:
-          enabled:
-            type: "boolean"
-          connectionString:
-            type: "string"
-      openTelemetry:
-        type: "object"
-        id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryConfig"
-        properties:
-          enabled:
-            type: "boolean"
-          stepInMillis:
-            type: "integer"
-          url:
-            type: "string"
-          resourceAttributes:
+          metricsCommonTags:
             type: "object"
+            description: "Tags added to exposed metrics. Useful for identifying engine\
+              \ instances."
             additionalProperties:
               type: "string"
+          azureMonitor:
+            type: "object"
+            id: "schema:kubling:dbvirt:config:app:instrumentation:AzureMonitorProperties"
+            properties:
+              enabled:
+                type: "boolean"
+              connectionString:
+                type: "string"
+          openTelemetry:
+            type: "object"
+            id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryConfig"
+            properties:
+              enabled:
+                type: "boolean"
+                description: "Enables or disables OpenTelemetry instrumentation for\
+                  \ this component. When set to false, no telemetry data (metrics,\
+                  \ traces, or logs) will be emitted. Default: false."
+              stepInMillis:
+                type: "integer"
+                description: "The collection or reporting interval in milliseconds.\
+                  \ Controls how often aggregated telemetry data is emitted. Lower\
+                  \ values increase resolution but also CPU and network usage. Default:\
+                  \ 5000 ms."
+              url:
+                type: "string"
+                description: "The target OTLP endpoint where telemetry data will be\
+                  \ exported. Supports both HTTP and gRPC protocols depending on exporter\
+                  \ configuration. Example: http://localhost:4318 or grpc://localhost:4317."
+              resourceAttributes:
+                type: "object"
+                description: "A set of additional resource-level attributes applied\
+                  \ to all telemetry emitted by this instance."
+                additionalProperties:
+                  type: "string"
+              headers:
+                type: "object"
+                description: "Additional HTTP or gRPC headers to include in each telemetry\
+                  \ export request. Commonly used for authentication tokens or custom\
+                  \ tenant headers."
+                additionalProperties:
+                  type: "string"
+              temporality:
+                type: "string"
+                description: "The aggregation temporality used for metrics. Determines\
+                  \ whether reported values are cumulative since process start (CUMULATIVE)\
+                  \ or represent deltas since the last export (DELTA). Default: CUMULATIVE."
+                enum:
+                - "DELTA"
+                - "CUMULATIVE"
+          dataDog:
+            type: "object"
+            id: "schema:kubling:dbvirt:config:app:instrumentation:DatadogConfig"
+            properties:
+              enabled:
+                type: "boolean"
+              stepInMillis:
+                type: "integer"
+              url:
+                type: "string"
+              apiKey:
+                type: "string"
+              hostTag:
+                type: "string"
+      tracing:
+        type: "object"
+        id: "schema:kubling:dbvirt:config:app:instrumentation:TracingProperties"
+        properties:
+          scheduleDelayInSeconds:
+            type: "integer"
+            description: "The delay interval (in seconds) between each batch export\
+              \ operation. Controls how frequently accumulated telemetry data is flushed\
+              \ to the exporter. Default: 5 seconds."
+          maxExportBatchSize:
+            type: "integer"
+            description: "The maximum number of telemetry items (spans, logs, etc.)\
+              \ included in a single export batch. Larger batches improve throughput\
+              \ but may increase export latency. Default: 512."
+          maxQueueSize:
+            type: "integer"
+            description: "The maximum number of telemetry records that can be queued\
+              \ for export. If the queue reaches its capacity, new records may be\
+              \ dropped. Default: 512."
+          exporterTimeoutInSeconds:
+            type: "integer"
+            description: "The maximum time (in seconds) allowed for a single export\
+              \ attempt. If the exporter does not complete within this timeout, the\
+              \ batch is considered failed. Default: 6 seconds."
+          enabled:
+            type: "boolean"
+          url:
+            type: "string"
           headers:
             type: "object"
             additionalProperties:
               type: "string"
-          temporality:
-            type: "string"
-            enum:
-            - "DELTA"
-            - "CUMULATIVE"
-      dataDog:
-        type: "object"
-        id: "schema:kubling:dbvirt:config:app:instrumentation:DatadogConfig"
-        properties:
-          enabled:
+          includeQueryPlan:
             type: "boolean"
-          stepInMillis:
+          includeFullCommand:
+            type: "boolean"
+          includeRequestIdSpanAttribute:
+            type: "boolean"
+          sampling:
+            type: "number"
+            description: "The sampling ratio applied to telemetry data. A value of\
+              \ 1.0 means all telemetry is sampled; lower values reduce the volume\
+              \ by randomly selecting a fraction of events. Default: 1.0 (always sample)."
+      logs:
+        type: "object"
+        id: "schema:kubling:dbvirt:config:app:instrumentation:LogsProperties"
+        properties:
+          scheduleDelayInSeconds:
             type: "integer"
+            description: "The delay interval (in seconds) between each batch export\
+              \ operation. Controls how frequently accumulated telemetry data is flushed\
+              \ to the exporter. Default: 5 seconds."
+          maxExportBatchSize:
+            type: "integer"
+            description: "The maximum number of telemetry items (spans, logs, etc.)\
+              \ included in a single export batch. Larger batches improve throughput\
+              \ but may increase export latency. Default: 512."
+          maxQueueSize:
+            type: "integer"
+            description: "The maximum number of telemetry records that can be queued\
+              \ for export. If the queue reaches its capacity, new records may be\
+              \ dropped. Default: 512."
+          exporterTimeoutInSeconds:
+            type: "integer"
+            description: "The maximum time (in seconds) allowed for a single export\
+              \ attempt. If the exporter does not complete within this timeout, the\
+              \ batch is considered failed. Default: 6 seconds."
           url:
             type: "string"
-          apiKey:
+          headers:
+            type: "object"
+            additionalProperties:
+              type: "string"
+          core:
+            type: "object"
+            id: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+            properties:
+              enabled:
+                type: "boolean"
+              level:
+                type: "string"
+                enum:
+                - "DEBUG"
+                - "INFO"
+                - "WARN"
+                - "ERROR"
+              consoleEcho:
+                type: "boolean"
+          script:
+            type: "object"
+            $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+          agentic:
+            type: "object"
+            $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+      openTelemetryCommonAttributes:
+        type: "object"
+        id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryCommonAttributesProperties"
+        properties:
+          serviceName:
             type: "string"
-          hostTag:
+            description: "Logical name of the service emitting telemetry. This value\
+              \ identifies the service across metrics, traces, and logs. Example:\
+              \ 'kubling'."
+          serviceNamespace:
             type: "string"
+            description: "Namespace of the service, used to logically group related\
+              \ services. Commonly corresponds to an application or project namespace.\
+              \ Example: 'kai-mad-1', 'switches', 'data-platform' or 'sensors'."
+          serviceInstance:
+            type: "string"
+            description: "Unique identifier for this specific service instance. Typically\
+              \ corresponds to a pod ID, container ID, or host name. Example: 'pod-12345'\
+              \ or 'instance-a1b2c3'. Or if you are federating examples are: 'kai-mad-1',\
+              \ 'mad1-hall1-device123."
+          environment:
+            type: "string"
+            description: "Logical deployment environment of the service. Common values\
+              \ include 'dev', 'staging', 'prod', or any custom environment name.\
+              \ Example: 'prod' or 'qa'."
 
 ```
 

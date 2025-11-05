@@ -1,0 +1,26 @@
+import Tag from '../../../component/Tag'
+
+# SOFT_TRANSACTIONS Schema <Tag description={"v24.6+"} />
+
+The `SOFT_TRANSACTIONS` schema provides visibility into the internal Soft Transaction subsystem.  
+It is mainly used for inspection, debugging, and monitoring purposes.
+
+## Tables and Views
+
+### `SOFT_TRANSACTIONS.TXDB`
+
+This table exposes a row for each Soft Transaction **operation** currently registered in the system.  
+It reflects both in-progress and already-applied operations.
+
+| Column Name                | Type        | Description                                                                                               |
+|----------------------------|-------------|-----------------------------------------------------------------------------------------------------------|
+| `stx_id`                   | `string`    | Soft Transaction ID                                                                                       |
+| `registration_epoch_milli` | `long`      | Registration timestamp (in milliseconds since epoch)                                                      |
+| `registration_date`        | `timestamp` | Human-readable registration timestamp                                                                     |
+| `operation_id`             | `string`    | Operation ID within the transaction (a single transaction may contain multiple operations)                |
+| `vdb`                      | `string`    | Name of the virtual database where the transaction applies                                                |
+| `is_applied`               | `boolean`   | Indicates whether the transaction was already applied and marked for removal in the transaction store     |
+| `command`                  | `string`    | Command executed as part of the operation                                                                 |
+| `compensation_command`     | `string`    | Compensation command to reverse the operation (used when the source does not support native transactions) |
+| `expiration_epoch_milli`   | `long`      | Expiration timestamp (in milliseconds since epoch)                                                        |
+| `expiration_date`          | `timestamp` | Human-readable expiration timestamp                                                                       |

@@ -1,0 +1,130 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Logs
+
+When designing the logging strategy, we focused on a key principle: avoid overwhelming users with internal messages that do not contribute to your goal — running a stable, scalable federation of Kubling instances.
+
+For this reason, Kubling provides a mechanism to **filter log messages**, keeping only the relevant ones.
+
+In addition, logs can be routed to the **console**, **OpenTelemetry**, or **both**.
+
+There are three independent log handlers:
+- **Core**: Handles most printable system messages (after filtering).
+- **Script**: Captures log streams from script contexts, such as messages from the `logger` object.
+- **Agentic**: Captures log streams from the Agentic logic, especially interactions with upstream capability implementations.
+
+## Configuration
+
+<details>
+<summary>Logs configuration section</summary>
+```yaml
+logs:
+  type: "object"
+  id: "schema:kubling:dbvirt:config:app:instrumentation:LogsProperties"
+  properties:
+    scheduleDelayInSeconds:
+      type: "integer"
+      description: "The delay interval (in seconds) between each batch export\
+        \ operation. Controls how frequently accumulated telemetry data is flushed\
+        \ to the exporter. Default: 5 seconds."
+    maxExportBatchSize:
+      type: "integer"
+      description: "The maximum number of telemetry items (spans, logs, etc.)\
+        \ included in a single export batch. Larger batches improve throughput\
+        \ but may increase export latency. Default: 512."
+    maxQueueSize:
+      type: "integer"
+      description: "The maximum number of telemetry records that can be queued\
+        \ for export. If the queue reaches its capacity, new records may be\
+        \ dropped. Default: 512."
+    exporterTimeoutInSeconds:
+      type: "integer"
+      description: "The maximum time (in seconds) allowed for a single export\
+        \ attempt. If the exporter does not complete within this timeout, the\
+        \ batch is considered failed. Default: 6 seconds."
+    url:
+      type: "string"
+    headers:
+      type: "object"
+      additionalProperties:
+        type: "string"
+    core:
+      type: "object"
+      id: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+      properties:
+        enabled:
+          type: "boolean"
+        level:
+          type: "string"
+          enum:
+          - "DEBUG"
+          - "INFO"
+          - "WARN"
+          - "ERROR"
+        consoleEcho:
+          type: "boolean"
+    script:
+      type: "object"
+      $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+    agentic:
+      type: "object"
+      $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+```
+</details>
+
+Example
+```yaml
+instrumentation:
+  logs:
+    url: "http://127.0.0.1:4318/v1/logs"
+    scheduleDelayInSeconds: 5
+    maxExportBatchSize: 512
+    maxQueueSize: 512
+    exporterTimeoutInSeconds: 6
+    headers:
+      some: "header"
+    core:
+      enabled: true
+      level: "DEBUG"
+      consoleEcho: true
+    script:
+      enabled: true
+      level: "DEBUG"
+    agentic:
+      enabled: true
+      level: "WARN"
+```
+
+## Contexts
+All log entries include a context, which indicates the module emitting the entry. In the log line, this context appears enclosed in square brackets, like this:
+
+```shell
+04-11-2025 11:35:19.469 INFO  - [INST>METRICS] Enabling OpenTelemetry.
+04-11-2025 11:35:19.525 INFO  - [INST>TRACING] Tracing enabled: using OTLP exporter -> http://0.0.0.0:4318/v1/traces
+04-11-2025 11:35:19.560 INFO  - [CORE] Loading VDB <<Azure>>
+04-11-2025 11:35:19.560 INFO  - [CORE] Loading Data Source <<app_delegate>>
+04-11-2025 11:35:19.875 WARN  - [CORE] WARNING! Native Protocol is marked as SECURE but no SSL configuration is specified. Ignoring.
+04-11-2025 11:35:19.875 WARN  - [CORE] WARNING! No authentication delegation informed in the Bundle, all connections will be accepted by default.
+04-11-2025 11:35:19.971 INFO  - [CORE] << Kubling Data Virtualization Engine  v25.6 Started >>
+04-11-2025 11:35:19.972 INFO  - [CORE] HTTP API Services and Observability on port 8282
+04-11-2025 11:35:19.972 INFO  - [CORE] DB Native UNSECURED protocol started on 0.0.0.0:35482
+04-11-2025 11:35:19.972 INFO  - [CORE] SQL: Maximum Thread Pool Size: 25 | Maximum Waiting Queue Capacity: 10
+04-11-2025 11:35:19.972 INFO  - [CORE] HTTP: Maximum Thread Pool Size: 100 | Maximum Waiting Queue Capacity: 50
+04-11-2025 11:35:19.972 INFO  - [CORE] Soft TX DB: //kubling-stx.db
+```
+
+When logs are sent via OpenTelemetry, the context is added as an attribute you can use for filtering:
+
+```json
+"attributes":{"log.source":"core"}
+```
+
+## Echoing to console
+When the `url` property is not set but the handler is enabled, Kubling defaults to outputting logs to the console.
+
+If you want to export logs to a remote collector and print them to the console, use the `consoleEcho` property.
+
+<Callout> 
+    In production environments, we strongly recommend disabling console output and relying entirely on OpenTelemetry — especially when running on small, resource-constrained ARM-based devices like a Raspberry Pi. 
+</Callout>

@@ -1,3 +1,6 @@
 export default {
-  "metrics": ""
+  "intro": "Introduction",
+  "logs": "",
+  "metrics": "",
+  "tracing": ""
 }
