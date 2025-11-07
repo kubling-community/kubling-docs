@@ -42,12 +42,12 @@ a body document, in `JSON` or `YAML` format, with values for these fields.<br/>
 When the template is parsed, these fields are injected in the template context.
 
 What we want to have as a resulting query, is just a `UNION` query that aggregates results from multiple `TABLES`. To do so, we use a 
-[loop](/template#for-loop) to iterate over tables.
+[loop](/template/parser#for-loop) to iterate over tables.
 
 The `UNION ALL` keyword is placed between two `SELECT` expressions, therefore it must be omitted when printing the first `SELECT`. To achieve that, we use a 
 very simple filter function called `filterValWhenVarFalse`, that returns `null` when the context variable passed as `var` param  is `false` and the actual filtered
 value when it is `true`. When `flip` param is `true`, the `boolean` value is flipped each time the filter is called.<br/>
-More information about filters [here](/template#filters).
+More information about filters [here](/template/parser#filters).
 
 ### Calling a Query Endpoint
 The URL for calling a query endpoint is `http[s]://[address]:8282/api/v1/query/perform/[query_name]` where `query_name` is the name of the `YAML` file (without the extension).

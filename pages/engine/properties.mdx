@@ -27,7 +27,6 @@ and DDL Files (`dataSources.[data_source].schema.ddlFilePaths`).
 
 It's important to note that Schema DDLs receive a special object in the context, called `schema`, which includes `dataSources.[data_source].schema`. 
 If this object contains properties, they can be accessed via `schema.properties`. 
-For example, you can refer to the [Built-in Kubernetes DDL](/data-sources#kubernetes-data-source-kubernetes) section for a practical use case. 
 This approach enables reusability of common configuration files, such as `translatorConfig`, by isolating specific schema properties.
 
 
@@ -42,5 +41,5 @@ Variables defined at this level are accessible throughout the following configur
 
 It's important to highlight that Schema DDLs are injected with a special context object named `schema`, which includes `dataSources.[data_source].schema`. 
 If the `schema` object contains `properties`, they can be accessed via `schema.properties`. This enables flexibility and reusability, 
-especially when working with shared configurations, such as `translatorConfig`. For an example, refer to the [Built-in Kubernetes DDL](/data-sources#kubernetes-data-source-kubernetes) section, 
+especially when working with shared configurations, such as `translatorConfig`. For an example, refer to the [Built-in Kubernetes DDL](/engine/ds/k8s#ddl) section, 
 which demonstrates a practical use case.
