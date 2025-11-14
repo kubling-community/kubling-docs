@@ -1,5 +1,9 @@
 # Product changelog
 
+## v25.6.1
+- Resolved an out-of-memory issue when querying `POD_CONTAINER` or `POD_CONTAINER_STATUS`. The problem was caused by Kubling attempting to reflectively access a class not included in the final binary image.
+- Updated the Kubernetes base DDL.
+
 ## v25.6
 - Full support for OpenTelemetry added: logs, metrics, and traces can now be exported to remote collectors or observability platforms.
 - Introduced the `SOFT_TRANSACTIONS.TXDB` system table, exposing the current state and metadata of all registered Soft Transactions within the instance.

@@ -147,7 +147,6 @@ CREATE FOREIGN TABLE NODE
     status__phase string OPTIONS(ANNOTATION 'Current lifecycle phase of the node (e.g., Running, Terminated)'),
     status__volumesAttached json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'List of volumes attached to the node'),
     status__volumesInUse json OPTIONS(ANNOTATION 'List of volumes currently in use on the node'),
-    status__additionalProperties json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Additional Kubernetes properties related to the node status'),
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the node, combining cluster name and node name'),
     PRIMARY KEY(identifier),
@@ -166,10 +165,9 @@ CREATE FOREIGN TABLE NODE_CONDITIONS
     clusterName string OPTIONS(val_variable 'cluster_name', ANNOTATION 'The name of the cluster where the node is registered'),
     clusterUrl string OPTIONS(val_constant '{{ schema.properties.kubernetes_api_url }}', ANNOTATION 'The Kubernetes API server URL for accessing node conditions'),
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the node resource'),
-    metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the node resource'),
 
     lastTransitionTime timestamp OPTIONS(ANNOTATION 'The timestamp when the node last transitioned between conditions'),
-    lastUpdateTime timestamp OPTIONS(ANNOTATION 'The timestamp of the last condition update'),
+    lastHeartbeatTime timestamp OPTIONS(ANNOTATION 'The timestamp of the last condition update'),
     message string OPTIONS(ANNOTATION 'Detailed message about the node condition'),
     reason string OPTIONS(ANNOTATION 'Short reason for the node condition'),
     status string OPTIONS(ANNOTATION 'Current status of the node condition (True, False, Unknown)'),
@@ -463,7 +461,7 @@ CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER
     schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the deployment.'),
     metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the deployment.'),
-    metadata__labels string OPTIONS(updatable false, synthetic_type 'parent', ANNOTATION 'Labels attached to the deployment.'),
+    metadata__labels json OPTIONS(updatable false, synthetic_type 'parent', ANNOTATION 'Labels attached to the deployment.'),
     metadata__uid string OPTIONS(synthetic_type 'parent', ANNOTATION 'The unique identifier of the deployment.'),
 
     image string NOT NULL OPTIONS(ANNOTATION 'The container image used in the deployment.'),
@@ -488,7 +486,7 @@ CREATE FOREIGN TABLE DEPLOYMENT_CONTAINER_VOLS
     schema string OPTIONS(val_constant '{{ schema.name }}', ANNOTATION 'The schema representing this Kubernetes resource.'),
     metadata__name string NOT NULL OPTIONS(synthetic_type 'parent', ANNOTATION 'The name of the deployment.'),
     metadata__namespace string OPTIONS(synthetic_type 'parent', ANNOTATION 'The namespace of the deployment.'),
-    metadata__labels string OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels attached to the deployment.'),
+    metadata__labels json OPTIONS(synthetic_type 'parent', ANNOTATION 'Labels attached to the deployment.'),
     metadata__uid string OPTIONS(synthetic_type 'parent', ANNOTATION 'The unique identifier of the deployment.'),
     containerName string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'name', ANNOTATION 'The container name associated with the volume.'),
     containerImage string OPTIONS(synthetic_type 'parent_array_key', synthetic_parent_field 'image', ANNOTATION 'The container image associated with the volume.'),
@@ -1115,8 +1113,8 @@ CREATE FOREIGN TABLE CSI_STORAGE_CAPACITY
     metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this CSI Storage Capacity resource exists.'),
     metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this CSI storage capacity resource.'),
 
-    capacity json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Defines the available capacity for a given storage class on a node.'),
-    maximumVolumeSize json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'The maximum size of a single volume that can be dynamically provisioned.'),
+    capacity string,
+    maximumVolumeSize string,
     nodeTopology json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Specifies the topology constraints for where storage volumes can be provisioned.'),
     storageClassName string OPTIONS(ANNOTATION 'The name of the StorageClass associated with this CSI storage capacity.'),
 
@@ -1277,7 +1275,7 @@ CREATE FOREIGN TABLE RBAC_ROLE
     metadata__namespace string OPTIONS(ANNOTATION 'The namespace where this Role exists.'),
     metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this Role.'),
 
-    simpleRules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of policy rules that define permissions for this Role.'),
+    rules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of policy rules that define permissions for this Role.'),
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__namespace+metadata__name', ANNOTATION 'Unique identifier for the Role based on cluster, namespace, and name.'),
     PRIMARY KEY(identifier),
@@ -1319,7 +1317,7 @@ CREATE FOREIGN TABLE RBAC_CLUSTER_ROLE
     metadata__name string OPTIONS(ANNOTATION 'The name of the ClusterRole resource.'),
     metadata__labels json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'Labels assigned to this ClusterRole.'),
 
-    simpleRules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of policy rules that define permissions for this ClusterRole.'),
+    rules json OPTIONS(parser_format 'asJsonPretty', ANNOTATION 'A list of policy rules that define permissions for this ClusterRole.'),
 
     identifier string NOT NULL OPTIONS(val_pk 'clusterName+metadata__name', ANNOTATION 'Unique identifier for the ClusterRole based on cluster and name.'),
     PRIMARY KEY(identifier),
