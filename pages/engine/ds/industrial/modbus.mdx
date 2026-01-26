@@ -3,25 +3,73 @@ import { Callout } from 'nextra/components'
 
 # Modbus Data Source (`MODBUS`) <Tag description={"v25.4+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
 
-<Callout type="warning">
-As of version `25.4`, **Modbus** adapter is **read-only**. Only `SELECT` queries are supported.  
-`INSERT`, `UPDATE`, and `DELETE` operations are **not yet available**.
+Modbus is one of the most widely adopted protocols in industrial environments, particularly for low-level devices such as sensors, controllers, and embedded systems. 
+It operates over TCP or serial transport and exposes a **register-based memory model**, rather than structured schemas or entity lifecycles.
 
-We’re actively working to support write capabilities in upcoming releases.
-</Callout>
+At its core, Modbus provides access to discrete coils and registers that represent device state, configuration, or control inputs. 
+These registers are addressed numerically and interpreted according to device-specific conventions, data layouts, and access modes.
 
-Modbus is one of the most widely adopted protocols in industrial environments, particularly for low-level devices like sensors, controllers, and embedded systems. 
-It operates over TCP or serial transport and exposes register-based memory rather than structured schemas.
+Kubling integrates with Modbus by allowing you to define **logical tables** that map directly to raw register addresses. 
+This provides a powerful way to model, query, and modify industrial device state using standard SQL, even when the underlying system has no native notion of tables or schemas.
 
-Kubling integrates with Modbus by letting you define logical tables that map to raw register addresses. 
-This provides a powerful way to model and query industrial data using standard SQL, even when the underlying device lacks any notion of a "table" or "schema".
-
-As with SNMP, Kubling handles the protocol complexity for you: reading, decoding, and transforming Modbus registers into usable types, 
-based on the table definitions you declare.
+As with SNMP, Kubling handles the protocol complexity on behalf of the user: reading and writing registers, decoding raw values, 
+and transforming them into usable types based on the table definitions you declare. 
+This abstraction preserves Modbus semantics while exposing a relational interface that reflects the capabilities and constraints of the protocol.
 
 <Callout type="info">
-Current support includes **Modbus over TCP**, using holding/input register access via `CREATE FOREIGN TABLE` declarations.
+Current support includes **Modbus over TCP**, using holding and input register access via `CREATE FOREIGN TABLE` declarations.
 </Callout>
+
+## Supported SQL Operations
+
+The Modbus Data Source supports a constrained subset of SQL operations that directly reflect the capabilities of the Modbus protocol.
+
+This section clarifies the **conceptual meaning** of each operation, independently of the detailed technical 
+configuration and examples described elsewhere in this document.
+
+### SELECT
+
+`SELECT` operations retrieve register-backed device state and expose it through a relational interface.
+
+Reads are executed on demand and reflect the device state at query time. 
+Retrieved register values are decoded, transformed, and presented as typed columns according to the table definition.
+
+<Callout type="warning">
+In the current version, read operations are implemented using Modbus **holding registers** access.
+Support for additional Modbus read functions (such as input registers, coils, or discrete inputs) 
+is under evaluation and may be introduced in future versions through explicit configuration directives.
+</Callout>
+
+
+### UPDATE
+
+`UPDATE` operations write new values to one or more Modbus registers of an existing device.
+
+Before performing the write operation, Kubling first retrieves the affected register-backed tuples in order to:
+- Determine the row identity of each affected entry
+- Establish row-level locking semantics
+- Derive the appropriate compensation commands when executed under Soft Transactions
+
+This read-before-write phase is an intentional part of the execution model and is particularly relevant when updates are executed within a transactional context.
+
+Once the affected rows have been identified, the corresponding Modbus write operations are issued to mutate device state, configuration, or control inputs. 
+Only registers that are writable according to the device specification can be updated; 
+attempts to write to read-only addresses result in execution errors propagated back to the engine.
+
+
+### Why INSERT and DELETE Are Not Supported
+
+`INSERT` and `DELETE` operations are intentionally not supported by the Modbus Data Source.
+
+This follows directly from the Modbus protocol model:
+
+- Modbus exposes a fixed, addressable memory space
+- Registers and coils exist independently of client interaction
+- There is no protocol-level concept of creating or deleting managed instances
+
+As a result, there is no meaningful equivalent for `INSERT` or `DELETE`. 
+Kubling preserves these semantics rather than introducing abstractions that would misrepresent the underlying device behavior.
+
 
 ## Configuration
 <details>
@@ -72,14 +120,55 @@ properties:
         type: "string"
         description: "Path to a PEM-encoded private key file (e.g., /etc/kubling/client.key).\
           \ This is used only if 'privateKey' is not provided."
-  enableSoftTransactions:
-    type: "boolean"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   contributesToHealth:
     type: "boolean"
     description: "Indicates whether this data source contributes to the engine's overall\
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
       \ is ignored in the overall assessment."
+  healthcheckAddress:
+    type: "integer"
   cache:
     type: "object"
     id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
@@ -153,11 +242,12 @@ Kubling gives you the tools to describe those registers in a structured, SQL-fri
 
 ## Specific `COLUMN` directives
 
-| Directive              | Type    | Options                                                                                                                       | Description                                                                                         |
-|------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| `modbus_address`       | String  | Any valid register address (e.g. `0`, `30001`)                                                                                 | The **starting address** of the register to read. This is the base offset for extracting the field value. |
-| `modbus_data_type`     | String  | `boolean`, `int`, `uint16`, `int32`, `float`, `float32`, `uint32`, `int64`, `float64`, `double`, `uint64`, `string`, `byte[]` | Describes how the raw register value should be interpreted. Used to infer the number of registers to read if `modbus_data_length` is not specified. |
-| `modbus_data_length`   | Integer | Any positive integer                                                                                                           | Explicitly sets how many registers to read starting from `modbus_address`. Overrides all other type inference mechanisms. |
+| Directive            | Type    | Options                                                                                                                       | Description                                                                                                                                                                         |
+|----------------------|---------|-------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `modbus_address`     | String  | Any valid register address (e.g. `0`, `30001`)                                                                                | The **starting address** of the register to read. This is the base offset for extracting the field value.                                                                           |
+| `modbus_data_type`   | String  | `boolean`, `int`, `uint16`, `int32`, `float`, `float32`, `uint32`, `int64`, `float64`, `double`, `uint64`, `string`, `byte[]` | Describes how the raw register value should be interpreted. Used to infer the number of registers to read if `modbus_data_length` is not specified.                                 |
+| `modbus_data_length` | Integer | Any positive integer                                                                                                          | Explicitly sets how many registers to read starting from `modbus_address`. Overrides all other type inference mechanisms.                                                           |
+| `modbus_scale`       | Number  | Any numeric value                                                                                                             | <Tag description={"v26.1+"} /> Applies a numeric scaling factor to the decoded register value. The final value is computed by multiplying the decoded value by the specified scale. |
 
 <Callout type="info">
 When decoding a field, Kubling resolves the number of registers to read using the following precedence:
@@ -296,3 +386,54 @@ Here, the Modbus adapter will correctly decode a 16-bit integer, but fail to con
 <Callout>
 For a full list of supported data type conversions, refer to the [DataTypeManager source code](https://github.com/kubling-community/kubling-teiid-os/blob/master/common-core/src/main/java/com/kubling/teiid/core/types/DataTypeManager.java).
 </Callout>
+
+## Soft Transactions and Modbus Semantics
+
+The Modbus Data Source can participate in Kubling Soft Transactions (STX), 
+allowing Modbus operations to be coordinated with other data sources within a single transactional scope.
+
+As with other protocol-based data sources, this participation must be interpreted in light of Modbus protocol semantics and device behavior.
+
+### Participation in Soft Transactions
+
+When executed within a Soft Transaction, Modbus `UPDATE` operations are coordinated by the engine alongside operations targeting other data sources. 
+Execution ordering, failure propagation, and transactional boundaries are enforced consistently at the engine level.
+
+This allows Modbus updates to be composed as part of broader orchestration workflows that may span databases, APIs, and other industrial systems.
+
+### Rollback Semantics
+
+Modbus does not provide native transactional support.
+
+For Modbus updates executed under STX, Kubling performs rollback by issuing **compensation commands**, 
+typically expressed as follow-up write operations intended to restore previous register values.
+
+A rollback therefore indicates that the overall Soft Transaction did not complete successfully, 
+but it does **not** guarantee that the device has returned to an identical operational state.
+
+### Compensation Semantics and Operational Considerations
+
+In Kubling, rollback for Modbus is always expressed through compensation: the engine derives and executes write-back operations as part of the rollback path.
+
+However, the semantic meaning of “reverting” a Modbus write depends heavily on the nature of the device and the role of the affected registers:
+
+- Writing a previous value back to a register may not undo device-side side effects triggered by the original write.
+- Registers may act as control inputs rather than durable state, and reverting their value may not restore prior behavior.
+- Device state may evolve independently between the original update and the compensation attempt.
+
+As a result, while compensation commands are always issued, they should be understood as a **best-effort attempt to restore register values**, 
+not as a guarantee of full state reversal.
+
+### Operational Implications
+
+Modbus updates should be treated as **direct mutations of device state or control surfaces**, not as database-style row updates.
+
+Soft Transactions provide coordination, ordering, and a structured rollback mechanism through compensation, 
+but they do not introduce stronger guarantees than those offered by the Modbus protocol and the managed device itself.
+
+Correct usage therefore requires domain understanding of:
+- The specific device being controlled
+- The semantics of each register
+- The operational impact of writing and rewriting values within a transaction lifecycle
+
+Kubling preserves these semantics intentionally, favoring transparency and correctness over artificial transactional abstractions.

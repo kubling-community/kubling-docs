@@ -1,84 +1,203 @@
 import { FileTree } from 'nextra/components'
 import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
 
 # Script Bundle Module
-This module contains all the required information to add a Script Data Source to Kubling.
 
-The following tree shows the recommended internal directory and file organization and is based on a real module that allows interaction with the JIRA API:
+A Script Bundle Module is a self-contained ZIP archive that provides all the logic required to expose a **Script Data Source** to Kubling.
+
+A module defines:
+- How SQL operations are translated into executable logic
+- How external systems or APIs are invoked
+- How results and side effects are communicated back to the engine
+
+This page documents the **recommended module structure** and the **execution models supported by the engine**.
+
+## Recommended Module Structure
+
+The following tree illustrates a representative Script Bundle Module, based on a real integration with the JIRA API:
 
 <FileTree>
   <FileTree.File name="bundle-script-info.yaml" />
   <FileTree.File name="jira.ddl" />
-  <FileTree.File name="JiraDeleteDelegate.js" />
-  <FileTree.File name="JiraInsertDelegate.js" />
-  <FileTree.File name="JiraResultSetDelegate.js" />
-  <FileTree.File name="JiraUpdateDelegate.js" />
   <FileTree.File name="init.js" />
+
+  <FileTree.Folder name="handlers">
+    <FileTree.File name="ISSUE.js" />
+    <FileTree.File name="PROJECT.js" />
+  </FileTree.Folder>
+
   <FileTree.Folder name="module">
     <FileTree.Folder name="platform">
-        <FileTree.Folder name="jira">
-            <FileTree.Folder name="api">
-                <FileTree.File name="UsersApi.js" />
-            </FileTree.Folder>
-            <FileTree.Folder name="model">
-                <FileTree.File name="Board.js" />
-                <FileTree.File name="Commit.js" />
-                <FileTree.File name="Component.js" />
-            </FileTree.Folder>
-            <FileTree.File name="ApiClient.js" />
+      <FileTree.Folder name="jira">
+        <FileTree.Folder name="api">
+          <FileTree.File name="UsersApi.js" />
         </FileTree.Folder>
+        <FileTree.Folder name="model">
+          <FileTree.File name="Board.js" />
+          <FileTree.File name="Commit.js" />
+          <FileTree.File name="Component.js" />
+        </FileTree.Folder>
+        <FileTree.File name="ApiClient.js" />
+      </FileTree.Folder>
     </FileTree.Folder>
     <FileTree.Folder name="utils">
-        <FileTree.File name="Utils.js" />
-    </FileTree.Folder>  
+      <FileTree.File name="Utils.js" />
+    </FileTree.Folder>
   </FileTree.Folder>
-  <FileTree.Folder name="init">
-    <FileTree.File name="init_jira.js" />
-  </FileTree.Folder>
+
   <FileTree.Folder name="scheduled">
     <FileTree.File name="publish_status_to_slack.js" />
-  </FileTree.Folder>  
+  </FileTree.Folder>
 </FileTree>
 
+Only one file is strictly required to be located at the root of the module:
+
+- **`bundle-script-info.yaml`**
+
+All other paths follow conventions rather than hard constraints and may be adapted to the module’s needs.
+
 ## 📄 `bundle-script-info.yaml`
-This is the only file whose location must be the root directory of the module.
-See here the [schema](/schemas#script-module-bundle-information-file-bundle-script-infoyaml) of the file.
 
-## 📄 `jira.ddl`
-This module contains its own version of the DDL file, which is the recommended practice to ensure self-contained modules. 
-Due to its importance, we suggest placing the file in the root directory.
+This file defines the module metadata and how it is wired into the engine.
 
-## 📂 `module` directory
-- 📂 `platform`<br/>
-This directory contains scripts for interacting with all the platforms/systems supported by this module. 
-Ideally, one module should support only one Data Source; however, in some circumstances, you may want to group multiple sources in a single module. 
-In short, this directory includes one subdirectory per supported platform/system.
+Among other settings, it controls:
+- Which execution model is used
+- How scripts are discovered
+- How initialization and scheduled logic are registered
 
-## Delegates
-Delegate scripts are the only scripts the Engine calls directly when the DQP routes a task to this Data Source. 
-There are four of them (ResultSet, Insert, Update, and Delete), and implementing all of them is not mandatory. 
-For example, if your module only supports fetching data, you will only need the ResultSet delegate.
+See the full schema here:  
+[Script Module Bundle Information File](/schemas#script-module-bundle-information-file-bundle-script-infoyaml)
 
-Their locations are configured in the `bundle-script-info.yaml`.
+## Table Handlers <Tag description={"v26.1+"} />
 
-Due to their importance, we suggest placing them in the root directory as shown in the example above.
+Table handlers define a **table-centric execution model** for Script Data Sources.
 
-## 📄 Initialization Script
+In this model, the engine resolves handlers dynamically based on table names and invokes operation-specific functions on demand. 
+The association between SQL operations and script logic is expressed structurally, rather than through explicit delegate wiring.
 
-Initialization scripts are useful in situations where the module needs certain values for proper functioning. 
-For example, the Azure module's API client requires a token to be attached to requests. 
-The Azure token has a short lifespan and is generated by calling a login endpoint using client credentials. 
-If we include that logic inside the API client, it would add unnecessary overhead and result in the generation of thousands of tokens. 
-Therefore, the initialization script is the right place to handle that logic.
+Under the table handler model:
 
-Even though initialization script can be loaded from any place within the module, we do suggest placing it at root level.
+- Each table is associated with a single JavaScript file
+- The file name determines which table it handles
+- SQL operations targeting that table are routed to functions defined in the file
 
-**When an initialization script is present, the script must inform the Engine of the result of the initialization process, 
-since a failure here will prevent the Engine from starting correctly.**
+Handlers do not return values.  
+They interact with the engine exclusively through **exchange objects** provided at invocation time.
 
-See the [context member](/Engine/script-context-members#initresult) trough which the Engine receives the information.
+<Callout>
+A concrete example of the table handler model can be found in the [kubling-operaton repository](https://github.com/kubling-community/kubling-operaton/tree/main/vdb/orders/mod-apis)
+</Callout>
+
+
+### Handler Resolution
+
+Handlers are discovered under a configured directory inside the module.
+
+For each JavaScript file found:
+- The file name is mapped to a table name
+- The engine invokes functions on demand when operations target that table
+
+Example layout:
+
+```
+handlers/
+  ISSUE.js
+  PROJECT.js
+```
+
+In this case, operations on tables `ISSUE` and `PROJECT` are routed to the corresponding files.
+
+### Handler Contract
+
+A handler file may export any of the following functions (all lowercase):
+
+- `select`
+- `insert`
+- `update`
+- `delete`
+
+Each function receives a **single argument object** composed of two distinct parts:
+
+- Informational input provided by the engine
+- Exchange objects used to communicate results back to the engine
+
+The contract is:
+
+```js
+// SELECT
+select({ queryFilter, resultSet })
+
+// INSERT
+insert({ insertOp, affectedRows })
+
+// UPDATE
+update({ updateOp, affectedRows })
+
+// DELETE
+delete({ deleteOp, affectedRows })
+```
+
+### Informational Inputs
+
+Informational inputs describe **what operation the engine is requesting**:
+
+- [`queryFilter`](/engine/script-context-members#queryfilter)
+- [`insertOp`](/engine/script-context-members#insertoperation)
+- [`updateOp`](/engine/script-context-members#updateoperation)
+- [`deleteOp`](/engine/script-context-members#deleteoperation)
+
+These objects are provided by the engine and are treated as read-only by the handler.
+
+### Exchange Objects
+
+Exchange objects represent the **communication channel back to the engine**:
+
+- [`resultSet`](/engine/script-context-members#resultset) is used to emit rows for SELECT operations
+- [`affectedRows`](/engine/script-context-members#affectedrows) is used to report affected row counts and generated keys
+
+After handler execution, the engine inspects these objects to determine the outcome of the operation.
+
+### Execution Characteristics
+
+The table handler model:
+
+- Makes table-level behavior explicit and localized
+- Eliminates explicit delegate wiring
+- Preserves a clear separation between intent (input) and effect (exchange)
+- Keeps execution deterministic from the engine’s perspective
+
+## Delegate Scripts
+
+Delegate scripts represent an alternative execution model for Script Data Sources.
+
+In this model, the engine invokes explicitly configured scripts for each operation type:
+
+- ResultSet delegate
+- Insert delegate
+- Update delegate
+- Delete delegate
+
+Delegate-based wiring remains supported to preserve compatibility with existing modules.  
+However, new modules are encouraged to adopt the table handler model, as it results in simpler wiring and clearer execution semantics.
+
+## 📄 Initialization Scripts
+
+Initialization scripts allow a module to perform one-time setup logic required for correct operation.
+
+Typical use cases include:
+- Authenticating with external systems
+- Fetching or refreshing credentials
+- Initializing shared state
+
+If an initialization script is present, it **must report its outcome to the engine**.  
+A failure during initialization prevents the engine from starting.
+
+The engine receives this information through the `initResult` context member:  
+[initResult context member](/Engine/script-context-members#initresult)
 
 Example:
+
 ```js
 import { generateAzureToken } from "../api/TokenGenerator";
 
@@ -90,65 +209,26 @@ try {
 }
 ```
 
+---
+
 ## 📄 Scheduled Scripts
 
-Scheduled scripts are executed based on a cron expression. If we follow the above mentioned Azure example, we can have a scheduled script that refreshes
-the token before it expires, making the token generation process completely transparent to the API client and delegates.
+Scheduled scripts are executed periodically based on a cron expression.
 
-Even though it is not recommended to overload the Engine with hundreds of scheduled tasks (if you do, take that into account when assigning resources to the instance, like CPU and Memory),
-another possible use case is having notifiers that pushes messages to other systems, or even keep some consistency based on the information present in other Data Sources.
+They are typically used for:
+- Refreshing credentials
+- Publishing state to external systems
+- Periodic reconciliation or notifications
+
+Scheduled scripts should be used judiciously, as they consume engine resources.
 
 <Callout type="info">
-  Try to keep scheduled scripts as separate as the rest of the code as possible.
+Try to keep scheduled scripts as isolated from the rest of the module logic as possible.
 </Callout>
 
-For example, the following script gets the current state of Deployments of a Kubernetes cluster named `k8s_cluster_1`, and pushes them in slack:
-```js
-var result = DBEngine.executeQuery("kblops",
-    `
-    SELECT dc.clusterName, dc.metadata__name, dc.metadata__namespace, dc.status, dc.lastUpdateTime, dc.lastTransitionTime 
-    FROM kube1.DEPLOYMENT_CONDITIONS AS dc
-    RIGHT JOIN (
-        SELECT metadata__name, metadata__namespace, MAX(lastUpdateTime) AS lastUpdateTime, MAX(lastTransitionTime) AS lastTransitionTime
-        FROM kube1.DEPLOYMENT_CONDITIONS
-        WHERE metadata__namespace IN (SELECT metadata__name FROM  kube1.NAMESPACE WHERE clusterName = 'kube1')
-        GROUP BY clusterName, metadata__name, metadata__namespace
-    ) AS subquery
-    ON 
-        dc.metadata__namespace = subquery.metadata__namespace AND 
-        dc.metadata__name = subquery.metadata__name AND 
-        dc.lastUpdateTime = subquery.lastUpdateTime AND 
-        dc.lastTransitionTime = subquery.lastTransitionTime
-    `);
-
-const rows = result.rows;
-let finalMessage = '';
-for (let pos = 0; pos < rows.size(); pos++) {
-    let row = rows.get(pos);
-    finalMessage += `Cluster: ${row.clustername} | Namespace: ${row.metadata__namespace} | Deploy: ${row.metadata__name} >> Is Active: ${row.status}\n`;
-}
-
-let req = {
-    "url": `https://slack.com/api/chat.postMessage`,
-    "method": "POST",
-    "headers": {
-        "Accept": "*/*",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept-Encoding": "gzip",
-        "Authorization": `Bearer ${contextVars.SLACK_TOKEN}`        
-    },
-    "formUrlEncoded": true,
-    "form": {
-        "channel": "kubling-engineering",
-        "text": finalMessage
-    }
-}
-
-let resp = httpCli.exec(req);
-if (resp.statusCode !== 200) throw new Error(`Response ${resp.statusCode} | Message ${resp.content}`);
-```
+In more advanced setups, scheduled scripts often interact with other systems **through Data Sources**, rather than calling external APIs directly.
 
 <Callout type="info">
-  In a more complex and certainly interesting scenario, you won't have to manually call Slack's API. 
-  Instead, you will likely have Slack as a Data Source, and the scheduled script will simply perform an `INSERT` into a chat table, which will trigger the actual API call.
+In complex scenarios, systems such as Slack are commonly modeled as Data Sources.  
+A scheduled script would then perform an INSERT into a table, triggering the actual external interaction through the engine.
 </Callout>

@@ -294,7 +294,7 @@ An `object` that contains only members (not functions), which describes the inse
 | `originalYamlList : ListProxyObject<string>`                     | Same as `originalJsonList` but in `YAML` format.                                                                                                                                                                                                                                                                                                                 |
 | `differences : ListProxyObject<JsonDifferenceResultProxyObject>` | Returns the list of differences detected when compared to the original document.<br/>Position matches `jsonList` and `originalJsonList`, therefore `differences[index]` uses `jsonList[index]` and `originalJsonList[index]` to make the comparison.<br/>Elements of the List are of [`JsonDifferenceResultProxyObject` type](#jsondifferenceresultproxyobject). |
 
-#### [`affectedRows`](#affectedrows)
+#### [`affectedRows`](#affectedrows-3)
 
 Must specify the number of documents effectively created/inserted during the operation.
 
@@ -317,7 +317,7 @@ An `object` that contains only members (not functions), which describes the upda
 | `partialJsonList : ListProxyObject<string>`                      | Returns a list of documents containing only the fields that were changed. Difference between this and `updates`, is that this member returns a valid `JSON`.                                                                                                                                                                                                     |
 | `partialYamlList : ListProxyObject<string>`                      | Same as `partialJsonList` but in `YAML` format.                                                                                                                                                                                                                                                                                                                  |
 
-#### [`affectedRows`](#affectedrows)
+#### [`affectedRows`](#affectedrows-3)
 
 Must specify the number of documents effectively updated during the operation.
 
@@ -334,7 +334,7 @@ An `object` that contains only members (not functions), which describes the dele
 | `jsonList : ListProxyObject<string>`   | Returns the list of documents to be deleted.                                                                      |
 | `yamlList : ListProxyObject<string>`   | Same as `jsonList` but in `YAML` format.                                                                          |
 
-#### [`affectedRows`](#affectedrows)
+#### [`affectedRows`](#affectedrows-3)
 
 Must specify the number of documents effectively deleted during the operation.
 
@@ -529,11 +529,12 @@ An `object` that contains only members (not functions), with values passed to th
 
 A proxy `object` that contains the the number of rows affected by the operation.
 
-| Member                        | Description                                     |
-|-------------------------------|-------------------------------------------------|
-| `increment()`                 | Increments (1) the number of affected rows.     |
-| `increment(number : integer)` | Increments a specified number of affected rows. |
-| `get() : integer`             | Returns the current affected rows.              |
+| Member                                                        | Description                                                                                                                                                                                                                                                                                                                                                                        |
+|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `increment()`                                                 | Increments (1) the number of affected rows.                                                                                                                                                                                                                                                                                                                                        |
+| `increment(number : integer)`                                 | Increments a specified number of affected rows.                                                                                                                                                                                                                                                                                                                                    |
+| `get() : integer`                                             | Returns the current affected rows.                                                                                                                                                                                                                                                                                                                                                 |
+| `addGeneratedKey(colName : string, value : object) : integer` | Registers a generated key for the given column name and propagates it to the engine. This allows generated values (for example, auto-increment identifiers) to be returned by the operation when supported. The engine will attempt to transform the provided value from the script data type into the table column data type. Transformation failures result in execution errors. |
 
 #### `JsonDifferenceResultProxyObject`
 

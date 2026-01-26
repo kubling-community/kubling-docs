@@ -1,0 +1,76 @@
+# Transactions
+
+## Why Transactions?
+
+Operational systems rarely operate in isolation. Real-world workflows typically span multiple data sources, external systems, 
+and side effects that must be coordinated in a consistent manner. 
+In these environments, failures are not exceptional events, they are an intrinsic part of normal operation.
+
+Traditional transaction models assume:
+- A single transactional resource
+- Strong guarantees provided by the underlying data store
+- A well-defined and tightly controlled commit boundary
+
+Kubling operates under very different constraints:
+- Data sources may not support native transactions
+- Operations frequently span heterogeneous systems
+- Side effects may be irreversible or externally observable
+
+Despite these limitations, operational correctness still matters. 
+Lost updates, partial writes, and inconsistent reads can easily propagate into systemic failures if left unmanaged.
+
+Kubling introduces transactions to provide **operational safety and consistency**, not to emulate a fully ACID-compliant database.
+
+## The Problem Kubling Addresses
+
+In distributed and integration-heavy architectures, two extremes are commonly observed:
+
+- **Strict transactional coordination**, which is often impossible due to heterogeneous systems or lack of transactional support.
+- **Fire-and-forget orchestration**, which sacrifices consistency in favor of throughput and simplicity.
+
+Neither approach is sufficient for operational workflows that require:
+- Coordinated state changes
+- Controlled rollback behavior
+- Predictable read semantics during execution
+
+Kubling addresses this gap by introducing a transactional model that is aware of operational constraints and explicitly designed 
+to work across non-transactional resources.
+
+## The Kubling Approach
+
+Kubling implements a transaction model centered around the concept of **Soft Transactions**.
+
+A Soft Transaction is:
+- Managed at the engine level
+- Designed to coordinate multiple operations as a single logical unit
+- Capable of enforcing consistency even when underlying systems do not provide transactional guarantees
+
+Rather than relying on strict atomicity at the storage layer, Kubling focuses on:
+- Controlled execution order
+- Explicit concurrency management
+- Deterministic commit and rollback semantics
+
+This approach enables Kubling to provide meaningful transactional guarantees in environments where traditional transactions are either unavailable or impractical.
+
+## What a Soft Transaction Is (and Is Not)
+
+A Soft Transaction in Kubling:
+- Defines a logical boundary for a group of operations
+- Provides read-your-writes semantics within the transaction scope
+- Enforces correctness through locking and controlled visibility
+
+A Soft Transaction is **not**:
+- A replacement for database-native transactions
+- A guarantee of global atomicity across all systems
+- A mechanism to retroactively undo irreversible side effects
+
+Instead, Soft Transactions are a pragmatic model designed to balance correctness, flexibility, and operational reality.
+
+## Scope and Guarantees
+
+Within a Soft Transaction, Kubling guarantees:
+- Consistent visibility of changes performed within the transaction
+- Protection against concurrent conflicting modifications
+- Deterministic commit or rollback behavior at the engine level
+
+The exact mechanisms used to achieve these guarantees, such as row-level locking and multi-version visibility, are described in the following sections.

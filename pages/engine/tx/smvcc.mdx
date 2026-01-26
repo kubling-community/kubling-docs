@@ -1,0 +1,176 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# MVCC in Soft Transactions <Tag description={"v26.1+"} />
+
+Soft Transactions in Kubling are designed to coordinate operations across systems with heterogeneous guarantees. 
+In many cases, these systems do not provide transactional isolation, or even basic read-after-write consistency.
+
+MVCC in Kubling exists to address a very specific problem within this model:
+
+> Ensuring **read-your-writes consistency inside a single Soft Transaction**, independently of the capabilities of the underlying data source.
+
+Rather than acting as a general isolation mechanism, MVCC is implemented as a **transaction-local logical overlay** 
+that augments read operations with the effects of prior writes performed within the same transaction.
+
+## Design Intent
+
+It is important to understand what MVCC in Kubling is — and what it deliberately is not.
+
+Kubling does not attempt to:
+- Provide isolation between concurrent Soft Transactions
+- Maintain shared snapshots across transactions
+- Replace the underlying data source as the system of record
+
+Instead, MVCC is intentionally scoped to **intra-transaction visibility**, complementing row locking and execution ordering rather than competing with them.
+
+This narrow scope is a design choice, not a technical limitation.
+
+## Activation Conditions
+
+MVCC is activated **only when all of the following conditions are met**:
+
+- Soft Transactions are enabled for the data source
+- MVCC is explicitly enabled in configuration
+- The data source uses the **DEFER_OPERATION** strategy
+- Execution occurs within an active Soft Transaction context
+
+If any of these conditions is not satisfied, MVCC is not engaged and read operations are delegated directly to the underlying data source.
+
+This strict activation model ensures that MVCC semantics are never partial or ambiguous.
+
+## MVCC as a Transaction-Local Overlay
+
+Internally, Kubling treats MVCC as a **transaction-scoped view of logical state**.
+
+Conceptually:
+
+- The underlying data source remains the authoritative store
+- Writes performed inside a Soft Transaction are recorded in a local MVCC store
+- Reads are executed against the data source and then **augmented** with the transaction’s MVCC state
+
+MVCC does not intercept execution globally.  
+It only affects how **reads are interpreted** inside the transaction.
+
+## MVCC Execution Model
+
+### Write Registration
+
+When a write operation is evaluated inside an active Soft Transaction with MVCC enabled:
+
+- The affected row is identified using its computed row identity
+- A logical version is registered in the MVCC store
+- The version is associated with the current transaction identifier
+
+Supported logical operations include:
+
+- **INSERT** → registers a new version
+- **UPDATE** → replaces the previous logical version
+- **DELETE** → registers a tombstone for the row
+
+Deletes are represented logically. Rows are not physically removed from the MVCC view; instead, 
+they are marked as deleted so that subsequent reads behave consistently.
+
+### Read Path and Merge Semantics
+
+When a `SELECT` is executed inside a Soft Transaction with MVCC enabled:
+
+1. The query is executed against the underlying data source
+2. The result set is materialized
+3. The engine merges the result set with the MVCC state for the current transaction
+4. For each row identity:
+   - The most recent logical version registered in MVCC takes precedence
+   - Rows marked as tombstones are excluded
+
+The final result represents the **latest logical state** as observed from within the transaction, including all prior writes.
+
+## Transaction Scope and Isolation
+
+MVCC state is:
+
+- Scoped to a **single Soft Transaction**
+- Indexed by **transaction identifier**
+- Never shared across transactions
+
+This means that:
+
+- Concurrent Soft Transactions do not see each other’s MVCC state
+- Visibility across transactions is intentionally left to locking and execution ordering
+- MVCC does not define cross-transaction isolation semantics
+
+Row locking remains the primary mechanism for preventing conflicting concurrent modifications.
+
+## Interaction with Soft Transaction Strategy
+
+### `DEFER_OPERATION`
+
+MVCC is fully supported under **DEFER_OPERATION**:
+
+- Write operations are accumulated at the engine level
+- MVCC records logical changes before commit
+- Reads observe a merged transactional view
+
+This is the primary and intended mode of operation for MVCC in Kubling.
+
+### `IMMEDIATE_OPERATION`
+
+MVCC is intentionally **not active** under **IMMEDIATE_OPERATION**.
+
+In this strategy:
+
+- Write operations may already have been applied to the underlying system
+- The engine no longer controls the causal relationship between writes and reads
+- Read-your-writes consistency is delegated to the data source
+
+In this context, MVCC would not provide meaningful additional guarantees and is therefore disabled by design.
+
+---
+
+## Configuration Example
+
+The following example shows how MVCC is enabled for a data source:
+
+```yaml
+- name: "payments"
+  dataSourceType: "SCRIPT_DOCUMENT_JS"
+  configObject:
+    module:
+      zipFilePath: "{{ MODULE_BUNDLE }}"
+    softTransactions:
+      enabled: true
+      strategy: DEFER_OPERATION
+      mvcc:
+        enabled: true
+        dbBasePath: "/mvcc/dir"
+  schema:
+    type: "PHYSICAL"
+    ddlFilePaths:
+      - "bundle:ddl/payments.sql"
+```
+
+Key configuration points:
+
+- MVCC must be explicitly enabled
+- MVCC is meaningful only when combined with `DEFER_OPERATION`
+- MVCC configuration is scoped to the data source
+
+## Relationship to Other Transaction Mechanisms
+
+MVCC relies on and complements other engine mechanisms:
+
+- **Row Identity** provides stable identifiers used for versioning
+- **Row Locking** prevents concurrent conflicting modifications
+- **Crash Recovery** ensures incomplete side effects can be reconciled after failures
+
+Each mechanism addresses a distinct concern:
+- Locking controls *who can modify*
+- MVCC controls *what is visible*
+- Recovery controls *what happens after failure*
+
+<Callout type="info">
+MVCC states are stored in a local, per-data-source, engine-managed database that is distinct from the storage used for  Soft Transactions.
+
+The two systems serve different purposes and are optimized for different access patterns. 
+In practice, the MVCC database is backed by RocksDB to efficiently handle transactional overlays and merge-heavy read paths, 
+while the Soft Transaction store is implemented as an optimized, persisted-to-disk, multi-version Java Map designed for very high-throughput access to small values.
+</Callout>

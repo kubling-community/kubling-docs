@@ -1,0 +1,206 @@
+import { Callout } from 'nextra/components'
+
+# Row Identity & Lock Derivation
+
+When Soft Transactions are enabled, Kubling must be able to **unambiguously and deterministically identify rows**. 
+Row identity is a foundational requirement that underpins multiple engine-level guarantees:
+
+- Engine-wide row locking
+- Deterministic rollback and compensation
+- Stable row-level versioning (MVCC)
+
+Because Kubling operates across heterogeneous data sources—many of which do not provide native transactional 
+semantics—row identity cannot be inferred or delegated. It must be explicitly defined, validated, and enforced by the engine.
+
+If row identity cannot be computed reliably, correctness cannot be guaranteed. In such cases, Kubling fails fast.
+
+## Engine Start Validation (Hard Requirement)
+
+When Soft Transactions are enabled for a data source, Kubling validates table metadata **at engine start**.
+
+For each table, the engine attempts to resolve at least one **usable identity key**. If no such key exists, the engine refuses to start.
+
+A usable identity key is defined as:
+
+- A **Primary Key** or **Unique Key**
+- Where **all columns are NOT NULL**
+- Where **no column is marked with the `exclude_from_row_identity` directive**
+
+If a Primary Key or Unique Key contains *any* column marked with `exclude_from_row_identity`, the entire key is discarded as a candidate.  
+Kubling does not partially reuse or filter identity keys.
+
+As a result, it is possible for a table to define keys at the schema level but still be considered **non-identifiable** by the engine. 
+If no alternative usable key exists, row identity cannot be resolved and engine startup fails.
+
+This behavior is intentional and non-configurable. Identity ambiguity is treated as a correctness violation.
+
+## Canonical Identity Resolution
+
+For each table, Kubling resolves a **canonical identity definition** at startup.
+
+This resolution process is:
+
+- Deterministic
+- Cached
+- Stable for the lifetime of the engine process
+
+Once resolved, the identity definition becomes part of the execution plan and is reused consistently across:
+
+- Row lock derivation
+- Compensation generation
+- MVCC bookkeeping
+
+Identity resolution is never recomputed dynamically at runtime.
+
+## Computing the Row Identity
+
+At execution time, Kubling computes a **row identity value (row-id)** by applying a checksum algorithm to a canonical, 
+fully-qualified representation of the row’s identity.
+
+The row-id is not a surrogate key and does not replace logical identity. Instead, it is a compact, 
+engine-friendly representation derived from already-unique schema-defined keys.
+
+### Canonical Identity Encoding
+
+Row identity computation is based on three components:
+
+1. A **table-scoped prefix**
+2. The ordered list of identity columns
+3. The canonical values of those columns for a given row
+
+The prefix is constructed from:
+- The VDB name
+- The fully qualified table name
+
+This prefix is incorporated into the checksum before any column data is processed. 
+As a result, row identities are **strictly scoped to a specific table within a specific VDB**.
+
+Two rows belonging to different tables (or even the same table in different VDBs) cannot collide unless their entire identity space collides exactly.
+
+### Column-Level Contribution
+
+For each identity column, Kubling appends a normalized representation to the checksum input:
+
+- Columns are processed in canonical order
+- Each column contributes:
+  - Its fully qualified column identifier
+  - A delimiter
+  - The column value transformed into a canonical string representation
+
+Before contributing to the checksum, each column value is validated:
+
+- The column must be present in the provided values
+- The value must be non-null
+- The value must be transformable into a stable, canonical form
+
+Missing or null identity values are treated as distinct failure modes and result in immediate execution failure. 
+An identity that cannot be computed deterministically is considered invalid.
+
+### Checksum Algorithm and Collision Characteristics
+
+Kubling uses a **CRC32C-based checksum** to compute the final row-id.
+
+This choice reflects a deliberate design trade-off:
+
+- CRC32C is fast and suitable for high-frequency computation
+- It provides strong distribution properties for structured inputs
+- It is sufficient when applied to already-unique logical keys
+
+Uniqueness is enforced by schema constraints, not by the checksum itself. 
+The checksum merely provides a compact representation of an identity that is already required to be unique.
+
+#### Collision Analysis
+
+Row-id collisions are theoretically possible but operationally negligible due to multiple reinforcing constraints:
+
+- Identity columns are required to be unique by schema definition
+- The checksum input includes a table- and VDB-scoped prefix
+- Collisions would have to occur **within the same table**, for the same identity columns, with different canonical values
+
+In practical terms, a collision would indicate a violation of identity semantics rather than a weakness in the hashing strategy.
+
+Kubling does not attempt to detect or resolve checksum collisions. If identity uniqueness is compromised, engine-level correctness guarantees no longer hold.
+
+## Identity Constraints and Failure Semantics
+
+Kubling enforces strict constraints on identity columns to prevent ambiguous or unstable row identities.
+
+### NOT NULL Requirement
+
+All identity columns must be defined as `NOT NULL`.
+
+This prevents scenarios where:
+- Two distinct rows share a partially-null identity
+- An INSERT produces a row whose identity cannot be computed deterministically
+- Locking, compensation, and MVCC semantics diverge due to missing identity values
+
+Operations that rely on null identity values fail deterministically.
+
+## INSERT Semantics and Generated Keys
+
+For `INSERT` operations, Kubling must be able to determine row identity in order to acquire locks and register transactional state.
+
+Two cases are supported:
+
+### Explicit Identity Values
+
+If all identity columns are provided explicitly and are non-null, identity can be computed before execution.
+
+This is the only case compatible with the **DEFER_OPERATION** strategy, where execution is postponed until commit time.
+
+### Identity Generated by the Data Source
+
+If identity values are generated by the data source (for example, auto-increment columns):
+
+- This is only supported when the data source strategy is **IMMEDIATE_OPERATION**
+- The connector must propagate generated keys back to Kubling
+- Identity computation is deferred until generated keys are available
+
+This flow is only supported for connectors that explicitly implement generated-key propagation.  
+Currently, this includes the **Scripting Document** data source type and similar implementations.
+
+If generated keys cannot be retrieved, identity cannot be established and execution fails.
+
+## UPDATE and DELETE: Affected-Rows Analysis
+
+For `UPDATE` and `DELETE` operations, Kubling must compute row identity **per affected row** and, when required, generate compensation.
+
+To achieve this, the engine performs an explicit **affected-rows SELECT** prior to executing the operation:
+
+1. Generate a SELECT that lists all affected rows
+2. Execute the SELECT
+3. Materialize the result set
+4. For each tuple:
+   - Extract identity column values
+   - Compute the row-id
+   - Acquire the corresponding row lock
+   - Optionally generate compensation commands
+
+### Projection Requirements
+
+The affected-rows SELECT is subject to strict requirements:
+
+- Only column references are allowed (no expressions)
+- All identity columns must be present
+- Identity columns must be projected using their canonical names
+
+If any identity column is missing from the projection, Kubling fails deterministically.  
+The correct fix is to widen the SELECT projection.
+
+<Callout type="info">
+Row identity and row locking are enforced at the engine level, even when an operation is executed outside a Soft Transaction.
+When Soft Transactions are enabled for a data source, Kubling still derives row identity, acquires row locks, 
+and enforces concurrency guarantees for non-transactional execution paths.
+</Callout>
+
+## Practical Guidance
+
+To ensure compatibility with Soft Transactions:
+
+- Define a Primary Key or Unique Key
+- Ensure all identity columns are NOT NULL
+- Avoid marking identity columns with `exclude_from_row_identity` unless an alternative key exists
+- Prefer explicit identity values for INSERTs, or use IMMEDIATE_OPERATION with generated-key support
+
+Row identity is not a tuning parameter. It is a correctness requirement.
+

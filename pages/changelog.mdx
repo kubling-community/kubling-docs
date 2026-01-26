@@ -1,5 +1,20 @@
 # Product changelog
 
+## v26.1.1
+- Fixed a bug that prevented correct automatic column expansion in projections, leading to errors during row identity calculation.
+- Fixed a bug where row-lock acquisition results were not properly validated in certain scenarios, allowing execution to continue instead of failing early, and later resulting in less clear error reporting.
+
+## v26.1
+
+- Soft Transactions now support simulated MVCC, enabling consistent *read-your-writes* semantics within a transaction when using deferred execution.
+- Introduced row identity–based locking requirements for Soft Transactions. Tables participating in Soft Transactions must now define a usable primary key or unique key to allow deterministic row locking and versioning.
+- Added crash recovery for pending compensations. When enabled at the application level, Kubling can detect and execute unfinished compensation commands during engine startup.
+- The SNMP data source now supports UPDATE operations, allowing controlled mutation of writable managed values while preserving SNMP protocol semantics.
+- The Modbus data source now supports UPDATE operations, enabling write access to device registers as part of SQL-based workflows.
+- Introduced table handler auto-discovery for Script Data Sources, simplifying module structure by allowing handlers to be resolved automatically based on table names.
+- Added support for generated keys propagation from Script Data Sources, enabling scripts to report generated identifiers back to the engine.
+- Introduced the `MAIN_HTTP_PORT` environment variable to explicitly control the port used by all HTTP-based engine services.
+
 ## v25.6.1
 - Resolved an out-of-memory issue when querying `POD_CONTAINER` or `POD_CONTAINER_STATUS`. The problem was caused by Kubling attempting to reflectively access a class not included in the final binary image.
 - Updated the Kubernetes base DDL.

@@ -1,0 +1,226 @@
+# Crash Recovery & Pending Compensations (26.1)
+
+Soft Transactions in Kubling are designed to coordinate operations across systems that may not provide transactional guarantees. 
+While the engine carefully controls execution, locking, and compensation, 
+it cannot prevent failures that occur **outside the logical transaction flow**, such as process crashes or node restarts.
+
+For that reason, Kubling introduces **crash recovery for pending compensations**. 
+This mechanism allows the engine to reconcile incomplete transactional work when it restarts, restoring operational consistency without requiring manual intervention.
+
+Crash recovery is an **application-level feature**. 
+It applies uniformly to all Soft Transactions executed by the engine and is not scoped to a specific data source or VDB.
+
+
+## The Failure Scenarios Being Addressed
+
+In a running system, a Soft Transaction is expected to reach a terminal state: either commit or rollback. A crash breaks this assumption.
+
+From the engine’s perspective, there are two particularly problematic situations:
+
+- A Soft Transaction is interrupted **after one or more operations have been materialized**
+- A rollback is interrupted **before all compensation commands have been executed**
+
+In both cases, the transactional intent is no longer aligned with the observable state of the system. 
+Importantly, this inconsistency can exist even if no explicit rollback error was ever reported.
+
+Crash recovery exists to close this gap.
+
+## The Core Insight
+
+Internally, Kubling treats compensation commands as **authoritative evidence of transactional progress**.
+
+The design hinges on a simple and robust observation:
+
+> If compensation commands are persisted in the local Soft Transaction database, the transaction never reached a terminal state.
+
+This observation holds regardless of:
+- Whether a rollback was explicitly triggered
+- Whether the crash occurred during normal execution or during rollback
+- Whether the transaction was intended to commit or abort
+
+Rather than attempting to reconstruct control flow, Kubling relies on **persisted facts**: compensation entries that still exist represent 
+work that must be reconciled.
+
+## Recovery Model
+
+Crash recovery operates as a **post-mortem reconciliation phase** executed during engine startup.
+
+Conceptually, the model is as follows:
+
+- During normal execution:
+  - As operations are materialized, their compensation commands are persisted incrementally
+- During engine startup:
+  - The Soft Transaction database is scanned
+  - Pending compensations are identified
+  - Each compensation is evaluated for validity
+  - Valid compensations are executed
+  - Successfully applied compensations are removed from the database
+
+This model deliberately avoids assumptions about:
+- The original execution phase
+- The transaction’s intended outcome
+- The exact point of failure
+
+Recovery is driven entirely by what was durably recorded.
+
+## Compensation Failures During Recovery
+
+Compensation execution during recovery is **best-effort but exhaustive**.
+
+When a compensation fails during crash recovery:
+
+- The engine **continues executing the remaining compensations**
+- The failed compensation is **not removed** from the Soft Transaction database
+- The failure is **recorded and reported** using the engine’s instrumentation mechanisms
+
+Kubling always attempts to reconcile **as much state as possible** before giving up.
+
+After all pending compensations have been attempted:
+
+- If one or more compensations failed:
+  - The engine **fails startup**
+  - The system remains in a safe, non-running state
+
+This behavior is intentional. Starting the engine while unreconciled side effects still exist would mask an inconsistent operational state.
+
+### Observability and Instrumentation
+
+All compensation failures encountered during crash recovery are emitted through **Kubling’s instrumentation system** as a **single structured message**, formatted as YAML.
+
+The message is emitted under the `TX` context (see [contexts](/observability/logs#contexts)), ensuring that all recovery-related information is grouped, queryable, and traceable as a single operational event.
+
+This design avoids fragmented logs and provides operators with a complete and consistent view of the recovery state.
+
+#### Emission Semantics
+
+During startup recovery:
+
+- Kubling attempts to execute **all pending compensations**
+- Any failures are accumulated
+- At the end of the recovery phase:
+  - A single instrumentation message is emitted
+  - The message contains both:
+    - Remaining pending compensations
+    - Errors encountered during execution
+- If one or more compensations failed:
+  - Engine startup is aborted
+
+This guarantees that:
+- No failure is hidden
+- Partial recovery is observable
+- The engine never starts in an ambiguous state
+
+#### Message Structure
+
+The emitted message follows this structure:
+
+```yaml
+pendingCompensations:
+  xaResourceId: "<xa-resource-id>"
+  operationId: "<operation-id>"
+  vdbName: "<vdb-name>"
+
+  pendingCommands:
+    - "<compensation-command-1>"
+    - "<compensation-command-2>"
+
+  errors:
+    - "<error-message-1>"
+    - "<error-message-2>"
+```
+
+##### Fields
+
+- `xaResourceId`  
+  Identifies the original transactional operation group (it is an identifier given to a data source inside a transactional context).
+
+- `operationId`  
+  Identifies the operation.
+
+- `vdbName`  
+  Indicates the VDB context in which the transaction was executed.
+
+- `pendingCommands`  
+  Lists compensation commands that remain unapplied after recovery.
+
+- `errors`  
+  Contains error messages collected while attempting to execute compensations.
+
+The `errors` section is present only when one or more compensation executions fail.
+
+#### Operational Usage
+
+This structured message is intended to be consumed by:
+
+- Centralized logging systems
+- Observability pipelines
+- Alerting and incident-response workflows
+
+In production environments, configuring an external log backend is **strongly recommended**.  
+Repeated startup attempts will re-emit the same recovery message until the underlying issue is resolved.
+
+This ensures that unresolved transactional inconsistencies remain **visible, actionable, and auditable**.
+
+
+## Expiration and Time Semantics
+
+Not all pending compensations should be executed indefinitely.
+
+Kubling evaluates each compensation against an **expiration timestamp** derived from the transaction’s timeout configuration.
+
+The semantics are intentionally pragmatic:
+
+- If a transaction defines an explicit timeout:
+  - Pending compensations expire according to that timeout
+- If no timeout is defined:
+  - A long, human-scale expiration window is assumed
+
+This reflects an operational assumption:
+
+> Restarting an engine instance after an extended period is unlikely to be a continuation of an active transactional workload.
+
+Expiration prevents stale compensations from being applied in contexts where they may no longer be meaningful or safe.
+
+## Configuration
+
+Crash recovery is configured **at the application level**, not per data source.
+
+```yaml
+softTransactions:
+  enabled: true
+  crashCompensationEnabled: true
+  transactionsDBPath: "/path/to/kubling-stx.db"
+```
+
+Key configuration points:
+
+- Recovery must be explicitly enabled
+- The transaction database path must be stable across restarts
+- When enabled, recovery applies to all Soft Transactions executed by the application
+
+## Relationship to the Soft Transaction Lifecycle
+
+Crash recovery is **not part of the normal transaction lifecycle**.
+
+It does not participate in:
+- Begin
+- Commit
+- Rollback
+
+Instead, it operates entirely outside the runtime execution path, acting only when the engine restarts after an abnormal termination.
+
+This separation is intentional:
+- Normal execution remains predictable and bounded
+- Recovery logic remains explicit and auditable
+
+## Operational Guarantees
+
+When crash recovery is enabled, Kubling provides the following guarantees:
+
+- Persisted compensations are never silently ignored
+- Recovery always attempts all pending compensations
+- Failed compensations block engine startup
+- Inconsistent states are made explicit and observable
+
+Crash recovery does not attempt to reconstruct full transactional context.  
+Its sole responsibility is to **complete or neutralize incomplete side effects**.

@@ -9,6 +9,6 @@ export default {
   "cache": "",
   "ep": "Endpoints",
   "properties": "",
-  "transactions": "Transactions",
+  "tx": "Transactions",
   "ss": "System Schemas"
 }

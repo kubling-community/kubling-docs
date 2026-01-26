@@ -1,0 +1,151 @@
+# Commit, Rollback & Compensation
+
+In Kubling, a Soft Transaction defines a **logical unit of work**, not a guarantee that all underlying systems behave transactionally.
+
+As a result, *commit* and *rollback* cannot be treated as symmetric or trivial operations. Their semantics depend on:
+- The Soft Transaction strategy in use
+- The transactional capabilities of each participating data source
+- Whether operations were materialized immediately or deferred
+
+This page explains how Kubling **finalizes** a Soft Transaction, how compensation fits into the model, and why rollback 
+does not necessarily imply that “nothing happened”.
+
+## Finalization as Reconciliation
+
+Kubling treats transaction finalization as a **reconciliation process**, not as a binary switch.
+
+Conceptually:
+
+- During execution, the engine accumulates intent, side effects, and compensations
+- At finalization time, Kubling reconciles that intent with reality
+- The outcome is determined per data source, based on what has already been materialized and what can still be controlled
+
+This model allows Kubling to operate safely across heterogeneous systems without pretending they all share the same guarantees.
+
+## Commit Semantics
+
+A commit marks the point at which a Soft Transaction’s effects are considered **successful and durable** from the engine’s perspective.
+
+What actually happens during commit depends on the Soft Transaction strategy and the data source capabilities.
+
+---
+
+### Commit with `DEFER_OPERATION`
+
+Under **`DEFER_OPERATION`**, operations have not yet been applied to the underlying system.
+
+At commit time:
+
+- For data sources that support native transactions:
+  - Kubling opens a native transaction
+  - Executes all accumulated operations
+  - Commits the native transaction
+- For data sources that do not support transactions:
+  - Operations are executed sequentially
+  - Each operation becomes externally visible as it is applied
+
+If execution completes successfully, the Soft Transaction reaches a terminal committed state.
+
+### Commit with `IMMEDIATE_OPERATION`
+
+Under **`IMMEDIATE_OPERATION`**, operations may have already been applied during execution.
+
+At commit time:
+
+- For transactional data sources:
+  - The native transaction previously opened by Kubling is committed
+- For non-transactional data sources:
+  - No additional execution is required
+  - Commit simply marks the end of the logical transaction
+
+In this strategy, commit is often a **logical confirmation**, not a material action.
+
+## Rollback Semantics
+
+Rollback indicates that the Soft Transaction should not be considered successful.
+
+However, rollback does **not** imply that no side effects occurred.
+
+Instead, rollback means that Kubling will attempt to **neutralize or revert** any effects that were already materialized.
+
+### Rollback with `DEFER_OPERATION`
+
+Under **`DEFER_OPERATION`**:
+
+- Operations that have not yet been executed are discarded
+- For transactional data sources:
+  - Any opened native transaction is rolled back
+- For non-transactional data sources:
+  - Previously executed operations are reverted using compensation commands
+
+Rollback completeness depends on the ability to execute compensations successfully.
+
+### Rollback with `IMMEDIATE_OPERATION`
+
+Under **`IMMEDIATE_OPERATION`**, all operations are executed eagerly.
+
+On rollback:
+
+- For transactional data sources:
+  - The native transaction is rolled back
+- For non-transactional data sources:
+  - Compensation commands are executed for all materialized operations
+
+In this strategy, rollback always relies on compensation for non-transactional systems.
+
+## Compensation: Purpose and Characteristics
+
+Compensation is the mechanism Kubling uses to **restore consistency** when native rollback is not possible.
+
+A compensation command is:
+
+- Explicitly generated at execution time
+- Persisted as part of the Soft Transaction state
+- Designed to reverse the logical effect of a specific operation
+
+Compensations are not assumed to be:
+- Free of side effects
+- Always successful
+- Equivalent to native rollback
+
+They are a **best-effort corrective mechanism**, not a transactional primitive.
+
+## Ordering and Determinism
+
+Kubling enforces strict ordering guarantees to ensure deterministic behavior:
+
+- Operations are grouped per data source
+- Execution order is preserved within each group
+- Compensation commands mirror the execution order of operations
+
+This ordering is critical for:
+- Correct rollback behavior
+- Predictable recovery
+- Safe interaction with external systems
+
+## Interaction with MVCC and Locking
+
+Finalization interacts with other transactional mechanisms as follows:
+
+- **Row Locking**
+  - Locks are held until the transaction reaches a terminal state
+  - Locks are released only after commit or rollback completes
+- **MVCC**
+  - MVCC state is cleared when the transaction terminates
+  - MVCC does not survive commit or rollback
+- **Crash Recovery**
+  - Persisted compensations become recovery inputs if the engine crashes before finalization completes
+
+Each mechanism has a clearly defined responsibility and lifecycle.
+
+## Failure During Finalization
+
+Failures can occur during commit or rollback.
+
+When this happens:
+
+- Kubling stops further execution
+- Remaining compensations are persisted
+- The transaction is left in a non-terminal state
+
+They are explicitly handled by **Crash Recovery**, which runs on engine restart.

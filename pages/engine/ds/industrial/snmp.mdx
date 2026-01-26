@@ -3,29 +3,63 @@ import { Callout } from 'nextra/components'
 
 # SNMP Data Source (`SNMP`) <Tag description={"v25.4+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
 
-<Callout type="warning">
-As of version `25.4`, **SNMP** adapter is **read-only**. Only `SELECT` queries are supported.  
-`INSERT`, `UPDATE`, and `DELETE` operations are **not yet available**.
-
-We’re actively working to support write capabilities in upcoming releases.
-</Callout>
-
 Simple Network Management Protocol (SNMP) is a widely adopted protocol used to monitor and manage devices on IP networks—such as switches, routers, servers, 
-and embedded systems. It allows querying of structured device data via lightweight, request-response messages over UDP and TCP.
+and embedded systems. It allows querying and mutation of managed device state via lightweight, request-response messages over UDP and TCP.
 
-At the core of SNMP is the **OID** (Object Identifier): a dot-separated numeric path that uniquely identifies a data point exposed by a device. 
-For example, the OID `1.3.6.1.2.1.1.5` typically corresponds to the system's hostname (`sysName`). These identifiers are part of a global, hierarchical tree managed by IANA and device vendors.
+At the core of SNMP is the **OID** (Object Identifier): a dot-separated numeric path that uniquely identifies a managed value exposed by a device. 
+For example, the OID `1.3.6.1.2.1.1.5` typically corresponds to the system's hostname (`sysName`). 
+These identifiers are part of a global, hierarchical tree managed by IANA and extended by device vendors.
 
-Devices expose OIDs through a **Management Information Base (MIB)**, a virtual schema that defines the structure, data types, and semantics of available metrics. 
+Devices expose OIDs through a **Management Information Base (MIB)**, a virtual schema that defines the structure, data types, access modes, 
+and semantics of available managed values. 
 Most MIBs are vendor-specific extensions of standardized SNMP trees.
 
-SNMP organizes data into **tables** and **scalar values**, and many real-world use cases rely on iterating full tables (e.g. network interfaces, physical components, power states). 
-Kubling abstracts this complexity by allowing you to model SNMP data directly using `CREATE FOREIGN TABLE` statements.
+SNMP organizes managed data into **scalar values** and **tables**, where tables represent collections of related 
+managed instances (for example, network interfaces, physical components, or power states). 
+Many real-world use cases rely on iterating full tables to inspect or modify device configuration and operational state.
+
+Kubling models SNMP-managed data through a relational abstraction, allowing SNMP tables and scalar values to be represented using `CREATE FOREIGN TABLE` statements. 
+This abstraction preserves the underlying SNMP semantics: rows correspond to managed instances, columns map to individual OIDs, 
+and operations reflect the capabilities and constraints of the SNMP protocol.
+
 
 <Callout type='warning'>
-As of version `25.4`, only **UDP** connections are supported for SNMP.  
+As of version `26.1`, only **UDP** connections are supported for SNMP.  
 We are working to add **TCP** support, so expect it in a future release.
 </Callout>
+
+## Supported SQL Operations
+
+The SNMP Data Source supports a constrained subset of SQL operations that directly reflect the capabilities of the SNMP protocol.
+
+### SELECT
+
+`SELECT` operations map to SNMP `GET` and `WALK` operations.
+
+They are used to retrieve the current value of scalar OIDs or to enumerate SNMP tables exposed by a device. Reads are executed on demand and 
+reflect the device state at query time.
+
+### UPDATE <Tag description={"v26.1+"} />
+
+`UPDATE` operations map to SNMP `SET` operations.
+
+An UPDATE mutates the value of one or more writable OIDs on an existing managed instance. Conceptually, this represents **state mutation**, not entity modification.
+
+Only OIDs defined as writable in the device MIB can be updated. Attempts to update read-only OIDs result in execution errors that are propagated back to the engine.
+
+### Why INSERT and DELETE Are Not Supported
+
+`INSERT` and `DELETE` operations are intentionally not supported by the SNMP Data Source.
+
+This is not an engine limitation, but a direct consequence of the SNMP protocol model:
+
+- SNMP does not define lifecycle operations for managed objects
+- Managed instances exist independently of management access
+- SNMP `SET` operations can modify values, but cannot create or remove managed instances
+
+As a result, there is no protocol-level equivalent for `INSERT` or `DELETE`. 
+Kubling preserves these semantics rather than introducing artificial abstractions that would misrepresent the underlying system.
+ 
 
 ## Configuration
 <details>
@@ -63,8 +97,47 @@ properties:
     type: "integer"
   connectionRetries:
     type: "integer"
-  enableSoftTransactions:
-    type: "boolean"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   cache:
     type: "object"
     id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
@@ -432,9 +505,6 @@ The `v3Config` block defines SNMPv3 security parameters:
 If you’re unsure which `snmp_type` to use, default to `full_table`. It’s the most common mode and is optimized for SNMP tables with predictable indexing.
 </Callout>
 
-
----
-
 ## Specific `COLUMN` directives
 
 | Directive                 | Type   | Options                                                         | Description                                                                                                                        |
@@ -447,8 +517,6 @@ If you’re unsure which `snmp_type` to use, default to `full_table`. It’s the
 <Callout>
 If you're using `snmp_oid_from_db`, ensure that the referenced MIBs are compiled and included via `mibDatabaseFilePath` in the source configuration.
 </Callout>
-
----
 
 ## Table Types
 
@@ -547,8 +615,6 @@ This would walk the subtree for CPU-related stats on many Unix-style agents and 
 <Callout>
 This mode is intended for discovery, debugging, and agent-driven schema generation. It is **not optimized for regular queries** or stable schemas.
 </Callout>
-
----
 
 ## Data Types
 
@@ -650,14 +716,10 @@ schema:
     - "bundle:my-schema.ddl"
 ```
 
----
-
 ## Advanced SNMP Queries in Action
 
 Once SNMP data is modeled in Kubling, it becomes fully queryable using SQL, just like any structured data source.  
 This section highlights real-world queries that go beyond basic polling or monitoring, showcasing the analytical and relational power of Kubling's approach.
-
----
 
 ### 1. Interface Traffic Summary (In/Out/Total)
 
@@ -674,8 +736,6 @@ ORDER BY total_gb DESC
 
 This query computes traffic in gigabytes across all interfaces whose name starts with `gi` (e.g., Gigabit Ethernet).  
 It demonstrates simple math, filtering, and sorting directly on SNMP counters.
-
----
 
 ### 2. Interfaces with Errors or Discards
 
@@ -701,8 +761,6 @@ Most SNMP interface metrics are split across different tables like `ifTable` and
 To correlate human-readable names with performance counters, join them using the shared `ifIndex`.
 </Callout>
 
----
-
 ### 3. Traffic Breakdown by Interface Type
 
 ```sql
@@ -726,8 +784,6 @@ ORDER BY total_gb DESC;
 This query aggregates traffic by interface prefix (`gi`, `te`, `po`, etc.), showing usage trends by interface class.  
 It’s useful in infrastructure capacity planning and visual reporting.
 
----
-
 ### 4. Device Uptime in Hours
 
 ```sql
@@ -746,8 +802,6 @@ This query assumes `sysUpTime` is returned as a **numeric counter**. However, so
 Make sure the field is castable to numeric, or handle device-specific variations using your own custom functions.
 </Callout>
 
----
-
 ### 5. Map Hardware Components to Their Chassis
 
 ```sql
@@ -765,8 +819,6 @@ ORDER BY chassis, component
 This shows how SNMP data can be treated as hierarchical — useful for mapping physical components (modules, cards) back to their chassis.  
 It also demonstrates **self-joins**, which are uncommon in SNMP tools but fully supported in Kubling.
 
----
-
 These examples illustrate how Kubling turns structured SNMP tables into powerful, queryable operational datasets.
 
 <Callout>
@@ -775,3 +827,54 @@ creating unified operational models like a full data center Bill of Materials (B
 
 This unlocks use cases well beyond monitoring — including analytics, automation, and agent-driven optimization.
 </Callout>
+
+## Soft Transactions and SNMP Semantics
+
+The SNMP Data Source can participate in Kubling Soft Transactions (STX), allowing SNMP operations to be coordinated with other 
+data sources within a single transactional scope.
+
+This participation, however, must be interpreted in the context of SNMP protocol semantics and device-specific behavior.
+
+### Participation in Soft Transactions
+
+When executed within a Soft Transaction, SNMP `UPDATE` operations are coordinated by the engine in the same way as operations targeting other data sources. 
+Execution ordering, failure propagation, and transaction boundaries are handled consistently at the engine level.
+
+This enables SNMP updates to be composed with other operations as part of a broader orchestration workflow.
+
+### Rollback Semantics
+
+SNMP does not provide native transactional support.
+
+For SNMP updates executed under STX, Kubling performs rollback by issuing **compensation commands**. 
+Conceptually, this means applying a follow-up SNMP `SET` intended to revert the managed value to its prior state.
+
+A successful compensation command does not necessarily imply that the device has returned to the exact operational state that existed before the original update.
+
+### Compensation Semantics and Operational Considerations
+
+In Kubling, rollback for SNMP is always expressed through compensation: the engine derives and executes compensation commands as part of the rollback path.
+
+The critical limitation is not whether Kubling can compute or execute a compensation command, 
+but whether that compensation represents a meaningful and safe "undo" in the context of the specific device and managed OID.
+
+In practice:
+
+- An SNMP `SET` may trigger device-side side effects (state transitions, reconfiguration, asynchronous actions) that cannot be reversed 
+by simply setting the previous value.
+- The device state may evolve between the original update and the rollback attempt, making a direct revert semantically incorrect or operationally unsafe.
+- Some managed values are better understood as control inputs than durable state, and reverting them may not restore previous behavior.
+
+For these reasons, enabling SNMP updates within Soft Transactions requires domain understanding of:
+- The device being managed
+- The expected side effects of each `SET`
+- Whether reverting a value is operationally valid within the lifecycle of the transaction
+
+### Operational Implications
+
+SNMP updates should be treated as **direct mutations of managed device behavior**, not as database-style row updates.
+
+Soft Transactions provide coordination, ordering, and a structured rollback path through compensation, 
+but they do not introduce stronger guarantees than those offered by the underlying protocol and the managed device’s behavior.
+
+Kubling preserves these semantics intentionally, favoring correctness and transparency over artificial transactional abstractions.

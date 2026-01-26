@@ -1,0 +1,86 @@
+# Row Locking
+
+Row locking in Kubling exists to ensure **correctness under concurrency**, not to optimize throughput.
+
+Because Kubling operates across:
+- Multiple data sources
+- Resources without native transactional support
+- Mixed execution strategies
+
+the engine cannot rely on underlying systems to prevent conflicting updates. Row-level locking is therefore enforced **globally 
+by the Kubling engine** to avoid anomalies such as:
+- Lost updates
+- Write skew
+- Non-deterministic rollback outcomes
+
+Row locking is a foundational mechanism that enables Soft Transactions and consistent execution semantics.
+
+## What Kubling Locks
+
+Kubling applies locks at the **row level**, based on a deterministic row identity derived from the operation being executed.
+
+Locks are acquired for operations that may mutate state, including:
+- `UPDATE`
+- `DELETE`
+- Any operation that results in a write-side effect on a data source
+
+Read-only operations do not acquire locks unless explicitly required by the execution plan.
+
+## Lock Acquisition Timing
+
+Locks are acquired **before an operation is executed or enlisted**, regardless of whether a Soft Transaction is active.
+
+This ensures that:
+- Conflicting operations are rejected early
+- Execution remains deterministic
+- Rollback and compensation paths remain safe
+
+Once acquired, locks are held until the owning execution context reaches a terminal state.
+
+## Lock Scope and Granularity
+
+Locks are scoped to:
+- The specific data source
+- The computed row identity
+- The lifetime of the owning execution context
+
+Row locking is enforced uniformly:
+- Inside Soft Transactions
+- Outside Soft Transactions
+- Across all connections handled by the engine
+
+There is no lock escalation to table-level locks.  
+Kubling intentionally favors strict row-level locking to preserve correctness.
+
+## Concurrency Behavior
+
+When an execution context holds a lock on a given row identity:
+
+- Any other operation targeting the same row identity is rejected
+- This applies even if the second operation is executed outside a Soft Transaction
+
+This behavior mirrors traditional database engine semantics:  
+locking is global, not scoped to transactional boundaries.
+
+## Interaction with Soft Transactions
+
+Row locking is **independent of Soft Transaction existence**.
+
+- A lock may be acquired without an active Soft Transaction.
+- A Soft Transaction may span multiple locked rows across multiple data sources.
+
+Within a Soft Transaction, locks ensure that:
+- Conflicting operations cannot be interleaved
+- Execution order remains deterministic
+- Rollback or compensation remains feasible
+
+## Failure Modes and Diagnostics
+
+If Kubling cannot safely derive a row identity for an operation, or if a required lock cannot be acquired, execution fails deterministically.
+
+This strict behavior is intentional:
+- Silent degradation would compromise correctness
+- Partial execution would make rollback or compensation unsafe
+
+Details on how row identity is derived—and how to configure it correctly—are described in the next section.
+

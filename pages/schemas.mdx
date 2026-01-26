@@ -198,6 +198,16 @@ properties:
         description: "Cron expression for periodic transaction DB flush of removed\
           \ segments. Default is every 5 minutes. Use a standard cron format, e.g.,\
           \ '0 0/5 * * * *'."
+      crashCompensationEnabled:
+        type: "boolean"
+        description: "If true, Kubling scans the soft-transaction store on startup\
+          \ and executes pending compensations that were registered before a crash.\
+          \ If false, persisted compensations are ignored after a crash."
+      crashCompensationMaxAgeMinutes:
+        type: "integer"
+        description: "Maximum age in minutes for a persisted compensation entry to\
+          \ be considered for execution after a crash. Older entries are treated as\
+          \ expired and will not be executed on startup."
   kublingAgent:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:KublingAgent"
@@ -627,6 +637,7 @@ properties:
           - "EMBEDDED_INMEM"
           - "PORTABLE_LOCAL"
           - "CASSANDRA"
+          - "H2"
           - "MYSQL"
           - "POSTGRESQL"
           - "REDIS"
@@ -634,6 +645,9 @@ properties:
           - "KUBERNETES"
           - "COMPOSITE"
           - "ROUTING"
+          - "ROUTING_JS"
+          - "SNMP"
+          - "MODBUS"
         properties:
           type: "object"
           description: "Additional properties injected to template contexts."
@@ -700,6 +714,8 @@ properties:
                     type: "string"
                   type:
                     type: "string"
+                  nullable:
+                    type: "boolean"
                   directives:
                     type: "object"
                     additionalProperties:
@@ -845,6 +861,11 @@ properties:
   deleteScript:
     type: "object"
     $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
+  handlersAutoDiscoveryPath:
+    type: "string"
+    description: "Directory path used for automatic discovery of table handler scripts.\
+      \ Kubling scans all JavaScript modules in this folder and registers them as\
+      \ handlers based on their file name."
   scheduledScripts:
     type: "array"
     items:
@@ -925,23 +946,25 @@ id: "schema:kubling:dbvirt:model:sql:function:SQLFunctionBundleInfo"
 properties:
   partitions:
     type: "integer"
-    description: "Internal Script contexts pool partitions. Default: 2"
+    description: "Internal Script contexts pool partitions. Default: 2. This is deprecated\
+      \ and marked for removal."
   minContexts:
     type: "integer"
     description: "Minimum available Script contexts in the pool per partition. The\
       \ overall total Minimum Script contexts must be calculated per partition, that\
-      \ is: partitions * minContexts. Default: 3"
+      \ is: partitions * minContexts. Default: 3. This is deprecated and marked for\
+      \ removal."
   maxContexts:
     type: "integer"
     description: "Maximum Script contexts to be added to the pool per partition. Once\
       \ reached, subsequent function execution requests will be enqueued. The overall\
       \ total Maximum Script contexts must be calculated per partition, that is: partitions\
-      \ * maxContexts. Default: 10"
+      \ * maxContexts. Default: 50"
   maxWaitMilliseconds:
     type: "integer"
     description: "Maximum wait time in milliseconds the thread will wait in the queue\
       \ for a Script context from the pool. Once reached, an error is thrown if no\
-      \ available context.Default: 10000ms (10s)"
+      \ available context.Default: 5000ms (5s)"
   queryFunctions:
     type: "array"
     items:
@@ -995,7 +1018,7 @@ properties:
         scriptFilePath:
           type: "string"
           description: "Relative path to the function script, based on the location\
-            \ of this bundle info within the module."
+            \ of this bundle information within the module."
 ```
 
 ### Sample
@@ -1144,18 +1167,60 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
-  enableSoftTransactions:
-    type: "boolean"  
+  allowBruteForceOperations:
+    type: "boolean"
+    description: "Allows the engine to perform Update and Delete operations using\
+      \ all fields as a fallback when no other way to identify rows is available.\
+      \ It is only useful when Kubling's side generated fields are present in the\
+      \ condition clause of the operation, otherwise the operations are pushed as-is."
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   contributesToHealth:
     type: "boolean"
     description: "Indicates whether this data source contributes to the engine's overall\
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
       \ is ignored in the overall assessment."
-  allowBruteForceOperations:
-    type: "boolean"
-    description: "Allows the engine to perform Update and Delete operations using\
-      \ all fields as a fallback when no other way to identify rows is available."
+  dataSourceProperties:
+    type: "object"
+    additionalProperties:
+      type: "string"
   ddl:
     type: "string"
     description: "Allows to run a DDL in the REMOTE data source once the connection\
@@ -1229,15 +1294,57 @@ properties:
   allowBruteForceOperations:
     type: "boolean"
     description: "Allows the engine to perform Update and Delete operations using\
-      \ all fields as a fallback when no other way to identify rows is available."
-  enableSoftTransactions:
-    type: "boolean"  
+      \ all fields as a fallback when no other way to identify rows is available.\
+      \ It is only useful when Kubling's side generated fields are present in the\
+      \ condition clause of the operation, otherwise the operations are pushed as-is."
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   contributesToHealth:
     type: "boolean"
     description: "Indicates whether this data source contributes to the engine's overall\
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
       \ is ignored in the overall assessment."
+  dataSourceProperties:
+    type: "object"
+    additionalProperties:
+      type: "string"
   filePath:
     type: "string"
     description: "Path to file where to store the database."
@@ -1322,14 +1429,53 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
-  enableSoftTransactions:
-    type: "boolean"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   contributesToHealth:
     type: "boolean"
     description: "Indicates whether this data source contributes to the engine's overall\
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
-      \ is ignored in the overall assessment."         
+      \ is ignored in the overall assessment."
 ```
 
 ## Cassandra Data Source Configuration
@@ -1372,8 +1518,47 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
-  enableSoftTransactions:
-    type: "boolean"          
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   allowBruteForceOperations:
     type: "boolean"
     description: "Allows the engine to perform Update and Delete operations using\
@@ -1452,14 +1637,53 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
-  enableSoftTransactions:
-    type: "boolean"         
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   contributesToHealth:
     type: "boolean"
     description: "Indicates whether this data source contributes to the engine's overall\
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
-      \ is ignored in the overall assessment."   
+      \ is ignored in the overall assessment."
 ```
 
 ## Script Document Data Source Configuration
@@ -1487,6 +1711,8 @@ properties:
     type: "object"
     id: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
     properties:
+      name:
+        type: "string"
       zipFilePath:
         type: "string"
         description: "URI of the module bundle."
@@ -1502,14 +1728,55 @@ properties:
         type: "integer"
         description: "The time-to-live (TTL) for cache entries, in seconds. Default\
           \ is 43,200 seconds (12 hours)."
-  enableSoftTransactions:
+  supportsPreCommit:
     type: "boolean"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   contributesToHealth:
     type: "boolean"
     description: "Indicates whether this data source contributes to the engine's overall\
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
-      \ is ignored in the overall assessment."          
+      \ is ignored in the overall assessment."
 ```
 
 ## SNMP Data Source Configuration
@@ -1551,8 +1818,47 @@ properties:
     type: "integer"
   connectionRetries:
     type: "integer"
-  enableSoftTransactions:
-    type: "boolean"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   cache:
     type: "object"
     id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
@@ -1666,7 +1972,7 @@ properties:
       \ set to false (default), any response event with an error causes the entire\
       \ operation to fail. When set to true, Kubling tolerates single event errors\
       \ by skipping the failed OID and continuing to process the remaining ones. Useful\
-      \ for dealing with partially implemented or unstable SNMP agents."    
+      \ for dealing with partially implemented or unstable SNMP agents."
 ```
 
 ## Modbus Data Source Configuration
@@ -1721,14 +2027,55 @@ properties:
         type: "string"
         description: "Path to a PEM-encoded private key file (e.g., /etc/kubling/client.key).\
           \ This is used only if 'privateKey' is not provided."
-  enableSoftTransactions:
-    type: "boolean"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
   contributesToHealth:
     type: "boolean"
     description: "Indicates whether this data source contributes to the engine's overall\
       \ health status. When set to true, if this data source is not healthy, the engine\
       \ will be marked as unhealthy. Otherwise, the health status of this data source\
       \ is ignored in the overall assessment."
+  healthcheckAddress:
+    type: "integer"
   cache:
     type: "object"
     id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
@@ -1789,8 +2136,44 @@ properties:
           type: "string"
         tableNamePattern:
           type: "string"
-  enableSoftTransactions:
-    type: "boolean"          
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
 ```
 
 ## Routing Data Source Configuration
@@ -2058,7 +2441,7 @@ properties:
               type: "array"
               items:
                 type: "object"
-                id: "schema:kubling:model:entity:FilterValue"
+                id: "schema:kubling:dbvirt:model:FilterValue"
                 properties:
                   field:
                     type: "string"
