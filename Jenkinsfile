@@ -11,7 +11,7 @@ pipeline {
         stage('Build and Publish') {
             environment {
                 SERVICE_NAME = "kubling-docs"
-                VERSION = "26.1.1"
+                VERSION = "26.1.3"
                 DOCKERHUB_CREDS = credentials('kubling-dockerhub')
             }
             steps {

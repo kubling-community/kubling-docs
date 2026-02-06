@@ -1,5 +1,11 @@
 # Product changelog
 
+## v26.1.3
+- Fixed an error in the Redis translator that occurred when executing queries composed exclusively of expression symbols (literals, expressions, functions, etc.).
+
+## v26.1.2
+- Fixed the `DBEngine` script context member to prevent a core exception from propagating into the script context when the provided `vdbName` does not exist.
+
 ## v26.1.1
 - Fixed a bug that prevented correct automatic column expansion in projections, leading to errors during row identity calculation.
 - Fixed a bug where row-lock acquisition results were not properly validated in certain scenarios, allowing execution to continue instead of failing early, and later resulting in less clear error reporting.
