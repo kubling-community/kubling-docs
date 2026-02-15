@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="491" height="125">
+   <defs>
+      <style type="text/css">
+    @namespace "http://www.w3.org/2000/svg";
+    .line                 {fill: none; stroke: #332900; stroke-width: 1;}
+    .bold-line            {stroke: #141000; shape-rendering: crispEdges; stroke-width: 2;}
+    .thin-line            {stroke: #1F1800; shape-rendering: crispEdges}
+    .filled               {fill: #332900; stroke: none;}
+    text.terminal         {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #141000;
+                            font-weight: bold;
+                          }
+    text.nonterminal      {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1A1400;
+                            font-weight: normal;
+                          }
+    text.regexp           {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1F1800;
+                            font-weight: normal;
+                          }
+    rect, circle, polygon {fill: #332900; stroke: #332900;}
+    rect.terminal         {fill: #FFDB4D; stroke: #332900; stroke-width: 1;}
+    rect.nonterminal      {fill: #FFEC9E; stroke: #332900; stroke-width: 1;}
+    rect.text             {fill: none; stroke: none;}
+    polygon.regexp        {fill: #FFF4C7; stroke: #332900; stroke-width: 1;}
+  </style>
+   </defs>
+   <polygon points="9 17 1 13 1 21"/>
+   <polygon points="17 17 9 13 9 21"/>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#operator"
+      xlink:title="operator">
+      <rect x="31" y="3" width="74" height="32"/>
+      <rect x="29" y="1" width="74" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="39" y="21">operator</text>
+   </a>
+   <rect x="145" y="3" width="44" height="32" rx="10"/>
+   <rect x="143"
+         y="1"
+         width="44"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="153" y="21">any</text>
+   <rect x="145" y="47" width="56" height="32" rx="10"/>
+   <rect x="143"
+         y="45"
+         width="56"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="153" y="65">some</text>
+   <rect x="145" y="91" width="36" height="32" rx="10"/>
+   <rect x="143"
+         y="89"
+         width="36"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="153" y="109">all</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#subquery"
+      xlink:title="subquery">
+      <rect x="261" y="3" width="78" height="32"/>
+      <rect x="259" y="1" width="78" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="269" y="21">subquery</text>
+   </a>
+   <rect x="261" y="47" width="26" height="32" rx="10"/>
+   <rect x="259"
+         y="45"
+         width="26"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="269" y="65">(</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#expression"
+      xlink:title="expression">
+      <rect x="307" y="47" width="90" height="32"/>
+      <rect x="305" y="45" width="90" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="315" y="65">expression</text>
+   </a>
+   <rect x="417" y="47" width="26" height="32" rx="10"/>
+   <rect x="415"
+         y="45"
+         width="26"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="425" y="65">)</text>
+   <path class="line"
+         d="m17 17 h2 m0 0 h10 m74 0 h10 m20 0 h10 m44 0 h10 m0 0 h12 m-96 0 h20 m76 0 h20 m-116 0 q10 0 10 10 m96 0 q0 -10 10 -10 m-106 10 v24 m96 0 v-24 m-96 24 q0 10 10 10 m76 0 q10 0 10 -10 m-86 10 h10 m56 0 h10 m-86 -10 v20 m96 0 v-20 m-96 20 v24 m96 0 v-24 m-96 24 q0 10 10 10 m76 0 q10 0 10 -10 m-86 10 h10 m36 0 h10 m0 0 h20 m40 -88 h10 m78 0 h10 m0 0 h104 m-222 0 h20 m202 0 h20 m-242 0 q10 0 10 10 m222 0 q0 -10 10 -10 m-232 10 v24 m222 0 v-24 m-222 24 q0 10 10 10 m202 0 q10 0 10 -10 m-212 10 h10 m26 0 h10 m0 0 h10 m90 0 h10 m0 0 h10 m26 0 h10 m23 -44 h-3"/>
+   <polygon points="481 17 489 13 489 21"/>
+   <polygon points="481 17 473 13 473 21"/>
+</svg>

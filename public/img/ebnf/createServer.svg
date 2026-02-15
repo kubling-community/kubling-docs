@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="839" height="179">
+   <defs>
+      <style type="text/css">
+    @namespace "http://www.w3.org/2000/svg";
+    .line                 {fill: none; stroke: #332900; stroke-width: 1;}
+    .bold-line            {stroke: #141000; shape-rendering: crispEdges; stroke-width: 2;}
+    .thin-line            {stroke: #1F1800; shape-rendering: crispEdges}
+    .filled               {fill: #332900; stroke: none;}
+    text.terminal         {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #141000;
+                            font-weight: bold;
+                          }
+    text.nonterminal      {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1A1400;
+                            font-weight: normal;
+                          }
+    text.regexp           {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1F1800;
+                            font-weight: normal;
+                          }
+    rect, circle, polygon {fill: #332900; stroke: #332900;}
+    rect.terminal         {fill: #FFDB4D; stroke: #332900; stroke-width: 1;}
+    rect.nonterminal      {fill: #FFEC9E; stroke: #332900; stroke-width: 1;}
+    rect.text             {fill: none; stroke: none;}
+    polygon.regexp        {fill: #FFF4C7; stroke: #332900; stroke-width: 1;}
+  </style>
+   </defs>
+   <polygon points="9 17 1 13 1 21"/>
+   <polygon points="17 17 9 13 9 21"/>
+   <rect x="31" y="3" width="62" height="32" rx="10"/>
+   <rect x="29"
+         y="1"
+         width="62"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="39" y="21">create</text>
+   <rect x="113" y="3" width="62" height="32" rx="10"/>
+   <rect x="111"
+         y="1"
+         width="62"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="121" y="21">server</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#unqualifiedId"
+      xlink:title="unqualifiedId">
+      <rect x="195" y="3" width="102" height="32"/>
+      <rect x="193" y="1" width="102" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="203" y="21">unqualifiedId</text>
+   </a>
+   <rect x="337" y="35" width="50" height="32" rx="10"/>
+   <rect x="335"
+         y="33"
+         width="50"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="345" y="53">type</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#stringVal"
+      xlink:title="stringVal">
+      <rect x="407" y="35" width="76" height="32"/>
+      <rect x="405" y="33" width="76" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="415" y="53">stringVal</text>
+   </a>
+   <rect x="543" y="35" width="70" height="32" rx="10"/>
+   <rect x="541"
+         y="33"
+         width="70"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="551" y="53">version</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#stringVal"
+      xlink:title="stringVal">
+      <rect x="633" y="35" width="76" height="32"/>
+      <rect x="631" y="33" width="76" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="641" y="53">stringVal</text>
+   </a>
+   <rect x="749" y="3" width="68" height="32" rx="10"/>
+   <rect x="747"
+         y="1"
+         width="68"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="757" y="21">foreign</text>
+   <rect x="353" y="101" width="50" height="32" rx="10"/>
+   <rect x="351"
+         y="99"
+         width="50"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="361" y="119">data</text>
+   <rect x="423" y="101" width="76" height="32" rx="10"/>
+   <rect x="421"
+         y="99"
+         width="76"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="431" y="119">wrapper</text>
+   <rect x="353" y="145" width="86" height="32" rx="10"/>
+   <rect x="351"
+         y="143"
+         width="86"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="361" y="163">translator</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#unqualifiedId"
+      xlink:title="unqualifiedId">
+      <rect x="539" y="101" width="102" height="32"/>
+      <rect x="537" y="99" width="102" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="547" y="119">unqualifiedId</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#optionsClause"
+      xlink:title="optionsClause">
+      <rect x="681" y="133" width="110" height="32"/>
+      <rect x="679" y="131" width="110" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="689" y="151">optionsClause</text>
+   </a>
+   <path class="line"
+         d="m17 17 h2 m0 0 h10 m62 0 h10 m0 0 h10 m62 0 h10 m0 0 h10 m102 0 h10 m20 0 h10 m0 0 h156 m-186 0 h20 m166 0 h20 m-206 0 q10 0 10 10 m186 0 q0 -10 10 -10 m-196 10 v12 m186 0 v-12 m-186 12 q0 10 10 10 m166 0 q10 0 10 -10 m-176 10 h10 m50 0 h10 m0 0 h10 m76 0 h10 m40 -32 h10 m0 0 h176 m-206 0 h20 m186 0 h20 m-226 0 q10 0 10 10 m206 0 q0 -10 10 -10 m-216 10 v12 m206 0 v-12 m-206 12 q0 10 10 10 m186 0 q10 0 10 -10 m-196 10 h10 m70 0 h10 m0 0 h10 m76 0 h10 m20 -32 h10 m68 0 h10 m2 0 l2 0 m2 0 l2 0 m2 0 l2 0 m-528 98 l2 0 m2 0 l2 0 m2 0 l2 0 m22 0 h10 m50 0 h10 m0 0 h10 m76 0 h10 m-186 0 h20 m166 0 h20 m-206 0 q10 0 10 10 m186 0 q0 -10 10 -10 m-196 10 v24 m186 0 v-24 m-186 24 q0 10 10 10 m166 0 q10 0 10 -10 m-176 10 h10 m86 0 h10 m0 0 h60 m20 -44 h10 m102 0 h10 m20 0 h10 m0 0 h120 m-150 0 h20 m130 0 h20 m-170 0 q10 0 10 10 m150 0 q0 -10 10 -10 m-160 10 v12 m150 0 v-12 m-150 12 q0 10 10 10 m130 0 q10 0 10 -10 m-140 10 h10 m110 0 h10 m23 -32 h-3"/>
+   <polygon points="829 115 837 111 837 119"/>
+   <polygon points="829 115 821 111 821 119"/>
+</svg>

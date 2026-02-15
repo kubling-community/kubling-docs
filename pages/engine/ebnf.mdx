@@ -1,0 +1,3449 @@
+# Query Grammar (EBNF)
+
+This section defines the formal grammar accepted by the Kubling query engine.
+
+The grammar below is normative and versioned. All statements parsed by the engine must conform to this specification.
+
+
+The section below provides both the raw EBNF specification and a visual representation using [railroad diagrams](https://github.com/GuntherRademacher/rr).
+
+**stringVal:**
+
+![stringVal](../../public/img/ebnf/stringVal.svg)
+
+```
+stringVal
+         ::= STRINGVAL
+```
+
+referenced by:
+
+* charVal
+* createDatabase
+* createNameSpace
+* createServer
+* function
+* grant
+* importDatabase
+* jsonColumn
+* jsonTable
+* namespaceItem
+* nonNumericLiteral
+* objectColumn
+* objectTable
+* textColumn
+* textTable
+* useDatabase
+* xmlColumn
+* xmlExists
+* xmlQuery
+* xmlSerialize
+* xmlTable
+
+**nonReserved:**
+
+![nonReserved](../../public/img/ebnf/nonReserved.svg)
+
+```
+nonReserved
+         ::= 'exception'
+           | 'serial'
+           | 'object'
+           | 'index'
+           | 'json'
+           | 'geometry'
+           | 'geography'
+           | 'default'
+           | basicNonReserved
+```
+
+referenced by:
+
+* id
+* unqualifiedId
+* unsignedValueExpressionPrimary
+
+**basicNonReserved:**
+
+![basicNonReserved](../../public/img/ebnf/basicNonReserved.svg)
+
+```
+basicNonReserved
+         ::= 'instead'
+           | 'view'
+           | 'enabled'
+           | 'disabled'
+           | 'key'
+           | 'textagg'
+           | 'count'
+           | 'count_big'
+           | 'row_number'
+           | 'rank'
+           | 'dense_rank'
+           | 'sum'
+           | 'avg'
+           | 'min'
+           | 'max'
+           | 'every'
+           | 'stddev_pop'
+           | 'stddev_samp'
+           | 'var_samp'
+           | 'var_pop'
+           | 'document'
+           | 'content'
+           | 'trim'
+           | 'empty'
+           | 'ordinality'
+           | 'path'
+           | 'first'
+           | 'last'
+           | 'next'
+           | 'substring'
+           | 'extract'
+           | 'to_chars'
+           | 'to_bytes'
+           | 'timestampadd'
+           | 'timestampdiff'
+           | 'querystring'
+           | 'namespace'
+           | 'result'
+           | 'accesspattern'
+           | 'auto_increment'
+           | 'wellformed'
+           | 'sql_tsi_frac_second'
+           | 'sql_tsi_second'
+           | 'sql_tsi_minute'
+           | 'sql_tsi_hour'
+           | 'sql_tsi_day'
+           | 'sql_tsi_week'
+           | 'sql_tsi_month'
+           | 'sql_tsi_quarter'
+           | 'sql_tsi_year'
+           | 'texttable'
+           | 'arraytable'
+           | 'jsontable'
+           | 'selector'
+           | 'skip'
+           | 'width'
+           | 'passing'
+           | 'name'
+           | 'encoding'
+           | 'columns'
+           | 'delimiter'
+           | 'quote'
+           | 'header'
+           | 'nulls'
+           | 'objecttable'
+           | 'version'
+           | 'including'
+           | 'excluding'
+           | 'xmldeclaration'
+           | 'variadic'
+           | 'raise'
+           | 'chain'
+           | 'jsonarray_agg'
+           | 'jsonobject'
+           | 'preserve'
+           | 'upsert'
+           | 'after'
+           | 'type'
+           | 'translator'
+           | 'jaas'
+           | 'condition'
+           | 'mask'
+           | 'access'
+           | 'control'
+           | 'none'
+           | 'data'
+           | 'database'
+           | 'privileges'
+           | 'role'
+           | 'schema'
+           | 'use'
+           | 'repository'
+           | 'rename'
+           | 'domain'
+           | 'usage'
+           | 'position'
+           | 'current'
+           | 'unbounded'
+           | 'preceding'
+           | 'following'
+           | 'listagg'
+           | 'explain'
+           | 'analyze'
+           | 'text'
+           | 'format'
+           | 'yaml'
+           | 'epoch'
+           | 'quarter'
+           | 'policy'
+```
+
+referenced by:
+
+* createDomain
+* nonReserved
+* parseDataType
+
+**unqualifiedId:**
+
+![unqualifiedId](../../public/img/ebnf/unqualifiedId.svg)
+
+```
+unqualifiedId
+         ::= ID
+           | nonReserved
+```
+
+referenced by:
+
+* createDDLProcedure
+* createDataWrapper
+* createForeignOrGloablTable
+* createForeignTempTable
+* createRole
+* createServer
+* createTempTable
+* createView
+
+**id:**
+
+![id](../../public/img/ebnf/id.svg)
+
+```
+id       ::= ID
+           | nonReserved
+```
+
+referenced by:
+
+* alter
+* alterChildOptionPair
+* alterColumn
+* alterDatabase
+* alterDropColumn
+* alterOptionPair
+* alterProcedure
+* alterRenameColumn
+* alterRenameTable
+* alterServer
+* alterTable
+* alterTranslator
+* alterTrigger
+* arrayTable
+* assignStatement
+* branchingStatement
+* callableStatement
+* columnList
+* compoundStatement
+* createColumn
+* createDataWrapper
+* createDatabase
+* createElementsWithTypes
+* createForeignTempTable
+* createNameSpace
+* createPolicy
+* createSchema
+* createTrigger
+* createViewColumn
+* declareStatement
+* delete
+* derivedColumn
+* dropChildOption
+* dropDataWrapper
+* dropOption
+* dropPolicy
+* dropProcedure
+* dropRole
+* dropSchema
+* dropServer
+* dropTable
+* dropTableView
+* dynamicCommand
+* exceptionReference
+* executeNamedParams
+* foreignKey
+* function
+* grant
+* identifierList
+* importDatabase
+* importSchema
+* insert
+* into
+* jsonColumn
+* jsonTable
+* loopStatement
+* namespaceItem
+* objectColumn
+* objectTable
+* option
+* optionPair
+* procedureParameter
+* procedureRsColumn
+* queryPrimary
+* revokeGrant
+* selectExpression
+* setClauseList
+* statement
+* storedProcedure
+* subqueryFromClause
+* tableConstraint
+* tableElement
+* textAgg
+* textColumn
+* textTable
+* unaryFromClause
+* update
+* useDatabase
+* useSchema
+* withListElement
+* xmlColumn
+* xmlElement
+* xmlSerialize
+* xmlTable
+
+**command:**
+
+![command](../../public/img/ebnf/command.svg)
+
+```
+command  ::= ( createProcedure | userCommand | callableStatement | explainCommand ) ';'? EOF
+```
+
+**createTrigger:**
+
+![createTrigger](../../public/img/ebnf/createTrigger.svg)
+
+```
+createTrigger
+         ::= 'create' 'trigger' id? 'on' id ( 'instead' 'of' | 'after' ) ( 'insert' | 'update' | 'delete' ) 'as' forEachRowTriggerAction
+```
+
+referenced by:
+
+* ddlStmt
+* userCommand
+
+**alter:**
+
+![alter](../../public/img/ebnf/alter.svg)
+
+```
+alter    ::= 'alter' ( 'view' id 'as' queryExpression | 'procedure' id 'as' statement | 'trigger' id? 'on' id ( 'instead' 'of' | 'after' ) ( 'insert' | 'update' | 'delete' ) ( 'as' forEachRowTriggerAction | 'enabled' | 'disabled' ) )
+```
+
+referenced by:
+
+* userCommand
+
+**forEachRowTriggerAction:**
+
+![forEachRowTriggerAction](../../public/img/ebnf/forEachRowTriggerAction.svg)
+
+```
+forEachRowTriggerAction
+         ::= 'for' 'each' 'row' ( 'begin' 'atomic'? statement* 'end' | statement )
+```
+
+referenced by:
+
+* alter
+* alterTrigger
+* createTrigger
+
+**explainCommand:**
+
+![explainCommand](../../public/img/ebnf/explainCommand.svg)
+
+```
+explainCommand
+         ::= 'explain' ( '(' explainOption ( ',' explainOption )* ')' )? userCommand
+```
+
+referenced by:
+
+* command
+
+**explainOption:**
+
+![explainOption](../../public/img/ebnf/explainOption.svg)
+
+```
+explainOption
+         ::= 'analyze' ( 'true' | 'false' )?
+           | 'format' ( 'xml' | 'text' | 'yaml' )?
+```
+
+referenced by:
+
+* explainCommand
+
+**userCommand:**
+
+![userCommand](../../public/img/ebnf/userCommand.svg)
+
+```
+userCommand
+         ::= queryExpression
+           | storedProcedure
+           | insert
+           | update
+           | delete
+           | dropTable
+           | createTempTable
+           | createForeignTempTable
+           | alter
+           | createTrigger
+           | compoundStatement
+```
+
+referenced by:
+
+* command
+* explainCommand
+* sqlStatement
+
+**dropTable:**
+
+![dropTable](../../public/img/ebnf/dropTable.svg)
+
+```
+dropTable
+         ::= 'drop' 'table' id
+```
+
+referenced by:
+
+* userCommand
+
+**createTempTable:**
+
+![createTempTable](../../public/img/ebnf/createTempTable.svg)
+
+```
+createTempTable
+         ::= 'create' 'local'? 'temporary' 'table' unqualifiedId '(' tableElement ( ',' tableElement )* ( ',' 'primary' 'key' columnList )? ')' ( 'on' 'commit' 'preserve' 'rows' )?
+```
+
+referenced by:
+
+* userCommand
+
+**tableElement:**
+
+![tableElement](../../public/img/ebnf/tableElement.svg)
+
+```
+tableElement
+         ::= id ( parseBasicDataType | 'serial' ) ( 'not' 'null' )?
+```
+
+referenced by:
+
+* createTempTable
+
+**errorStatement:**
+
+![errorStatement](../../public/img/ebnf/errorStatement.svg)
+
+```
+errorStatement
+         ::= 'error' expression
+```
+
+referenced by:
+
+* delimitedStatement
+
+**raiseStatement:**
+
+![raiseStatement](../../public/img/ebnf/raiseStatement.svg)
+
+```
+raiseStatement
+         ::= 'raise' 'sqlwarning'? exceptionReference
+```
+
+referenced by:
+
+* delimitedStatement
+
+**exceptionReference:**
+
+![exceptionReference](../../public/img/ebnf/exceptionReference.svg)
+
+```
+exceptionReference
+         ::= id
+           | exception
+```
+
+referenced by:
+
+* exception
+* raiseStatement
+
+**exception:**
+
+![exception](../../public/img/ebnf/exception.svg)
+
+```
+exception
+         ::= 'sqlexception' commonValueExpression ( 'sqlstate' commonValueExpression ( ',' commonValueExpression )? )? ( 'chain' exceptionReference )?
+```
+
+referenced by:
+
+* assignStatementOperand
+* exceptionReference
+
+**statement:**
+
+![statement](../../public/img/ebnf/statement.svg)
+
+```
+statement
+         ::= ( id ':' )? ( loopStatement | whileStatement | compoundStatement )
+           | ifStatement
+           | delimitedStatement
+```
+
+referenced by:
+
+* alter
+* alterProcedure
+* compoundStatement
+* createDDLProcedure
+* createProcedure
+* forEachRowTriggerAction
+* ifStatement
+* loopStatement
+* procedureBodyCommand
+* whileStatement
+
+**delimitedStatement:**
+
+![delimitedStatement](../../public/img/ebnf/delimitedStatement.svg)
+
+```
+delimitedStatement
+         ::= ( assignStatement | sqlStatement | errorStatement | raiseStatement | declareStatement | branchingStatement | returnStatement ) ';'
+```
+
+referenced by:
+
+* statement
+
+**compoundStatement:**
+
+![compoundStatement](../../public/img/ebnf/compoundStatement.svg)
+
+```
+compoundStatement
+         ::= 'begin' ( 'not'? 'atomic' )? statement* ( 'exception' id statement* )? 'end'
+```
+
+referenced by:
+
+* statement
+* userCommand
+
+**branchingStatement:**
+
+![branchingStatement](../../public/img/ebnf/branchingStatement.svg)
+
+```
+branchingStatement
+         ::= ( 'break' | 'continue' ) id?
+           | 'leave' id
+```
+
+referenced by:
+
+* delimitedStatement
+
+**returnStatement:**
+
+![returnStatement](../../public/img/ebnf/returnStatement.svg)
+
+```
+returnStatement
+         ::= 'return' expression?
+```
+
+referenced by:
+
+* delimitedStatement
+
+**whileStatement:**
+
+![whileStatement](../../public/img/ebnf/whileStatement.svg)
+
+```
+whileStatement
+         ::= 'while' '(' criteria ')' statement
+```
+
+referenced by:
+
+* statement
+
+**loopStatement:**
+
+![loopStatement](../../public/img/ebnf/loopStatement.svg)
+
+```
+loopStatement
+         ::= 'loop' 'on' '(' queryExpression ')' 'as' id statement
+```
+
+referenced by:
+
+* statement
+
+**ifStatement:**
+
+![ifStatement](../../public/img/ebnf/ifStatement.svg)
+
+```
+ifStatement
+         ::= 'if' '(' criteria ')' statement ( 'else' statement )?
+```
+
+referenced by:
+
+* statement
+
+**declareStatement:**
+
+![declareStatement](../../public/img/ebnf/declareStatement.svg)
+
+```
+declareStatement
+         ::= 'declare' ( parseDataType | 'exception' ) id ( '=' assignStatementOperand )?
+```
+
+referenced by:
+
+* delimitedStatement
+
+**assignStatement:**
+
+![assignStatement](../../public/img/ebnf/assignStatement.svg)
+
+```
+assignStatement
+         ::= id '=' ( assignStatementOperand | storedProcedure ( ( 'with' | 'without' ) 'return' )? )
+```
+
+referenced by:
+
+* delimitedStatement
+
+**assignStatementOperand:**
+
+![assignStatementOperand](../../public/img/ebnf/assignStatementOperand.svg)
+
+```
+assignStatementOperand
+         ::= insert
+           | update
+           | delete
+           | expression
+           | queryExpression
+           | exception
+```
+
+referenced by:
+
+* assignStatement
+* declareStatement
+
+**sqlStatement:**
+
+![sqlStatement](../../public/img/ebnf/sqlStatement.svg)
+
+```
+sqlStatement
+         ::= ( userCommand | dynamicCommand ) ( ( 'with' | 'without' ) 'return' )?
+```
+
+referenced by:
+
+* delimitedStatement
+
+**createProcedure:**
+
+![createProcedure](../../public/img/ebnf/createProcedure.svg)
+
+```
+createProcedure
+         ::= 'create' 'virtual'? 'procedure' statement
+```
+
+referenced by:
+
+* command
+
+**procedureBodyCommand:**
+
+![procedureBodyCommand](../../public/img/ebnf/procedureBodyCommand.svg)
+
+```
+procedureBodyCommand
+         ::= ( 'create' 'virtual'? 'procedure' )? statement EOF
+```
+
+**dynamicCommand:**
+
+![dynamicCommand](../../public/img/ebnf/dynamicCommand.svg)
+
+```
+dynamicCommand
+         ::= ( 'execute' | 'exec' ) ( 'string' | 'immediate' )? expression ( 'as' createElementsWithTypes ( 'into' id )? )? ( 'using' setClauseList )? ( 'update' ( intVal | '*' ) )?
+```
+
+referenced by:
+
+* sqlStatement
+
+**setClauseList:**
+
+![setClauseList](../../public/img/ebnf/setClauseList.svg)
+
+```
+setClauseList
+         ::= id '=' expression ( ',' id '=' expression )*
+```
+
+referenced by:
+
+* dynamicCommand
+* update
+
+**createElementsWithTypes:**
+
+![createElementsWithTypes](../../public/img/ebnf/createElementsWithTypes.svg)
+
+```
+createElementsWithTypes
+         ::= id parseBasicDataType ( ',' id parseBasicDataType )*
+```
+
+referenced by:
+
+* arrayTable
+* dynamicCommand
+
+**callableStatement:**
+
+![callableStatement](../../public/img/ebnf/callableStatement.svg)
+
+```
+callableStatement
+         ::= '{' ( '?' '=' )? 'call' id ( '(' ( executeNamedParams | expressionList )? ')' )? '}' option?
+```
+
+referenced by:
+
+* command
+
+**storedProcedure:**
+
+![storedProcedure](../../public/img/ebnf/storedProcedure.svg)
+
+```
+storedProcedure
+         ::= ( 'exec' | 'execute' | 'call' ) id '(' ( executeNamedParams | expressionList )? ')' option?
+```
+
+referenced by:
+
+* assignStatement
+* subquery
+* subqueryFromClause
+* userCommand
+
+**executeNamedParams:**
+
+![executeNamedParams](../../public/img/ebnf/executeNamedParams.svg)
+
+```
+executeNamedParams
+         ::= id '=' '>'? expression ( ',' id '=' '>'? expression )*
+```
+
+referenced by:
+
+* callableStatement
+* storedProcedure
+
+**insert:**
+
+![insert](../../public/img/ebnf/insert.svg)
+
+```
+insert   ::= ( 'insert' | 'merge' | 'upsert' ) 'into' id columnList? queryExpression option?
+```
+
+referenced by:
+
+* assignStatementOperand
+* userCommand
+
+**expressionList:**
+
+![expressionList](../../public/img/ebnf/expressionList.svg)
+
+```
+expressionList
+         ::= expression ( ',' expression )*
+```
+
+referenced by:
+
+* callableStatement
+* constraint
+* function
+* groupBy
+* queryPrimary
+* storedProcedure
+* windowSpecification
+
+**update:**
+
+![update](../../public/img/ebnf/update.svg)
+
+```
+update   ::= 'update' id ( 'as'? id )? 'set' setClauseList where? option?
+```
+
+referenced by:
+
+* assignStatementOperand
+* userCommand
+
+**delete:**
+
+![delete](../../public/img/ebnf/delete.svg)
+
+```
+delete   ::= 'delete' 'from' id ( 'as'? id )? where? option?
+```
+
+referenced by:
+
+* assignStatementOperand
+* userCommand
+
+**queryExpression:**
+
+![queryExpression](../../public/img/ebnf/queryExpression.svg)
+
+```
+queryExpression
+         ::= ( 'with' withListElement ( ',' withListElement )* )? queryExpressionBody
+```
+
+referenced by:
+
+* alter
+* alterTable
+* arrayExpression
+* assignStatementOperand
+* createView
+* insert
+* loopStatement
+* subquery
+* subqueryFromClause
+* userCommand
+* withListElement
+
+**withListElement:**
+
+![withListElement](../../public/img/ebnf/withListElement.svg)
+
+```
+withListElement
+         ::= id columnList? 'as' '(' queryExpression ')'
+```
+
+referenced by:
+
+* queryExpression
+
+**queryExpressionBody:**
+
+![queryExpressionBody](../../public/img/ebnf/queryExpressionBody.svg)
+
+```
+queryExpressionBody
+         ::= queryTerm ( ( 'union' | 'except' ) ( 'all' | 'distinct' )? queryTerm )* orderby? limit? option?
+```
+
+referenced by:
+
+* queryExpression
+* queryPrimary
+
+**queryTerm:**
+
+![queryTerm](../../public/img/ebnf/queryTerm.svg)
+
+```
+queryTerm
+         ::= queryPrimary ( 'intersect' ( 'all' | 'distinct' )? queryPrimary )*
+```
+
+referenced by:
+
+* queryExpressionBody
+
+**queryPrimary:**
+
+![queryPrimary](../../public/img/ebnf/queryPrimary.svg)
+
+```
+queryPrimary
+         ::= query
+           | ( 'values' '(' expressionList ( ')' ',' '(' expressionList )* | '(' queryExpressionBody ) ')'
+           | 'table' id
+```
+
+referenced by:
+
+* queryTerm
+
+**query:**
+
+![query](../../public/img/ebnf/query.svg)
+
+```
+query    ::= select into? ( from where? groupBy? having? )?
+```
+
+referenced by:
+
+* queryPrimary
+
+**into:**
+
+![into](../../public/img/ebnf/into.svg)
+
+```
+into     ::= 'into' id
+```
+
+referenced by:
+
+* query
+
+**select:**
+
+![select](../../public/img/ebnf/select.svg)
+
+```
+select   ::= 'select' ( 'all' | 'distinct' )? ( '*' | selectSymbol ( ',' selectSymbol )* )
+```
+
+referenced by:
+
+* query
+
+**selectSymbol:**
+
+![selectSymbol](../../public/img/ebnf/selectSymbol.svg)
+
+```
+selectSymbol
+         ::= selectExpression
+           | allInGroupSymbol
+```
+
+referenced by:
+
+* select
+
+**selectExpression:**
+
+![selectExpression](../../public/img/ebnf/selectExpression.svg)
+
+```
+selectExpression
+         ::= expression ( 'as'? id )?
+```
+
+referenced by:
+
+* selectSymbol
+
+**derivedColumn:**
+
+![derivedColumn](../../public/img/ebnf/derivedColumn.svg)
+
+```
+derivedColumn
+         ::= expression ( 'as' id )?
+```
+
+referenced by:
+
+* derivedColumnList
+* objectTable
+* queryString
+* textAgg
+* xmlAttributes
+* xmlExists
+* xmlQuery
+* xmlTable
+
+**allInGroupSymbol:**
+
+![allInGroupSymbol](../../public/img/ebnf/allInGroupSymbol.svg)
+
+```
+allInGroupSymbol
+         ::= ALL_IN_GROUP
+```
+
+referenced by:
+
+* selectSymbol
+
+**orderedAgg:**
+
+![orderedAgg](../../public/img/ebnf/orderedAgg.svg)
+
+```
+orderedAgg
+         ::= ( 'xmlagg' | 'array_agg' | 'jsonarray_agg' ) '(' expression orderby? ')'
+```
+
+referenced by:
+
+* unescapedFunction
+
+**textAgg:**
+
+![textAgg](../../public/img/ebnf/textAgg.svg)
+
+```
+textAgg  ::= 'textagg' '(' 'for'? derivedColumn ( ',' derivedColumn )* ( 'delimiter' charVal )? ( 'quote' charVal | 'no' 'quote' )? 'header'? ( 'encoding' id )? orderby? ')'
+```
+
+referenced by:
+
+* unescapedFunction
+
+**aggregateSymbol:**
+
+![aggregateSymbol](../../public/img/ebnf/aggregateSymbol.svg)
+
+```
+aggregateSymbol
+         ::= ( ( 'count' | 'count_big' ) '(' '*' | ( 'count' | 'count_big' | 'sum'
+                  | 'avg' | 'min' | 'max' | 'every' | 'stddev_pop' | 'stddev_samp' | 'var_samp' | 'var_pop'
+                  | 'some' | 'any' ) '(' ( 'distinct' | 'all' )? expression ) ')'
+```
+
+referenced by:
+
+* unescapedFunction
+
+**analyticAggregateSymbol:**
+
+![analyticAggregateSymbol](../../public/img/ebnf/analyticAggregateSymbol.svg)
+
+```
+analyticAggregateSymbol
+         ::= ( 'row_number' | 'rank' | 'dense_rank' | 'percent_rank' | 'cume_dist'
+                  ) '(' ')'
+```
+
+referenced by:
+
+* unescapedFunction
+
+**filterClause:**
+
+![filterClause](../../public/img/ebnf/filterClause.svg)
+
+```
+filterClause
+         ::= 'filter' '(' 'where' criteria ')'
+```
+
+referenced by:
+
+* function
+* unescapedFunction
+
+**from:**
+
+![from](../../public/img/ebnf/from.svg)
+
+```
+from     ::= 'from' tableReference ( ',' tableReference )*
+```
+
+referenced by:
+
+* query
+
+**tableReference:**
+
+![tableReference](../../public/img/ebnf/tableReference.svg)
+
+```
+tableReference
+         ::= ESCAPEDJOIN joinedTable '}'
+           | joinedTable
+```
+
+referenced by:
+
+* from
+* qualifiedJoin
+
+**joinedTable:**
+
+![joinedTable](../../public/img/ebnf/joinedTable.svg)
+
+```
+joinedTable
+         ::= tablePrimary ( crossJoin | qualifiedJoin )*
+```
+
+referenced by:
+
+* tablePrimary
+* tableReference
+
+**crossJoin:**
+
+![crossJoin](../../public/img/ebnf/crossJoin.svg)
+
+```
+crossJoin
+         ::= ( 'cross' | 'union' ) 'join' tablePrimary
+```
+
+referenced by:
+
+* joinedTable
+
+**qualifiedJoin:**
+
+![qualifiedJoin](../../public/img/ebnf/qualifiedJoin.svg)
+
+```
+qualifiedJoin
+         ::= ( ( 'right' | 'left' | 'full' ) 'outer'? | 'inner' )? 'join' tableReference 'on' criteria
+```
+
+referenced by:
+
+* joinedTable
+
+**tablePrimary:**
+
+![tablePrimary](../../public/img/ebnf/tablePrimary.svg)
+
+```
+tablePrimary
+         ::= ( textTable | arrayTable | jsonTable | xmlTable | objectTable | unaryFromClause | subqueryFromClause | '(' joinedTable ')' ) ( 'makedep' makedepOptions | 'makenotdep' )? ( 'makeind' makedepOptions )?
+```
+
+referenced by:
+
+* crossJoin
+* joinedTable
+
+**makedepOptions:**
+
+![makedepOptions](../../public/img/ebnf/makedepOptions.svg)
+
+```
+makedepOptions
+         ::= ( '(' ( 'max' ':' intVal )? ( 'no'? 'join' )? ')' )?
+```
+
+referenced by:
+
+* option
+* tablePrimary
+
+**xmlSerialize:**
+
+![xmlSerialize](../../public/img/ebnf/xmlSerialize.svg)
+
+```
+xmlSerialize
+         ::= 'xmlserialize' '(' ( 'document' | 'content' )? expression ( 'as' ( 'string' | 'varchar' | 'clob' | 'varbinary' | 'blob' ) )? ( 'encoding' id )? ( 'version' stringVal )? ( ( 'including' | 'excluding' ) 'xmldeclaration' )? ')'
+```
+
+referenced by:
+
+* function
+
+**arrayTable:**
+
+![arrayTable](../../public/img/ebnf/arrayTable.svg)
+
+```
+arrayTable
+         ::= 'arraytable' '(' ( 'row' | 'rows' )? valueExpressionPrimary 'columns' createElementsWithTypes ')' 'as'? id
+```
+
+referenced by:
+
+* tablePrimary
+
+**jsonTable:**
+
+![jsonTable](../../public/img/ebnf/jsonTable.svg)
+
+```
+jsonTable
+         ::= 'jsontable' '(' valueExpressionPrimary ',' stringVal ( ',' ( 'true' | 'false' ) )? 'columns' jsonColumn ( ',' jsonColumn )* ')' 'as'? id
+```
+
+referenced by:
+
+* tablePrimary
+
+**jsonColumn:**
+
+![jsonColumn](../../public/img/ebnf/jsonColumn.svg)
+
+```
+jsonColumn
+         ::= id ( 'for' 'ordinality' | parseBasicDataType ( 'path' stringVal )? )
+```
+
+referenced by:
+
+* jsonTable
+
+**textTable:**
+
+![textTable](../../public/img/ebnf/textTable.svg)
+
+```
+textTable
+         ::= 'texttable' '(' commonValueExpression ( 'selector' stringVal )? 'columns' textColumn ( ',' textColumn )* ( 'no' 'row' 'delimiter' | 'row' 'delimiter' charVal )? ( 'delimiter' charVal )? ( ( 'escape' | 'quote' ) charVal )? ( 'header' intVal? )? ( 'skip' intVal )? ( 'no' 'trim' )? ')' 'as'? id
+```
+
+referenced by:
+
+* tablePrimary
+
+**textColumn:**
+
+![textColumn](../../public/img/ebnf/textColumn.svg)
+
+```
+textColumn
+         ::= id ( 'for' 'ordinality' | ( 'header' stringVal )? parseBasicDataType ( 'width' intVal ( 'no' 'trim' )? )? ( 'selector' stringVal intVal )? )
+```
+
+referenced by:
+
+* textTable
+
+**xmlExists:**
+
+![xmlExists](../../public/img/ebnf/xmlExists.svg)
+
+```
+xmlExists
+         ::= 'xmlexists' '(' ( xmlNamespaces ',' )? stringVal ( 'passing' derivedColumn ( ',' derivedColumn )* )? ')'
+```
+
+referenced by:
+
+* booleanPrimary
+
+**xmlQuery:**
+
+![xmlQuery](../../public/img/ebnf/xmlQuery.svg)
+
+```
+xmlQuery ::= 'xmlquery' '(' ( xmlNamespaces ',' )? stringVal ( 'passing' derivedColumn ( ',' derivedColumn )* )? ( ( 'null' | 'empty' ) 'on' 'empty' )? ')'
+```
+
+referenced by:
+
+* function
+
+**objectTable:**
+
+![objectTable](../../public/img/ebnf/objectTable.svg)
+
+```
+objectTable
+         ::= 'objecttable' '(' ( 'language' stringVal )? stringVal ( 'passing' derivedColumn ( ',' derivedColumn )* )? 'columns' objectColumn ( ',' objectColumn )* ')' 'as'? id
+```
+
+referenced by:
+
+* tablePrimary
+
+**objectColumn:**
+
+![objectColumn](../../public/img/ebnf/objectColumn.svg)
+
+```
+objectColumn
+         ::= id parseBasicDataType stringVal ( 'default' expression )?
+```
+
+referenced by:
+
+* objectTable
+
+**xmlTable:**
+
+![xmlTable](../../public/img/ebnf/xmlTable.svg)
+
+```
+xmlTable ::= 'xmltable' '(' ( xmlNamespaces ',' )? stringVal ( 'passing' derivedColumn ( ',' derivedColumn )* )? ( 'columns' xmlColumn ( ',' xmlColumn )* )? ')' 'as'? id
+```
+
+referenced by:
+
+* tablePrimary
+
+**xmlColumn:**
+
+![xmlColumn](../../public/img/ebnf/xmlColumn.svg)
+
+```
+xmlColumn
+         ::= id ( 'for' 'ordinality' | parseBasicDataType ( 'default' expression )? ( 'path' stringVal )? )
+```
+
+referenced by:
+
+* xmlTable
+
+**intVal:**
+
+![intVal](../../public/img/ebnf/intVal.svg)
+
+```
+intVal   ::= UNSIGNEDINTEGER
+```
+
+referenced by:
+
+* dynamicCommand
+* function
+* grant
+* intParam
+* makedepOptions
+* parameterReference
+* parseDataTypePrimary
+* textColumn
+* textTable
+* windowFrameBound
+
+**subqueryFromClause:**
+
+![subqueryFromClause](../../public/img/ebnf/subqueryFromClause.svg)
+
+```
+subqueryFromClause
+         ::= ( 'table' | 'lateral' )? '(' ( queryExpression | storedProcedure ) ')' 'as'? id
+```
+
+referenced by:
+
+* tablePrimary
+
+**unaryFromClause:**
+
+![unaryFromClause](../../public/img/ebnf/unaryFromClause.svg)
+
+```
+unaryFromClause
+         ::= id ( 'as'? id )?
+```
+
+referenced by:
+
+* tablePrimary
+
+**where:**
+
+![where](../../public/img/ebnf/where.svg)
+
+```
+where    ::= 'where' criteria
+```
+
+referenced by:
+
+* delete
+* query
+* update
+
+**criteria:**
+
+![criteria](../../public/img/ebnf/criteria.svg)
+
+```
+criteria ::= compoundCritOr
+```
+
+referenced by:
+
+* createPolicy
+* expression
+* filterClause
+* grant
+* having
+* ifStatement
+* qualifiedJoin
+* searchedCaseExpression
+* where
+* whileStatement
+
+**compoundCritOr:**
+
+![compoundCritOr](../../public/img/ebnf/compoundCritOr.svg)
+
+```
+compoundCritOr
+         ::= compoundCritAnd ( 'or' compoundCritAnd )*
+```
+
+referenced by:
+
+* criteria
+
+**compoundCritAnd:**
+
+![compoundCritAnd](../../public/img/ebnf/compoundCritAnd.svg)
+
+```
+compoundCritAnd
+         ::= notCrit ( 'and' notCrit )*
+```
+
+referenced by:
+
+* compoundCritOr
+
+**notCrit:**
+
+![notCrit](../../public/img/ebnf/notCrit.svg)
+
+```
+notCrit  ::= 'not'? booleanPrimary
+```
+
+referenced by:
+
+* compoundCritAnd
+
+**booleanPrimary:**
+
+![booleanPrimary](../../public/img/ebnf/booleanPrimary.svg)
+
+```
+booleanPrimary
+         ::= commonValueExpression ( betweenCrit | matchCrit | regexMatchCrit | setCrit | isNullCrit | subqueryCompareCriteria | compareCrit | isDistinct )?
+           | existsCriteria
+           | xmlExists
+```
+
+referenced by:
+
+* notCrit
+
+**operator:**
+
+![operator](../../public/img/ebnf/operator.svg)
+
+```
+operator ::= '='
+           | '<>'
+           | '!='
+           | '<'
+           | '<='
+           | '>'
+           | '>='
+```
+
+referenced by:
+
+* compareCrit
+* subqueryCompareCriteria
+
+**isDistinct:**
+
+![isDistinct](../../public/img/ebnf/isDistinct.svg)
+
+```
+isDistinct
+         ::= 'is' 'not'? 'distinct' 'from' commonValueExpression
+```
+
+referenced by:
+
+* booleanPrimary
+
+**compareCrit:**
+
+![compareCrit](../../public/img/ebnf/compareCrit.svg)
+
+```
+compareCrit
+         ::= operator commonValueExpression
+```
+
+referenced by:
+
+* booleanPrimary
+
+**subquery:**
+
+![subquery](../../public/img/ebnf/subquery.svg)
+
+```
+subquery ::= '(' ( queryExpression | storedProcedure ) ')'
+```
+
+referenced by:
+
+* existsCriteria
+* setCrit
+* subqueryCompareCriteria
+* unsignedValueExpressionPrimary
+
+**subqueryCompareCriteria:**
+
+![subqueryCompareCriteria](../../public/img/ebnf/subqueryCompareCriteria.svg)
+
+```
+subqueryCompareCriteria
+         ::= operator ( 'any' | 'some' | 'all' ) ( subquery | '(' expression ')' )
+```
+
+referenced by:
+
+* booleanPrimary
+
+**matchCrit:**
+
+![matchCrit](../../public/img/ebnf/matchCrit.svg)
+
+```
+matchCrit
+         ::= 'not'? ( 'like' | 'similar' 'to' ) commonValueExpression ( 'escape' charVal | '{' 'escape' charVal '}' )?
+```
+
+referenced by:
+
+* booleanPrimary
+
+**regexMatchCrit:**
+
+![regexMatchCrit](../../public/img/ebnf/regexMatchCrit.svg)
+
+```
+regexMatchCrit
+         ::= 'not'? 'like_regex' commonValueExpression
+```
+
+referenced by:
+
+* booleanPrimary
+
+**charVal:**
+
+![charVal](../../public/img/ebnf/charVal.svg)
+
+```
+charVal  ::= stringVal
+```
+
+referenced by:
+
+* matchCrit
+* textAgg
+* textTable
+
+**betweenCrit:**
+
+![betweenCrit](../../public/img/ebnf/betweenCrit.svg)
+
+```
+betweenCrit
+         ::= 'not'? 'between' commonValueExpression 'and' commonValueExpression
+```
+
+referenced by:
+
+* booleanPrimary
+
+**isNullCrit:**
+
+![isNullCrit](../../public/img/ebnf/isNullCrit.svg)
+
+```
+isNullCrit
+         ::= 'is' 'not'? 'null'
+```
+
+referenced by:
+
+* booleanPrimary
+
+**setCrit:**
+
+![setCrit](../../public/img/ebnf/setCrit.svg)
+
+```
+setCrit  ::= 'not'? 'in' ( subquery | '(' commonValueExpression ( ',' commonValueExpression )* ')' )
+```
+
+referenced by:
+
+* booleanPrimary
+
+**existsCriteria:**
+
+![existsCriteria](../../public/img/ebnf/existsCriteria.svg)
+
+```
+existsCriteria
+         ::= 'exists' subquery
+```
+
+referenced by:
+
+* booleanPrimary
+
+**groupBy:**
+
+![groupBy](../../public/img/ebnf/groupBy.svg)
+
+```
+groupBy  ::= 'group' 'by' ( 'ROLLUP' '(' expressionList ')' | expressionList )
+```
+
+referenced by:
+
+* query
+
+**having:**
+
+![having](../../public/img/ebnf/having.svg)
+
+```
+having   ::= 'having' criteria
+```
+
+referenced by:
+
+* query
+
+**orderby:**
+
+![orderby](../../public/img/ebnf/orderby.svg)
+
+```
+orderby  ::= 'order' 'by' sortSpecification ( ',' sortSpecification )*
+```
+
+referenced by:
+
+* function
+* orderedAgg
+* queryExpressionBody
+* textAgg
+* windowSpecification
+
+**sortSpecification:**
+
+![sortSpecification](../../public/img/ebnf/sortSpecification.svg)
+
+```
+sortSpecification
+         ::= sortKey ( 'asc' | 'desc' )? ( 'nulls' ( 'first' | 'last' ) )?
+```
+
+referenced by:
+
+* orderby
+
+**sortKey:**
+
+![sortKey](../../public/img/ebnf/sortKey.svg)
+
+```
+sortKey  ::= expression
+```
+
+referenced by:
+
+* sortSpecification
+
+**intParam:**
+
+![intParam](../../public/img/ebnf/intParam.svg)
+
+```
+intParam ::= intVal
+           | unsignedValueExpressionPrimary
+```
+
+referenced by:
+
+* fetchLimit
+* limit
+
+**limit:**
+
+![limit](../../public/img/ebnf/limit.svg)
+
+```
+limit    ::= 'limit' intParam ( ( ',' | 'offset' ) intParam )?
+           | 'offset' intParam ( 'row' | 'rows' ) fetchLimit?
+           | fetchLimit
+```
+
+referenced by:
+
+* queryExpressionBody
+
+**fetchLimit:**
+
+![fetchLimit](../../public/img/ebnf/fetchLimit.svg)
+
+```
+fetchLimit
+         ::= 'fetch' ( 'first' | 'next' ) intParam? ( 'row' | 'rows' ) 'only'
+```
+
+referenced by:
+
+* limit
+
+**option:**
+
+![option](../../public/img/ebnf/option.svg)
+
+```
+option   ::= 'option' ( ( 'makedep' | 'makeind' ) id makedepOptions ( ',' id makedepOptions )* | 'makenotdep' id ( ',' id )* | 'nocache' ( id ( ',' id )* )? )*
+```
+
+referenced by:
+
+* callableStatement
+* delete
+* insert
+* queryExpressionBody
+* storedProcedure
+* update
+
+**expression:**
+
+![expression](../../public/img/ebnf/expression.svg)
+
+```
+expression
+         ::= criteria
+```
+
+referenced by:
+
+* aggregateSymbol
+* arrayExpression
+* assignStatementOperand
+* caseExpression
+* derivedColumn
+* dynamicCommand
+* errorStatement
+* executeNamedParams
+* expressionList
+* function
+* nestedExpression
+* objectColumn
+* orderedAgg
+* postCreateColumn
+* procedureParameter
+* queryString
+* returnStatement
+* searchedCaseExpression
+* selectExpression
+* setClauseList
+* sortKey
+* subqueryCompareCriteria
+* unescapedFunction
+* xmlColumn
+* xmlElement
+* xmlParse
+* xmlSerialize
+
+**commonValueExpression:**
+
+![commonValueExpression](../../public/img/ebnf/commonValueExpression.svg)
+
+```
+commonValueExpression
+         ::= plusExpression ( ( '&&' | '||' ) plusExpression )*
+```
+
+referenced by:
+
+* betweenCrit
+* booleanPrimary
+* compareCrit
+* exception
+* function
+* isDistinct
+* matchCrit
+* regexMatchCrit
+* setCrit
+* textTable
+
+**plusExpression:**
+
+![plusExpression](../../public/img/ebnf/plusExpression.svg)
+
+```
+plusExpression
+         ::= timesExpression ( plusMinus timesExpression )*
+```
+
+referenced by:
+
+* commonValueExpression
+* valueExpressionPrimary
+
+**plusMinus:**
+
+![plusMinus](../../public/img/ebnf/plusMinus.svg)
+
+```
+plusMinus
+         ::= '+'
+           | '-'
+```
+
+referenced by:
+
+* alterChildOptionPair
+* alterOptionPair
+* optionPair
+* plusExpression
+* valueExpressionPrimary
+
+**timesExpression:**
+
+![timesExpression](../../public/img/ebnf/timesExpression.svg)
+
+```
+timesExpression
+         ::= valueExpressionPrimary ( timesOperator valueExpressionPrimary )*
+```
+
+referenced by:
+
+* plusExpression
+
+**timesOperator:**
+
+![timesOperator](../../public/img/ebnf/timesOperator.svg)
+
+```
+timesOperator
+         ::= '*'
+           | '/'
+```
+
+referenced by:
+
+* timesExpression
+
+**valueExpressionPrimary:**
+
+![valueExpressionPrimary](../../public/img/ebnf/valueExpressionPrimary.svg)
+
+```
+valueExpressionPrimary
+         ::= nonNumericLiteral
+           | plusMinus? ( unsignedNumericLiteral | unsignedValueExpressionPrimary ( '[' plusExpression ']' )* )
+```
+
+referenced by:
+
+* arrayTable
+* jsonTable
+* timesExpression
+
+**parameterReference:**
+
+![parameterReference](../../public/img/ebnf/parameterReference.svg)
+
+```
+parameterReference
+         ::= '?'
+           | '$' intVal
+```
+
+referenced by:
+
+* unsignedValueExpressionPrimary
+
+**unescapedFunction:**
+
+![unescapedFunction](../../public/img/ebnf/unescapedFunction.svg)
+
+```
+unescapedFunction
+         ::= ( ( textAgg | aggregateSymbol | orderedAgg ) filterClause? | function ) windowSpecification?
+           | analyticAggregateSymbol filterClause? windowSpecification
+           | 'xmlcast' '(' expression 'as' parseDataType ')'
+```
+
+referenced by:
+
+* unsignedValueExpressionPrimary
+
+**nestedExpression:**
+
+![nestedExpression](../../public/img/ebnf/nestedExpression.svg)
+
+```
+nestedExpression
+         ::= '(' ( expression ( ',' expression )* )? ','? ')'
+```
+
+referenced by:
+
+* unsignedValueExpressionPrimary
+
+**unsignedValueExpressionPrimary:**
+
+![unsignedValueExpressionPrimary](../../public/img/ebnf/unsignedValueExpressionPrimary.svg)
+
+```
+unsignedValueExpressionPrimary
+         ::= parameterReference
+           | ESCAPEDFUNCTION function '}'
+           | unescapedFunction
+           | ID
+           | nonReserved
+           | subquery
+           | nestedExpression
+           | arrayExpression
+           | searchedCaseExpression
+           | caseExpression
+```
+
+referenced by:
+
+* intParam
+* valueExpressionPrimary
+
+**arrayExpression:**
+
+![arrayExpression](../../public/img/ebnf/arrayExpression.svg)
+
+```
+arrayExpression
+         ::= 'array' ( '[' ( expression ( ',' expression )* )? ']' | '(' queryExpression ')' )
+```
+
+referenced by:
+
+* unsignedValueExpressionPrimary
+
+**windowSpecification:**
+
+![windowSpecification](../../public/img/ebnf/windowSpecification.svg)
+
+```
+windowSpecification
+         ::= 'over' '(' ( 'partition' 'by' expressionList )? orderby? windowFrame? ')'
+```
+
+referenced by:
+
+* unescapedFunction
+
+**windowFrame:**
+
+![windowFrame](../../public/img/ebnf/windowFrame.svg)
+
+```
+windowFrame
+         ::= ( 'range' | 'rows' ) ( 'between' windowFrameBound 'and' )? windowFrameBound
+```
+
+referenced by:
+
+* windowSpecification
+
+**windowFrameBound:**
+
+![windowFrameBound](../../public/img/ebnf/windowFrameBound.svg)
+
+```
+windowFrameBound
+         ::= ( 'unbounded' | intVal ) ( 'following' | 'preceding' )
+           | 'current' 'row'
+```
+
+referenced by:
+
+* windowFrame
+
+**caseExpression:**
+
+![caseExpression](../../public/img/ebnf/caseExpression.svg)
+
+```
+caseExpression
+         ::= 'case' expression ( 'when' expression 'then' expression )+ ( 'else' expression )? 'end'
+```
+
+referenced by:
+
+* unsignedValueExpressionPrimary
+
+**searchedCaseExpression:**
+
+![searchedCaseExpression](../../public/img/ebnf/searchedCaseExpression.svg)
+
+```
+searchedCaseExpression
+         ::= 'case' ( 'when' criteria 'then' expression )+ ( 'else' expression )? 'end'
+```
+
+referenced by:
+
+* unsignedValueExpressionPrimary
+
+**function:**
+
+![function](../../public/img/ebnf/function.svg)
+
+```
+function ::= ( ( 'convert' '(' expression ',' | 'cast' '(' expression 'as' ) parseDataType | 'substring' '(' expression ( 'from' expression ( 'for' expression )? | ',' expressionList ) | ( 'extract' '(' ( 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'quarter'
+                  | 'epoch' | 'dow' | 'doy' ) 'from' | 'trim' '(' ( ( ( 'leading' | 'trailing' | 'both'
+                  ) expression? | expression ) 'from' )? | ( 'timestampadd' | 'timestampdiff' ) '(' intervalType ',' expression ',' ) expression | ( ( 'to_chars' | 'to_bytes' ) '(' expression ',' stringVal | 'xmlpi' '(' 'name'? id ) ( ',' expression )? | ( 'left' | 'right' | 'char' | 'user' | 'year' | 'month' | 'hour' | 'minute'
+                  | 'second' | 'xmlconcat' | 'xmlcomment' | 'xmltext' | 'translate' | 'insert' ) '('
+                  expressionList? | 'position' '(' commonValueExpression 'in' commonValueExpression | 'listagg' '(' expression ( ',' stringVal )? ')' 'within' 'group' '(' orderby ) ')'
+           | queryString
+           | xmlParse
+           | xmlElement
+           | xmlForest
+           | jsonObject
+           | xmlSerialize
+           | xmlQuery
+           | id '(' ( 'all' | 'distinct' )? expressionList? orderby? ')' filterClause?
+           | 'current_date' ( '(' ')' )?
+           | ( 'current_timestamp' | 'current_time' ) ( '(' intVal ')' )?
+           | 'session_user'
+```
+
+referenced by:
+
+* unescapedFunction
+* unsignedValueExpressionPrimary
+
+**xmlParse:**
+
+![xmlParse](../../public/img/ebnf/xmlParse.svg)
+
+```
+xmlParse ::= 'xmlparse' '(' ( 'document' | 'content' ) expression 'wellformed'? ')'
+```
+
+referenced by:
+
+* function
+
+**queryString:**
+
+![queryString](../../public/img/ebnf/queryString.svg)
+
+```
+queryString
+         ::= 'querystring' '(' expression ( ',' derivedColumn )* ')'
+```
+
+referenced by:
+
+* function
+
+**xmlElement:**
+
+![xmlElement](../../public/img/ebnf/xmlElement.svg)
+
+```
+xmlElement
+         ::= 'xmlelement' '(' 'name'? id ( ',' xmlNamespaces )? ( ',' xmlAttributes )? ( ',' expression )* ')'
+```
+
+referenced by:
+
+* function
+
+**xmlAttributes:**
+
+![xmlAttributes](../../public/img/ebnf/xmlAttributes.svg)
+
+```
+xmlAttributes
+         ::= 'xmlattributes' '(' derivedColumn ( ',' derivedColumn )* ')'
+```
+
+referenced by:
+
+* xmlElement
+
+**jsonObject:**
+
+![jsonObject](../../public/img/ebnf/jsonObject.svg)
+
+```
+jsonObject
+         ::= 'jsonobject' '(' derivedColumnList ')'
+```
+
+referenced by:
+
+* function
+
+**derivedColumnList:**
+
+![derivedColumnList](../../public/img/ebnf/derivedColumnList.svg)
+
+```
+derivedColumnList
+         ::= derivedColumn ( ',' derivedColumn )*
+```
+
+referenced by:
+
+* jsonObject
+* xmlForest
+
+**xmlForest:**
+
+![xmlForest](../../public/img/ebnf/xmlForest.svg)
+
+```
+xmlForest
+         ::= 'xmlforest' '(' ( xmlNamespaces ',' )? derivedColumnList ')'
+```
+
+referenced by:
+
+* function
+
+**xmlNamespaces:**
+
+![xmlNamespaces](../../public/img/ebnf/xmlNamespaces.svg)
+
+```
+xmlNamespaces
+         ::= 'xmlnamespaces' '(' namespaceItem ( ',' namespaceItem )* ')'
+```
+
+referenced by:
+
+* xmlElement
+* xmlExists
+* xmlForest
+* xmlQuery
+* xmlTable
+
+**namespaceItem:**
+
+![namespaceItem](../../public/img/ebnf/namespaceItem.svg)
+
+```
+namespaceItem
+         ::= stringVal 'as' id
+           | 'no' 'default'
+           | 'default' stringVal
+```
+
+referenced by:
+
+* xmlNamespaces
+
+**parseDataTypePrimary:**
+
+![parseDataTypePrimary](../../public/img/ebnf/parseDataTypePrimary.svg)
+
+```
+parseDataTypePrimary
+         ::= ( 'string' | 'varchar' | 'char' | 'biginteger' | 'timestamp' | 'object'
+                  | 'blob' | 'clob' | 'varbinary' ) ( '(' intVal ')' )?
+           | 'boolean'
+           | 'byte'
+           | 'tinyint'
+           | 'short'
+           | 'smallint'
+           | 'integer'
+           | 'long'
+           | 'bigint'
+           | 'float'
+           | 'real'
+           | 'double'
+           | ( 'bigdecimal' | 'decimal' ) ( '(' intVal ( ',' intVal )? ')' )?
+           | 'date'
+           | 'time'
+           | 'json'
+           | 'geometry'
+           | 'geography'
+           | 'xml'
+```
+
+referenced by:
+
+* parseBasicDataType
+
+**parseBasicDataType:**
+
+![parseBasicDataType](../../public/img/ebnf/parseBasicDataType.svg)
+
+```
+parseBasicDataType
+         ::= parseDataTypePrimary ( '[' ']' )*
+```
+
+referenced by:
+
+* createElementsWithTypes
+* jsonColumn
+* objectColumn
+* parseDataType
+* tableElement
+* textColumn
+* xmlColumn
+
+**parseDataType:**
+
+![parseDataType](../../public/img/ebnf/parseDataType.svg)
+
+```
+parseDataType
+         ::= parseBasicDataType
+           | ( ID | basicNonReserved ) ( '[' ']' )*
+```
+
+referenced by:
+
+* alterColumn
+* createColumn
+* createDDLProcedure
+* createDomain
+* createViewColumn
+* declareStatement
+* function
+* procedureParameter
+* procedureRsColumn
+* unescapedFunction
+
+**intervalType:**
+
+![intervalType](../../public/img/ebnf/intervalType.svg)
+
+```
+intervalType
+         ::= 'sql_tsi_frac_second'
+           | 'sql_tsi_second'
+           | 'sql_tsi_minute'
+           | 'sql_tsi_hour'
+           | 'sql_tsi_day'
+           | 'sql_tsi_week'
+           | 'sql_tsi_month'
+           | 'sql_tsi_quarter'
+           | 'sql_tsi_year'
+```
+
+referenced by:
+
+* function
+
+**nonNumericLiteral:**
+
+![nonNumericLiteral](../../public/img/ebnf/nonNumericLiteral.svg)
+
+```
+nonNumericLiteral
+         ::= ( 'date' | 'time' | 'timestamp' )? stringVal
+           | BINARYSTRINGVAL
+           | 'false'
+           | 'true'
+           | 'unknown'
+           | 'null'
+           | ESCAPEDTYPE stringVal '}'
+```
+
+referenced by:
+
+* alterChildOptionPair
+* alterOptionPair
+* optionPair
+* valueExpressionPrimary
+
+**unsignedNumericLiteral:**
+
+![unsignedNumericLiteral](../../public/img/ebnf/unsignedNumericLiteral.svg)
+
+```
+unsignedNumericLiteral
+         ::= UNSIGNEDINTEGER
+           | FLOATVAL
+           | DECIMALVAL
+```
+
+referenced by:
+
+* alterChildOptionPair
+* alterOptionPair
+* optionPair
+* valueExpressionPrimary
+
+**parseMetadata:**
+
+![parseMetadata](../../public/img/ebnf/parseMetadata.svg)
+
+```
+parseMetadata
+         ::= ddlStmt? ( ';' ddlStmt? )* EOF
+```
+
+**ddlStmt:**
+
+![ddlStmt](../../public/img/ebnf/ddlStmt.svg)
+
+```
+ddlStmt  ::= createDDLProcedure* ( createTable ( createTable | createDDLProcedure )? | createNameSpace | alterStatement | createTrigger | createDomain | createServer | createRole | dropRole | grant | revokeGrant | createPolicy | dropPolicy | dropServer | dropTableView | importSchema | importDatabase | createDatabase | useDatabase | dropSchema | useSchema | createSchema | createDDLProcedure | createDataWrapper | dropDataWrapper | dropProcedure )
+```
+
+referenced by:
+
+* parseMetadata
+
+**createNameSpace:**
+
+![createNameSpace](../../public/img/ebnf/createNameSpace.svg)
+
+```
+createNameSpace
+         ::= 'set' 'namespace' stringVal 'as' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**createDatabase:**
+
+![createDatabase](../../public/img/ebnf/createDatabase.svg)
+
+```
+createDatabase
+         ::= 'create' 'database' id ( 'version' stringVal )? optionsClause?
+```
+
+referenced by:
+
+* ddlStmt
+
+**useDatabase:**
+
+![useDatabase](../../public/img/ebnf/useDatabase.svg)
+
+```
+useDatabase
+         ::= 'use' 'database' id ( 'version' stringVal )?
+```
+
+referenced by:
+
+* ddlStmt
+
+**createSchema:**
+
+![createSchema](../../public/img/ebnf/createSchema.svg)
+
+```
+createSchema
+         ::= 'create' ( 'virtual' | 'foreign' )? 'schema' id ( 'server' identifierList )? optionsClause?
+```
+
+referenced by:
+
+* ddlStmt
+
+**dropSchema:**
+
+![dropSchema](../../public/img/ebnf/dropSchema.svg)
+
+```
+dropSchema
+         ::= 'drop' ( 'virtual' | 'foreign' )? 'schema' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**useSchema:**
+
+![useSchema](../../public/img/ebnf/useSchema.svg)
+
+```
+useSchema
+         ::= 'set' 'schema' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**createDomain:**
+
+![createDomain](../../public/img/ebnf/createDomain.svg)
+
+```
+createDomain
+         ::= 'create' 'domain' ( ID | basicNonReserved ) 'as'? parseDataType ( 'not' 'null' )?
+```
+
+referenced by:
+
+* ddlStmt
+
+**createDataWrapper:**
+
+![createDataWrapper](../../public/img/ebnf/createDataWrapper.svg)
+
+```
+createDataWrapper
+         ::= 'create' 'foreign' ( 'data' 'wrapper' | 'translator' ) unqualifiedId ( 'type' id optionsClause? )?
+```
+
+referenced by:
+
+* ddlStmt
+
+**dropDataWrapper:**
+
+![dropDataWrapper](../../public/img/ebnf/dropDataWrapper.svg)
+
+```
+dropDataWrapper
+         ::= 'drop' 'foreign' ( 'data' 'wrapper' | 'translator' ) id
+```
+
+referenced by:
+
+* ddlStmt
+
+**createRole:**
+
+![createRole](../../public/img/ebnf/createRole.svg)
+
+```
+createRole
+         ::= 'create' 'role' unqualifiedId ( 'with' readWith )?
+```
+
+referenced by:
+
+* ddlStmt
+
+**readWith:**
+
+![readWith](../../public/img/ebnf/readWith.svg)
+
+```
+readWith ::= 'any' 'authenticated'
+           | ( 'jaas' | 'foreign' ) 'role' identifierList
+```
+
+referenced by:
+
+* createRole
+
+**dropRole:**
+
+![dropRole](../../public/img/ebnf/dropRole.svg)
+
+```
+dropRole ::= 'drop' 'role' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**createPolicy:**
+
+![createPolicy](../../public/img/ebnf/createPolicy.svg)
+
+```
+createPolicy
+         ::= 'create' 'policy' id 'on' ( id ( 'for' ( 'all' | ( 'select' | 'insert' | 'update' | 'delete' ) ( ',' ( 'select'
+                  | 'insert' | 'update' | 'delete' ) )* ) )? | 'procedure' id ( 'for' 'all' )? ) 'to' id 'using' '(' criteria ')'
+```
+
+referenced by:
+
+* ddlStmt
+
+**dropPolicy:**
+
+![dropPolicy](../../public/img/ebnf/dropPolicy.svg)
+
+```
+dropPolicy
+         ::= 'drop' 'policy' id 'on' 'procedure'? id 'to' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**grant:**
+
+![grant](../../public/img/ebnf/grant.svg)
+
+```
+grant    ::= 'grant' ( ( readGrantTypes ( ',' readGrantTypes )* )? 'on' ( ( 'table' | 'procedure' ) id ( 'condition' ( 'not'? 'constraint' )? stringVal )? | ( 'function' | 'schema' ) id | 'column' id ( 'mask' ( 'order' intVal )? stringVal )? ( 'condition' ( criteria | stringVal ) )? ) | 'all' 'privileges' | 'temporary' 'table' | 'usage' 'on' 'language' id ) 'to' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**revokeGrant:**
+
+![revokeGrant](../../public/img/ebnf/revokeGrant.svg)
+
+```
+revokeGrant
+         ::= 'REVOKE' ( ( readGrantTypes ( ',' readGrantTypes )* )? 'on' ( ( 'table' | 'procedure' ) id 'condition'? | ( 'function' | 'schema' ) id | 'column' id 'mask'? ) | 'all' 'privileges' | 'temporary' 'table' | 'usage' 'on' 'language' id ) 'from' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**createServer:**
+
+![createServer](../../public/img/ebnf/createServer.svg)
+
+```
+createServer
+         ::= 'create' 'server' unqualifiedId ( 'type' stringVal )? ( 'version' stringVal )? 'foreign' ( 'data' 'wrapper' | 'translator' ) unqualifiedId optionsClause?
+```
+
+referenced by:
+
+* ddlStmt
+
+**dropServer:**
+
+![dropServer](../../public/img/ebnf/dropServer.svg)
+
+```
+dropServer
+         ::= 'drop' 'server' id
+```
+
+referenced by:
+
+* ddlStmt
+
+**createDDLProcedure:**
+
+![createDDLProcedure](../../public/img/ebnf/createDDLProcedure.svg)
+
+```
+createDDLProcedure
+         ::= 'create' ( 'virtual' | 'foreign' )? ( 'procedure' | 'function' ) unqualifiedId '(' ( procedureParameter ( ',' procedureParameter )* )? ')' ( 'returns' optionsClause? ( 'table'? '(' procedureRsColumn ( ',' procedureRsColumn )* ')' | parseDataType ) )? optionsClause? ( 'as' statement )?
+```
+
+referenced by:
+
+* ddlStmt
+
+**dropProcedure:**
+
+![dropProcedure](../../public/img/ebnf/dropProcedure.svg)
+
+```
+dropProcedure
+         ::= 'drop' ( 'virtual' | 'foreign' )? ( 'procedure' | 'function' ) id
+```
+
+referenced by:
+
+* ddlStmt
+
+**procedureParameter:**
+
+![procedureParameter](../../public/img/ebnf/procedureParameter.svg)
+
+```
+procedureParameter
+         ::= ( 'in' | 'out' | 'inout' | 'variadic' )? id parseDataType ( 'not' 'null' )? 'result'? ( 'default' expression )? optionsClause?
+```
+
+referenced by:
+
+* createDDLProcedure
+
+**procedureRsColumn:**
+
+![procedureRsColumn](../../public/img/ebnf/procedureRsColumn.svg)
+
+```
+procedureRsColumn
+         ::= id parseDataType ( 'not' 'null' )? optionsClause?
+```
+
+referenced by:
+
+* createDDLProcedure
+
+**createTable:**
+
+![createTable](../../public/img/ebnf/createTable.svg)
+
+```
+createTable
+         ::= 'create' ( createView | createForeignOrGloablTable )
+```
+
+referenced by:
+
+* ddlStmt
+
+**createForeignOrGloablTable:**
+
+![createForeignOrGloablTable](../../public/img/ebnf/createForeignOrGloablTable.svg)
+
+```
+createForeignOrGloablTable
+         ::= ( 'foreign' | 'global' 'temporary' ) 'table' unqualifiedId createTableBody
+```
+
+referenced by:
+
+* createTable
+
+**createView:**
+
+![createView](../../public/img/ebnf/createView.svg)
+
+```
+createView
+         ::= 'virtual'? 'view' unqualifiedId ( createViewBody | optionsClause )? 'as' queryExpression
+```
+
+referenced by:
+
+* createTable
+
+**dropTableView:**
+
+![dropTableView](../../public/img/ebnf/dropTableView.svg)
+
+```
+dropTableView
+         ::= 'drop' ( ( 'foreign' | 'global' 'temporary' ) 'table' | 'virtual'? 'view'
+                  ) id
+```
+
+referenced by:
+
+* ddlStmt
+
+**createForeignTempTable:**
+
+![createForeignTempTable](../../public/img/ebnf/createForeignTempTable.svg)
+
+```
+createForeignTempTable
+         ::= 'create' 'local'? 'foreign' 'temporary' 'table' unqualifiedId createTableBody 'on' id
+```
+
+referenced by:
+
+* userCommand
+
+**createTableBody:**
+
+![createTableBody](../../public/img/ebnf/createTableBody.svg)
+
+```
+createTableBody
+         ::= '(' createColumn ( ',' ( tableConstraint | createColumn ) )* ')' optionsClause?
+```
+
+referenced by:
+
+* createForeignOrGloablTable
+* createForeignTempTable
+
+**createViewBody:**
+
+![createViewBody](../../public/img/ebnf/createViewBody.svg)
+
+```
+createViewBody
+         ::= '(' createViewColumn ( ',' ( tableConstraint | createViewColumn ) )* ')' optionsClause?
+```
+
+referenced by:
+
+* createView
+
+**tableConstraint:**
+
+![tableConstraint](../../public/img/ebnf/tableConstraint.svg)
+
+```
+tableConstraint
+         ::= ( 'constraint' id )? ( primaryKey | constraint | foreignKey ) optionsClause?
+```
+
+referenced by:
+
+* alterAddConstraint
+* createTableBody
+* createViewBody
+
+**foreignKey:**
+
+![foreignKey](../../public/img/ebnf/foreignKey.svg)
+
+```
+foreignKey
+         ::= 'foreign' 'key' columnList 'REFERENCES' id columnList?
+```
+
+referenced by:
+
+* tableConstraint
+
+**primaryKey:**
+
+![primaryKey](../../public/img/ebnf/primaryKey.svg)
+
+```
+primaryKey
+         ::= 'primary' 'key' columnList
+```
+
+referenced by:
+
+* tableConstraint
+
+**constraint:**
+
+![constraint](../../public/img/ebnf/constraint.svg)
+
+```
+constraint
+         ::= ( 'unique' | 'accesspattern' ) columnList
+           | 'index' '(' expressionList ')'
+```
+
+referenced by:
+
+* tableConstraint
+
+**columnList:**
+
+![columnList](../../public/img/ebnf/columnList.svg)
+
+```
+columnList
+         ::= '(' id ( ',' id )* ')'
+```
+
+referenced by:
+
+* constraint
+* createTempTable
+* foreignKey
+* insert
+* primaryKey
+* withListElement
+
+**createColumn:**
+
+![createColumn](../../public/img/ebnf/createColumn.svg)
+
+```
+createColumn
+         ::= id ( 'serial' | parseDataType ( 'not' 'null' )? 'auto_increment'? ) postCreateColumn
+```
+
+referenced by:
+
+* alterAddColumn
+* createTableBody
+
+**createViewColumn:**
+
+![createViewColumn](../../public/img/ebnf/createViewColumn.svg)
+
+```
+createViewColumn
+         ::= id ( 'serial' | parseDataType ( 'not' 'null' )? 'auto_increment'? )? postCreateColumn
+```
+
+referenced by:
+
+* createViewBody
+
+**postCreateColumn:**
+
+![postCreateColumn](../../public/img/ebnf/postCreateColumn.svg)
+
+```
+postCreateColumn
+         ::= inlineConstraint? ( 'default' expression )? optionsClause?
+```
+
+referenced by:
+
+* createColumn
+* createViewColumn
+
+**inlineConstraint:**
+
+![inlineConstraint](../../public/img/ebnf/inlineConstraint.svg)
+
+```
+inlineConstraint
+         ::= 'primary' 'key'
+           | 'unique'
+           | 'index'
+```
+
+referenced by:
+
+* postCreateColumn
+
+**optionsClause:**
+
+![optionsClause](../../public/img/ebnf/optionsClause.svg)
+
+```
+optionsClause
+         ::= 'options' '(' optionPair ( ',' optionPair )* ')'
+```
+
+referenced by:
+
+* createDDLProcedure
+* createDataWrapper
+* createDatabase
+* createSchema
+* createServer
+* createTableBody
+* createView
+* createViewBody
+* importSchema
+* postCreateColumn
+* procedureParameter
+* procedureRsColumn
+* tableConstraint
+
+**optionPair:**
+
+![optionPair](../../public/img/ebnf/optionPair.svg)
+
+```
+optionPair
+         ::= id ( nonNumericLiteral | plusMinus? unsignedNumericLiteral )
+```
+
+referenced by:
+
+* optionsClause
+
+**alterOptionPair:**
+
+![alterOptionPair](../../public/img/ebnf/alterOptionPair.svg)
+
+```
+alterOptionPair
+         ::= id ( nonNumericLiteral | plusMinus? unsignedNumericLiteral )
+```
+
+referenced by:
+
+* addSetOption
+
+**alterStatement:**
+
+![alterStatement](../../public/img/ebnf/alterStatement.svg)
+
+```
+alterStatement
+         ::= 'alter' ( alterTable | alterProcedure | alterTrigger | alterServer | alterTranslator | alterDatabase )
+```
+
+referenced by:
+
+* ddlStmt
+
+**alterTable:**
+
+![alterTable](../../public/img/ebnf/alterTable.svg)
+
+```
+alterTable
+         ::= ( 'virtual'? 'view' | 'foreign'? 'table' ) id ( 'as' queryExpression | alterAddColumn | alterAddConstraint | alterOptionsList | alterDropColumn | 'alter' 'column' alterColumn | 'rename' ( alterRenameTable | 'column' alterRenameColumn ) )
+```
+
+referenced by:
+
+* alterStatement
+
+**alterRenameTable:**
+
+![alterRenameTable](../../public/img/ebnf/alterRenameTable.svg)
+
+```
+alterRenameTable
+         ::= 'to' id
+```
+
+referenced by:
+
+* alterTable
+
+**alterAddConstraint:**
+
+![alterAddConstraint](../../public/img/ebnf/alterAddConstraint.svg)
+
+```
+alterAddConstraint
+         ::= 'add' tableConstraint
+```
+
+referenced by:
+
+* alterTable
+
+**alterAddColumn:**
+
+![alterAddColumn](../../public/img/ebnf/alterAddColumn.svg)
+
+```
+alterAddColumn
+         ::= 'add' 'column' createColumn
+```
+
+referenced by:
+
+* alterTable
+
+**alterDropColumn:**
+
+![alterDropColumn](../../public/img/ebnf/alterDropColumn.svg)
+
+```
+alterDropColumn
+         ::= 'drop' 'column' id
+```
+
+referenced by:
+
+* alterTable
+
+**alterColumn:**
+
+![alterColumn](../../public/img/ebnf/alterColumn.svg)
+
+```
+alterColumn
+         ::= id ( 'type' ( 'serial' | parseDataType ( 'not' 'null' )? 'auto_increment'? ) | alterChildOptionsList )
+```
+
+referenced by:
+
+* alterProcedure
+* alterTable
+
+**alterRenameColumn:**
+
+![alterRenameColumn](../../public/img/ebnf/alterRenameColumn.svg)
+
+```
+alterRenameColumn
+         ::= id 'to' id
+```
+
+referenced by:
+
+* alterProcedure
+* alterTable
+
+**alterProcedure:**
+
+![alterProcedure](../../public/img/ebnf/alterProcedure.svg)
+
+```
+alterProcedure
+         ::= ( 'virtual' | 'foreign' )? 'procedure' id ( 'as' statement | alterOptionsList | 'alter' 'parameter' alterColumn | 'rename' 'parameter' alterRenameColumn )
+```
+
+referenced by:
+
+* alterStatement
+
+**alterTrigger:**
+
+![alterTrigger](../../public/img/ebnf/alterTrigger.svg)
+
+```
+alterTrigger
+         ::= 'trigger' 'on' id 'instead' 'of' ( 'insert' | 'update' | 'delete' ) ( 'as' forEachRowTriggerAction | 'enabled' | 'disabled' )
+```
+
+referenced by:
+
+* alterStatement
+
+**alterServer:**
+
+![alterServer](../../public/img/ebnf/alterServer.svg)
+
+```
+alterServer
+         ::= 'server' id alterOptionsList
+```
+
+referenced by:
+
+* alterStatement
+
+**alterTranslator:**
+
+![alterTranslator](../../public/img/ebnf/alterTranslator.svg)
+
+```
+alterTranslator
+         ::= ( 'data' 'wrapper' | 'translator' ) id alterOptionsList
+```
+
+referenced by:
+
+* alterStatement
+
+**alterDatabase:**
+
+![alterDatabase](../../public/img/ebnf/alterDatabase.svg)
+
+```
+alterDatabase
+         ::= 'database' id alterOptionsList
+```
+
+referenced by:
+
+* alterStatement
+
+**alterOptionsList:**
+
+![alterOptionsList](../../public/img/ebnf/alterOptionsList.svg)
+
+```
+alterOptionsList
+         ::= 'options' '(' ( addSetOption | dropOption ) ( ',' ( addSetOption | dropOption ) )* ')'
+```
+
+referenced by:
+
+* alterDatabase
+* alterProcedure
+* alterServer
+* alterTable
+* alterTranslator
+
+**dropOption:**
+
+![dropOption](../../public/img/ebnf/dropOption.svg)
+
+```
+dropOption
+         ::= 'drop' id
+```
+
+referenced by:
+
+* alterOptionsList
+
+**addSetOption:**
+
+![addSetOption](../../public/img/ebnf/addSetOption.svg)
+
+```
+addSetOption
+         ::= ( 'add' | 'set' ) alterOptionPair
+```
+
+referenced by:
+
+* alterOptionsList
+
+**alterChildOptionsList:**
+
+![alterChildOptionsList](../../public/img/ebnf/alterChildOptionsList.svg)
+
+```
+alterChildOptionsList
+         ::= 'options' '(' ( addSetChildOption | dropChildOption ) ( ',' ( addSetChildOption | dropChildOption ) )* ')'
+```
+
+referenced by:
+
+* alterColumn
+
+**dropChildOption:**
+
+![dropChildOption](../../public/img/ebnf/dropChildOption.svg)
+
+```
+dropChildOption
+         ::= 'drop' id
+```
+
+referenced by:
+
+* alterChildOptionsList
+
+**addSetChildOption:**
+
+![addSetChildOption](../../public/img/ebnf/addSetChildOption.svg)
+
+```
+addSetChildOption
+         ::= ( 'add' | 'set' ) alterChildOptionPair
+```
+
+referenced by:
+
+* alterChildOptionsList
+
+**alterChildOptionPair:**
+
+![alterChildOptionPair](../../public/img/ebnf/alterChildOptionPair.svg)
+
+```
+alterChildOptionPair
+         ::= id ( nonNumericLiteral | plusMinus? unsignedNumericLiteral )
+```
+
+referenced by:
+
+* addSetChildOption
+
+**importSchema:**
+
+![importSchema](../../public/img/ebnf/importSchema.svg)
+
+```
+importSchema
+         ::= 'import' ( 'foreign' 'schema' id )? 'from' ( 'server' | 'repository' ) id 'into' id optionsClause?
+```
+
+referenced by:
+
+* ddlStmt
+
+**importDatabase:**
+
+![importDatabase](../../public/img/ebnf/importDatabase.svg)
+
+```
+importDatabase
+         ::= 'import' 'database' id 'version' stringVal ( 'with' 'access' 'control' )?
+```
+
+referenced by:
+
+* ddlStmt
+
+**identifierList:**
+
+![identifierList](../../public/img/ebnf/identifierList.svg)
+
+```
+identifierList
+         ::= id ( ',' id )*
+```
+
+referenced by:
+
+* createSchema
+* readWith
+
+**readGrantTypes:**
+
+![readGrantTypes](../../public/img/ebnf/readGrantTypes.svg)
+
+```
+readGrantTypes
+         ::= 'select'
+           | 'insert'
+           | 'update'
+           | 'delete'
+           | 'execute'
+           | 'alter'
+           | 'drop'
+```
+
+referenced by:
+
+* grant
+* revokeGrant
+
+**LINE_COMMENT:**
+
+![LINE_COMMENT](../../public/img/ebnf/LINE_COMMENT.svg)
+
+```
+LINE_COMMENT
+         ::= '--' [^#xD#xA]*
+```
+
+**ALL_IN_GROUP:**
+
+![ALL_IN_GROUP](../../public/img/ebnf/ALL_IN_GROUP.svg)
+
+```
+ALL_IN_GROUP
+         ::= ID '.' '*'
+```
+
+referenced by:
+
+* allInGroupSymbol
+
+**ID:**
+
+![ID](../../public/img/ebnf/ID.svg)
+
+```
+ID       ::= QUOTED_ID ( '.' QUOTED_ID )*
+```
+
+referenced by:
+
+* ALL_IN_GROUP
+* createDomain
+* id
+* parseDataType
+* unqualifiedId
+* unsignedValueExpressionPrimary
+
+**QUOTED_ID:**
+
+![QUOTED_ID](../../public/img/ebnf/QUOTED_ID.svg)
+
+```
+QUOTED_ID
+         ::= ID_PART
+           | '"' ( '""' | [^"] )+ '"'
+```
+
+referenced by:
+
+* ID
+
+**ID_PART:**
+
+![ID_PART](../../public/img/ebnf/ID_PART.svg)
+
+```
+ID_PART  ::= ( '_' | '@' | '#' | LETTER ) ( LETTER | '_' | DIGIT )*
+```
+
+referenced by:
+
+* QUOTED_ID
+
+**ESCAPEDFUNCTION:**
+
+![ESCAPEDFUNCTION](../../public/img/ebnf/ESCAPEDFUNCTION.svg)
+
+```
+ESCAPEDFUNCTION
+         ::= '{' 'fn'
+```
+
+referenced by:
+
+* unsignedValueExpressionPrimary
+
+**ESCAPEDJOIN:**
+
+![ESCAPEDJOIN](../../public/img/ebnf/ESCAPEDJOIN.svg)
+
+```
+ESCAPEDJOIN
+         ::= '{' 'oj'
+```
+
+referenced by:
+
+* tableReference
+
+**ESCAPEDTYPE:**
+
+![ESCAPEDTYPE](../../public/img/ebnf/ESCAPEDTYPE.svg)
+
+```
+ESCAPEDTYPE
+         ::= '{' ( 'd' | 't' | 'ts' | 'b' )
+```
+
+referenced by:
+
+* nonNumericLiteral
+
+**DECIMALVAL:**
+
+![DECIMALVAL](../../public/img/ebnf/DECIMALVAL.svg)
+
+```
+DECIMALVAL
+         ::= DIGIT* '.' UNSIGNEDINTEGER
+```
+
+referenced by:
+
+* unsignedNumericLiteral
+
+**FLOATVAL:**
+
+![FLOATVAL](../../public/img/ebnf/FLOATVAL.svg)
+
+```
+FLOATVAL ::= DIGIT '.' UNSIGNEDINTEGER [eE] ( '+' | '-' )? UNSIGNEDINTEGER
+```
+
+referenced by:
+
+* unsignedNumericLiteral
+
+**STRINGVAL:**
+
+![STRINGVAL](../../public/img/ebnf/STRINGVAL.svg)
+
+```
+STRINGVAL
+         ::= ( 'N' | 'E' )? "'" ( "''" | [^'] )* "'"
+```
+
+referenced by:
+
+* stringVal
+
+**LETTER:**
+
+![LETTER](../../public/img/ebnf/LETTER.svg)
+
+```
+LETTER   ::= [a-zA-Z#x153-#xFFFD]
+```
+
+referenced by:
+
+* ID_PART
+
+**DIGIT:**
+
+![DIGIT](../../public/img/ebnf/DIGIT.svg)
+
+```
+DIGIT    ::= [0-9]
+```
+
+referenced by:
+
+* DECIMALVAL
+* FLOATVAL
+* HEXIT
+* ID_PART
+* UNSIGNEDINTEGER
+
+**UNSIGNEDINTEGER:**
+
+![UNSIGNEDINTEGER](../../public/img/ebnf/UNSIGNEDINTEGER.svg)
+
+```
+UNSIGNEDINTEGER
+         ::= DIGIT+
+```
+
+referenced by:
+
+* DECIMALVAL
+* FLOATVAL
+* intVal
+* unsignedNumericLiteral
+
+**BINARYSTRINGVAL:**
+
+![BINARYSTRINGVAL](../../public/img/ebnf/BINARYSTRINGVAL.svg)
+
+```
+BINARYSTRINGVAL
+         ::= 'X'
+           | 'x' "'" ( HEXIT HEXIT )+ "'"
+```
+
+referenced by:
+
+* nonNumericLiteral
+
+**HEXIT:**
+
+![HEXIT](../../public/img/ebnf/HEXIT.svg)
+
+```
+HEXIT    ::= [a-fA-F]
+           | DIGIT
+```
+
+referenced by:
+
+* BINARYSTRINGVAL
+
+**EOF:**
+
+![EOF](../../public/img/ebnf/EOF.svg)
+
+```
+EOF      ::= $
+```
+
+referenced by:
+
+* command
+* parseMetadata
+* procedureBodyCommand

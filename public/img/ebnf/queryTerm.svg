@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="309" height="157">
+   <defs>
+      <style type="text/css">
+    @namespace "http://www.w3.org/2000/svg";
+    .line                 {fill: none; stroke: #332900; stroke-width: 1;}
+    .bold-line            {stroke: #141000; shape-rendering: crispEdges; stroke-width: 2;}
+    .thin-line            {stroke: #1F1800; shape-rendering: crispEdges}
+    .filled               {fill: #332900; stroke: none;}
+    text.terminal         {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #141000;
+                            font-weight: bold;
+                          }
+    text.nonterminal      {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1A1400;
+                            font-weight: normal;
+                          }
+    text.regexp           {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1F1800;
+                            font-weight: normal;
+                          }
+    rect, circle, polygon {fill: #332900; stroke: #332900;}
+    rect.terminal         {fill: #FFDB4D; stroke: #332900; stroke-width: 1;}
+    rect.nonterminal      {fill: #FFEC9E; stroke: #332900; stroke-width: 1;}
+    rect.text             {fill: none; stroke: none;}
+    polygon.regexp        {fill: #FFF4C7; stroke: #332900; stroke-width: 1;}
+  </style>
+   </defs>
+   <polygon points="9 137 1 133 1 141"/>
+   <polygon points="17 137 9 133 9 141"/>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#queryPrimary"
+      xlink:title="queryPrimary">
+      <rect x="51" y="123" width="104" height="32"/>
+      <rect x="49" y="121" width="104" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="141">queryPrimary</text>
+   </a>
+   <rect x="71" y="35" width="36" height="32" rx="10"/>
+   <rect x="69"
+         y="33"
+         width="36"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="79" y="53">all</text>
+   <rect x="71" y="79" width="70" height="32" rx="10"/>
+   <rect x="69"
+         y="77"
+         width="70"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="79" y="97">distinct</text>
+   <rect x="181" y="3" width="80" height="32" rx="10"/>
+   <rect x="179"
+         y="1"
+         width="80"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="189" y="21">intersect</text>
+   <path class="line"
+         d="m17 137 h2 m20 0 h10 m104 0 h10 m0 0 h106 m-250 0 l20 0 m-1 0 q-9 0 -9 -10 l0 -100 q0 -10 10 -10 m230 120 l20 0 m-20 0 q10 0 10 -10 l0 -100 q0 -10 -10 -10 m-210 0 h10 m0 0 h80 m-110 0 h20 m90 0 h20 m-130 0 q10 0 10 10 m110 0 q0 -10 10 -10 m-120 10 v12 m110 0 v-12 m-110 12 q0 10 10 10 m90 0 q10 0 10 -10 m-100 10 h10 m36 0 h10 m0 0 h34 m-100 -10 v20 m110 0 v-20 m-110 20 v24 m110 0 v-24 m-110 24 q0 10 10 10 m90 0 q10 0 10 -10 m-100 10 h10 m70 0 h10 m20 -76 h10 m80 0 h10 m23 120 h-3"/>
+   <polygon points="299 137 307 133 307 141"/>
+   <polygon points="299 137 291 133 291 141"/>
+</svg>

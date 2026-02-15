@@ -10,5 +10,6 @@ export default {
   "ep": "Endpoints",
   "properties": "",
   "tx": "Transactions",
+  "ebnf": "Query Grammar (EBNF)",
   "ss": "System Schemas"
 }

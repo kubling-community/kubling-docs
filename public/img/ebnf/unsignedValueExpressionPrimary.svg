@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="379" height="433">
+   <defs>
+      <style type="text/css">
+    @namespace "http://www.w3.org/2000/svg";
+    .line                 {fill: none; stroke: #332900; stroke-width: 1;}
+    .bold-line            {stroke: #141000; shape-rendering: crispEdges; stroke-width: 2;}
+    .thin-line            {stroke: #1F1800; shape-rendering: crispEdges}
+    .filled               {fill: #332900; stroke: none;}
+    text.terminal         {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #141000;
+                            font-weight: bold;
+                          }
+    text.nonterminal      {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1A1400;
+                            font-weight: normal;
+                          }
+    text.regexp           {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1F1800;
+                            font-weight: normal;
+                          }
+    rect, circle, polygon {fill: #332900; stroke: #332900;}
+    rect.terminal         {fill: #FFDB4D; stroke: #332900; stroke-width: 1;}
+    rect.nonterminal      {fill: #FFEC9E; stroke: #332900; stroke-width: 1;}
+    rect.text             {fill: none; stroke: none;}
+    polygon.regexp        {fill: #FFF4C7; stroke: #332900; stroke-width: 1;}
+  </style>
+   </defs>
+   <polygon points="9 17 1 13 1 21"/>
+   <polygon points="17 17 9 13 9 21"/>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#parameterReference"
+      xlink:title="parameterReference">
+      <rect x="51" y="3" width="150" height="32"/>
+      <rect x="49" y="1" width="150" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="21">parameterReference</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#ESCAPEDFUNCTION"
+      xlink:title="ESCAPEDFUNCTION">
+      <rect x="51" y="47" width="142" height="32"/>
+      <rect x="49" y="45" width="142" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="65">ESCAPEDFUNCTION</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#function"
+      xlink:title="function">
+      <rect x="213" y="47" width="70" height="32"/>
+      <rect x="211" y="45" width="70" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="221" y="65">function</text>
+   </a>
+   <rect x="303" y="47" width="28" height="32" rx="10"/>
+   <rect x="301"
+         y="45"
+         width="28"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="311" y="65">}</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#unescapedFunction"
+      xlink:title="unescapedFunction">
+      <rect x="51" y="91" width="142" height="32"/>
+      <rect x="49" y="89" width="142" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="109">unescapedFunction</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#ID"
+      xlink:title="ID">
+      <rect x="51" y="135" width="34" height="32"/>
+      <rect x="49" y="133" width="34" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="153">ID</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#nonReserved"
+      xlink:title="nonReserved">
+      <rect x="51" y="179" width="104" height="32"/>
+      <rect x="49" y="177" width="104" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="197">nonReserved</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#subquery"
+      xlink:title="subquery">
+      <rect x="51" y="223" width="78" height="32"/>
+      <rect x="49" y="221" width="78" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="241">subquery</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#nestedExpression"
+      xlink:title="nestedExpression">
+      <rect x="51" y="267" width="134" height="32"/>
+      <rect x="49" y="265" width="134" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="285">nestedExpression</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#arrayExpression"
+      xlink:title="arrayExpression">
+      <rect x="51" y="311" width="122" height="32"/>
+      <rect x="49" y="309" width="122" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="329">arrayExpression</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#searchedCaseExpression"
+      xlink:title="searchedCaseExpression">
+      <rect x="51" y="355" width="180" height="32"/>
+      <rect x="49" y="353" width="180" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="373">searchedCaseExpression</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#caseExpression"
+      xlink:title="caseExpression">
+      <rect x="51" y="399" width="118" height="32"/>
+      <rect x="49" y="397" width="118" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="417">caseExpression</text>
+   </a>
+   <path class="line"
+         d="m17 17 h2 m20 0 h10 m150 0 h10 m0 0 h130 m-320 0 h20 m300 0 h20 m-340 0 q10 0 10 10 m320 0 q0 -10 10 -10 m-330 10 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m142 0 h10 m0 0 h10 m70 0 h10 m0 0 h10 m28 0 h10 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m142 0 h10 m0 0 h138 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m34 0 h10 m0 0 h246 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m104 0 h10 m0 0 h176 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m78 0 h10 m0 0 h202 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m134 0 h10 m0 0 h146 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m122 0 h10 m0 0 h158 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m180 0 h10 m0 0 h100 m-310 -10 v20 m320 0 v-20 m-320 20 v24 m320 0 v-24 m-320 24 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m118 0 h10 m0 0 h162 m23 -396 h-3"/>
+   <polygon points="369 17 377 13 377 21"/>
+   <polygon points="369 17 361 13 361 21"/>
+</svg>

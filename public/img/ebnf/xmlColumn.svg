@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="741" height="113">
+   <defs>
+      <style type="text/css">
+    @namespace "http://www.w3.org/2000/svg";
+    .line                 {fill: none; stroke: #332900; stroke-width: 1;}
+    .bold-line            {stroke: #141000; shape-rendering: crispEdges; stroke-width: 2;}
+    .thin-line            {stroke: #1F1800; shape-rendering: crispEdges}
+    .filled               {fill: #332900; stroke: none;}
+    text.terminal         {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #141000;
+                            font-weight: bold;
+                          }
+    text.nonterminal      {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1A1400;
+                            font-weight: normal;
+                          }
+    text.regexp           {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1F1800;
+                            font-weight: normal;
+                          }
+    rect, circle, polygon {fill: #332900; stroke: #332900;}
+    rect.terminal         {fill: #FFDB4D; stroke: #332900; stroke-width: 1;}
+    rect.nonterminal      {fill: #FFEC9E; stroke: #332900; stroke-width: 1;}
+    rect.text             {fill: none; stroke: none;}
+    polygon.regexp        {fill: #FFF4C7; stroke: #332900; stroke-width: 1;}
+  </style>
+   </defs>
+   <polygon points="9 17 1 13 1 21"/>
+   <polygon points="17 17 9 13 9 21"/>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#id"
+      xlink:title="id">
+      <rect x="31" y="3" width="30" height="32"/>
+      <rect x="29" y="1" width="30" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="39" y="21">id</text>
+   </a>
+   <rect x="101" y="3" width="38" height="32" rx="10"/>
+   <rect x="99"
+         y="1"
+         width="38"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="109" y="21">for</text>
+   <rect x="159" y="3" width="84" height="32" rx="10"/>
+   <rect x="157"
+         y="1"
+         width="84"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="167" y="21">ordinality</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#parseBasicDataType"
+      xlink:title="parseBasicDataType">
+      <rect x="101" y="47" width="148" height="32"/>
+      <rect x="99" y="45" width="148" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="109" y="65">parseBasicDataType</text>
+   </a>
+   <rect x="289" y="79" width="68" height="32" rx="10"/>
+   <rect x="287"
+         y="77"
+         width="68"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="297" y="97">default</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#expression"
+      xlink:title="expression">
+      <rect x="377" y="79" width="90" height="32"/>
+      <rect x="375" y="77" width="90" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="385" y="97">expression</text>
+   </a>
+   <rect x="527" y="79" width="50" height="32" rx="10"/>
+   <rect x="525"
+         y="77"
+         width="50"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="535" y="97">path</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#stringVal"
+      xlink:title="stringVal">
+      <rect x="597" y="79" width="76" height="32"/>
+      <rect x="595" y="77" width="76" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="605" y="97">stringVal</text>
+   </a>
+   <path class="line"
+         d="m17 17 h2 m0 0 h10 m30 0 h10 m20 0 h10 m38 0 h10 m0 0 h10 m84 0 h10 m0 0 h450 m-632 0 h20 m612 0 h20 m-652 0 q10 0 10 10 m632 0 q0 -10 10 -10 m-642 10 v24 m632 0 v-24 m-632 24 q0 10 10 10 m612 0 q10 0 10 -10 m-622 10 h10 m148 0 h10 m20 0 h10 m0 0 h188 m-218 0 h20 m198 0 h20 m-238 0 q10 0 10 10 m218 0 q0 -10 10 -10 m-228 10 v12 m218 0 v-12 m-218 12 q0 10 10 10 m198 0 q10 0 10 -10 m-208 10 h10 m68 0 h10 m0 0 h10 m90 0 h10 m40 -32 h10 m0 0 h156 m-186 0 h20 m166 0 h20 m-206 0 q10 0 10 10 m186 0 q0 -10 10 -10 m-196 10 v12 m186 0 v-12 m-186 12 q0 10 10 10 m166 0 q10 0 10 -10 m-176 10 h10 m50 0 h10 m0 0 h10 m76 0 h10 m43 -76 h-3"/>
+   <polygon points="731 17 739 13 739 21"/>
+   <polygon points="731 17 723 13 723 21"/>
+</svg>

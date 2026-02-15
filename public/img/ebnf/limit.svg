@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="507" height="245">
+   <defs>
+      <style type="text/css">
+    @namespace "http://www.w3.org/2000/svg";
+    .line                 {fill: none; stroke: #332900; stroke-width: 1;}
+    .bold-line            {stroke: #141000; shape-rendering: crispEdges; stroke-width: 2;}
+    .thin-line            {stroke: #1F1800; shape-rendering: crispEdges}
+    .filled               {fill: #332900; stroke: none;}
+    text.terminal         {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #141000;
+                            font-weight: bold;
+                          }
+    text.nonterminal      {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1A1400;
+                            font-weight: normal;
+                          }
+    text.regexp           {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1F1800;
+                            font-weight: normal;
+                          }
+    rect, circle, polygon {fill: #332900; stroke: #332900;}
+    rect.terminal         {fill: #FFDB4D; stroke: #332900; stroke-width: 1;}
+    rect.nonterminal      {fill: #FFEC9E; stroke: #332900; stroke-width: 1;}
+    rect.text             {fill: none; stroke: none;}
+    polygon.regexp        {fill: #FFF4C7; stroke: #332900; stroke-width: 1;}
+  </style>
+   </defs>
+   <polygon points="9 17 1 13 1 21"/>
+   <polygon points="17 17 9 13 9 21"/>
+   <rect x="51" y="3" width="50" height="32" rx="10"/>
+   <rect x="49"
+         y="1"
+         width="50"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="59" y="21">limit</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#intParam"
+      xlink:title="intParam">
+      <rect x="121" y="3" width="76" height="32"/>
+      <rect x="119" y="1" width="76" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="129" y="21">intParam</text>
+   </a>
+   <rect x="257" y="35" width="24" height="32" rx="10"/>
+   <rect x="255"
+         y="33"
+         width="24"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="265" y="53">,</text>
+   <rect x="257" y="79" width="58" height="32" rx="10"/>
+   <rect x="255"
+         y="77"
+         width="58"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="265" y="97">offset</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#intParam"
+      xlink:title="intParam">
+      <rect x="355" y="35" width="76" height="32"/>
+      <rect x="353" y="33" width="76" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="363" y="53">intParam</text>
+   </a>
+   <rect x="51" y="123" width="58" height="32" rx="10"/>
+   <rect x="49"
+         y="121"
+         width="58"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="59" y="141">offset</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#intParam"
+      xlink:title="intParam">
+      <rect x="129" y="123" width="76" height="32"/>
+      <rect x="127" y="121" width="76" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="137" y="141">intParam</text>
+   </a>
+   <rect x="245" y="123" width="46" height="32" rx="10"/>
+   <rect x="243"
+         y="121"
+         width="46"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="253" y="141">row</text>
+   <rect x="245" y="167" width="52" height="32" rx="10"/>
+   <rect x="243"
+         y="165"
+         width="52"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="253" y="185">rows</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#fetchLimit"
+      xlink:title="fetchLimit">
+      <rect x="357" y="155" width="82" height="32"/>
+      <rect x="355" y="153" width="82" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="365" y="173">fetchLimit</text>
+   </a>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#fetchLimit"
+      xlink:title="fetchLimit">
+      <rect x="51" y="211" width="82" height="32"/>
+      <rect x="49" y="209" width="82" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="59" y="229">fetchLimit</text>
+   </a>
+   <path class="line"
+         d="m17 17 h2 m20 0 h10 m50 0 h10 m0 0 h10 m76 0 h10 m20 0 h10 m0 0 h204 m-234 0 h20 m214 0 h20 m-254 0 q10 0 10 10 m234 0 q0 -10 10 -10 m-244 10 v12 m234 0 v-12 m-234 12 q0 10 10 10 m214 0 q10 0 10 -10 m-204 10 h10 m24 0 h10 m0 0 h34 m-98 0 h20 m78 0 h20 m-118 0 q10 0 10 10 m98 0 q0 -10 10 -10 m-108 10 v24 m98 0 v-24 m-98 24 q0 10 10 10 m78 0 q10 0 10 -10 m-88 10 h10 m58 0 h10 m20 -44 h10 m76 0 h10 m20 -32 h8 m-448 0 h20 m428 0 h20 m-468 0 q10 0 10 10 m448 0 q0 -10 10 -10 m-458 10 v100 m448 0 v-100 m-448 100 q0 10 10 10 m428 0 q10 0 10 -10 m-438 10 h10 m58 0 h10 m0 0 h10 m76 0 h10 m20 0 h10 m46 0 h10 m0 0 h6 m-92 0 h20 m72 0 h20 m-112 0 q10 0 10 10 m92 0 q0 -10 10 -10 m-102 10 v24 m92 0 v-24 m-92 24 q0 10 10 10 m72 0 q10 0 10 -10 m-82 10 h10 m52 0 h10 m40 -44 h10 m0 0 h92 m-122 0 h20 m102 0 h20 m-142 0 q10 0 10 10 m122 0 q0 -10 10 -10 m-132 10 v12 m122 0 v-12 m-122 12 q0 10 10 10 m102 0 q10 0 10 -10 m-112 10 h10 m82 0 h10 m-418 -42 v20 m448 0 v-20 m-448 20 v68 m448 0 v-68 m-448 68 q0 10 10 10 m428 0 q10 0 10 -10 m-438 10 h10 m82 0 h10 m0 0 h326 m23 -208 h-3"/>
+   <polygon points="497 17 505 13 505 21"/>
+   <polygon points="497 17 489 13 489 21"/>
+</svg>

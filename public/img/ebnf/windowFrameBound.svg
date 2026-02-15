@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="379" height="125">
+   <defs>
+      <style type="text/css">
+    @namespace "http://www.w3.org/2000/svg";
+    .line                 {fill: none; stroke: #332900; stroke-width: 1;}
+    .bold-line            {stroke: #141000; shape-rendering: crispEdges; stroke-width: 2;}
+    .thin-line            {stroke: #1F1800; shape-rendering: crispEdges}
+    .filled               {fill: #332900; stroke: none;}
+    text.terminal         {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #141000;
+                            font-weight: bold;
+                          }
+    text.nonterminal      {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1A1400;
+                            font-weight: normal;
+                          }
+    text.regexp           {font-family: Verdana, Sans-serif;
+                            font-size: 12px;
+                            fill: #1F1800;
+                            font-weight: normal;
+                          }
+    rect, circle, polygon {fill: #332900; stroke: #332900;}
+    rect.terminal         {fill: #FFDB4D; stroke: #332900; stroke-width: 1;}
+    rect.nonterminal      {fill: #FFEC9E; stroke: #332900; stroke-width: 1;}
+    rect.text             {fill: none; stroke: none;}
+    polygon.regexp        {fill: #FFF4C7; stroke: #332900; stroke-width: 1;}
+  </style>
+   </defs>
+   <polygon points="9 17 1 13 1 21"/>
+   <polygon points="17 17 9 13 9 21"/>
+   <rect x="71" y="3" width="94" height="32" rx="10"/>
+   <rect x="69"
+         y="1"
+         width="94"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="79" y="21">unbounded</text>
+   <a xmlns:xlink="http://www.w3.org/1999/xlink"
+      xlink:href="#intVal"
+      xlink:title="intVal">
+      <rect x="71" y="47" width="56" height="32"/>
+      <rect x="69" y="45" width="56" height="32" class="nonterminal"/>
+      <text class="nonterminal" x="79" y="65">intVal</text>
+   </a>
+   <rect x="225" y="3" width="82" height="32" rx="10"/>
+   <rect x="223"
+         y="1"
+         width="82"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="233" y="21">following</text>
+   <rect x="225" y="47" width="86" height="32" rx="10"/>
+   <rect x="223"
+         y="45"
+         width="86"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="233" y="65">preceding</text>
+   <rect x="51" y="91" width="68" height="32" rx="10"/>
+   <rect x="49"
+         y="89"
+         width="68"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="59" y="109">current</text>
+   <rect x="139" y="91" width="46" height="32" rx="10"/>
+   <rect x="137"
+         y="89"
+         width="46"
+         height="32"
+         class="terminal"
+         rx="10"/>
+   <text class="terminal" x="147" y="109">row</text>
+   <path class="line"
+         d="m17 17 h2 m40 0 h10 m94 0 h10 m-134 0 h20 m114 0 h20 m-154 0 q10 0 10 10 m134 0 q0 -10 10 -10 m-144 10 v24 m134 0 v-24 m-134 24 q0 10 10 10 m114 0 q10 0 10 -10 m-124 10 h10 m56 0 h10 m0 0 h38 m40 -44 h10 m82 0 h10 m0 0 h4 m-126 0 h20 m106 0 h20 m-146 0 q10 0 10 10 m126 0 q0 -10 10 -10 m-136 10 v24 m126 0 v-24 m-126 24 q0 10 10 10 m106 0 q10 0 10 -10 m-116 10 h10 m86 0 h10 m-300 -44 h20 m300 0 h20 m-340 0 q10 0 10 10 m320 0 q0 -10 10 -10 m-330 10 v68 m320 0 v-68 m-320 68 q0 10 10 10 m300 0 q10 0 10 -10 m-310 10 h10 m68 0 h10 m0 0 h10 m46 0 h10 m0 0 h146 m23 -88 h-3"/>
+   <polygon points="369 17 377 13 377 21"/>
+   <polygon points="369 17 361 13 361 21"/>
+</svg>
