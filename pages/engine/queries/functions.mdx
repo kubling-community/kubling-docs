@@ -404,6 +404,15 @@ SELECT
 | `UNESCAPE(x)`                                    | Unescapes characters in `x`, including Unicode and octal sequences.                                                                                      | `string`, returns `string`                       |
 | `REPLACE(x, y, z)`                               | Replaces all occurrences of `y` in `x` with `z`.                                                                                                         | `string`, `string`, `string`, returns `string`   |
 | `REGEXP_REPLACE(str, pattern, sub [, flags])`    | Replaces one or more occurrences of `pattern` in `str` with `sub`. Supports flags for global (`g`), multiline (`m`), and case-insensitive (`i`) matches. | `string`, `string`, `string`, returns `string`   |
+| `TOBASE64(str)`    |  |    |
+| `TOBASE64(str, encoding)`    |  |    |
+| `FROMBASE64(str)`    |  |    |
+| `FROMBASE64(str, encoding)`    |  |    |
+| `COMPRESS(str)`    | Compresses a string using the Deflate algorithm with UTF-8 encoding. Returns the compressed output as a Base64-encoded clob.  |    |
+| `COMPRESS(str, charset)`    | Compresses a string using the Deflate algorithm with UTF-8 encoding. Returns the compressed output as a Base64-encoded clob.  |    |
+| `DECOMPRESS(str)`    | Decompresses (inflates) a Base64-encoded string using the Deflate algorithm, assuming UTF-8 as the charset. Returns the decompressed content as clob.  |    |
+| `DECOMPRESS(str, charset)`    |   |    |
+| `TOKENIZE(str, charset)`    | Extracts tokens of a string, using the specified delimiter, and returns an array.  |    |
 
 #### Examples
 
@@ -433,10 +442,14 @@ SELECT
 
 ### Type Conversion Functions
 
-| **Function**       | **Description**                                                                       | **Datatype Constraint** |
-|--------------------|---------------------------------------------------------------------------------------|-------------------------|
-| `CONVERT(x, type)` | Converts `x` to the specified `type`. The target `type` must be a standard data type. | `any`, returns `type`   |
-| `CAST(x AS type)`  | Identical to `CONVERT`. Converts `x` to the specified `type`.                         | `any`, returns `type`   |
+| **Function**                            | **Description**                                                                                                       | **Datatype Constraint** |
+|-----------------------------------------|-----------------------------------------------------------------------------------------------------------------------|-------------------------|
+| `CONVERT(x, type)`                      | Converts `x` to the specified `type`. The target `type` must be a standard data type.                                 | `any`, returns `type`   |
+| `CAST(x AS type)`                       | Identical to `CONVERT`. Converts `x` to the specified `type`.                                                         | `any`, returns `type`   |
+| `TO_CHARS(blob, encoding)`              | Converts a `BLOB` value into a character representation using the specified encoding.                                 | `blob`, returns `clob`  |
+| `TO_CHARS(blob, encoding, well_formed)` | Same as `TO_CHARS(blob, encoding)`, but allows control over malformed or invalid byte sequences during decoding.      | `blob`, returns `clob`  |
+| `TO_BYTES(clob, encoding)`              | Converts a `CLOB` value into a binary representation using the specified encoding.                                    | `clob`, returns `blob`  |
+| `TO_BYTES(clob, encoding, well_formed)` | Same as `TO_BYTES(clob, encoding)`, but allows control over malformed or invalid character sequences during encoding. | `clob`, returns `blob`  |
 
 <Callout>
   Options specified on the target type, such as length, precision, scale, etc., are effectively ignored - the engine simply converts from one object type to another.
@@ -600,87 +613,6 @@ SELECT DECODEINTEGER(priority, '1:Low,2:Medium,3:High', ':', '0') AS priority_la
 FROM TASKS;
 ```
 
-### Document Functions <Tag description={"v24.5.3+"} />
-
-| **Function**                       | **Description**                                                                                                                                                                                                                                                                     |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `jsonParse(value, skipValidation)` | Parses a `value` (`CLOB` or `BLOB`) and returns a `json` object. `skipValidation` indicates whether pre-parsing validation of `value` should be skipped.                                                                                                                            |
-| `jsonObject(c1, c2, ..., cn)`      | Returns a `json` object based on a list of columns. The resulting object contains fields in the form of `column_name: column_value`.                                                                                                                                                |
-| `yamlAsJSON(value)`                | Converts `value` (`CLOB`), which is expected to be a valid YAML document, into a `json` object.                                                                                                                                                                                     |
-| `jsonPath(value, path)`            | Evaluates a [JsonPath](https://datatracker.ietf.org/doc/rfc9535/) expression on `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed. |
-| `jsonJq(value, query)`             | Applies a [jq](https://jqlang.github.io/jq/) query to `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed.                           |
-| `jsonPathAsString(value, path)`    | Same as `jsonPath` but returns a `string` instead of a `json` object.                                                                                                                                                                                                               |
-| `jsonJqAsString(value, query)`     | Same as `jsonJq` but returns a `string` instead of a `json` object.                                                                                                                                                                                                                 |
-
-#### Examples
-
-**Parsing JSON Documents**
-
-```sql
-SELECT jsonParse(config_json, true) AS parsed_config
-FROM CONFIG_TABLE;
-```
-
----
-
-**Extracting Fields with JsonPath**
-
-```sql
-SELECT jsonObject(metadata__name, spec__providerID) AS node_summary
-FROM NODE;
-```
-
-(assuming `metadata__name` and `spec__providerID` are string columns)
-
----
-
-**Using JSON Objects Directly**
-
-```sql
-SELECT jsonObject(metadata__labels, status__nodeInfo) AS node_summary
-FROM NODE;
-```
-
-Expected output (assuming `metadata__labels` and `status__nodeInfo` are json columns):
-
-```
-| node_summary                         |
-|--------------------------------------|
-| {"metadata__name":"kbl-dev-master-1","status__conditions":[ {
-  "lastHeartbeatTime" : "2025-05-18T14:30:15Z",
-  "lastTransitionTime" : "2025-03-12T14:07:28Z",
-  "message" : "kubelet has sufficient memory available",
-  "reason" : "KubeletHasSufficientMemory",
-  "status" : "False",
-  "type" : "MemoryPressure"
-}, {
-  "lastHeartbeatTime" : "2025-05-18T14:30:15Z",
-  "lastTransitionTime" : "2025-03-12T14:07:28Z",
-  "message" : "kubelet has no disk pressure",
-  "reason" : "KubeletHasNoDiskPressure",
-  "status" : "False",
-  "type" : "DiskPressure"
-} ]} |
-```
-
----
-
-**YAML to JSON Conversion**
-
-```sql
-SELECT yamlAsJSON(manifest_yaml) AS manifest_json
-FROM CONFIG_MAPS;
-```
-
-Expected output (assuming `manifest_yaml` contains valid YAML documents):
-
-```
-| manifest_json   |
-|-----------------|
-| {"key":"value"} |
-| {"foo":"bar"}   |
-```
-
 ### Choice Functions
 
 Choice functions are used to handle null values or to select the first non-null value from a list. They are essential when dealing with incomplete data or when default values are required.
@@ -768,7 +700,25 @@ SELECT
 FROM NODE;
 ```
 
-### Vector Functions <Tag description={"v25.1+"} />
+### Security Functions
+
+| **Function** | **Description** | **Datatype Constraint** |
+|---|---|---|
+| `MD5(str)` | Computes the MD5 hash of the specified plain text string. | `str` is `string`, returns `string` |
+| `MD5(bin)` | Computes the MD5 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
+| `HASH(str)` | Computes the SHA-256 hash of the specified plain text string and returns the result encoded as Base64. | `str` is `string`, returns `string` |
+| `SHA1(str)` | Computes the SHA-1 hash of the specified plain text string. | `str` is `string`, returns `string` |
+| `SHA1(bin)` | Computes the SHA-1 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
+| `SHA2_256(str)` | Computes the SHA-256 hash of the specified plain text string. | `str` is `string`, returns `string` |
+| `SHA2_256(bin)` | Computes the SHA-256 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
+| `SHA2_512(str)` | Computes the SHA-512 hash of the specified plain text string. | `str` is `string`, returns `string` |
+| `SHA2_512(bin)` | Computes the SHA-512 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
+| `AES_ENCRYPT(x, y)` | Encrypts the specified value using the AES algorithm with `AES/CBC/PKCS5Padding` and the provided key. | `x` is `string` or `varbinary`, `y` is `string`, returns `varbinary` |
+| `AES_DECRYPT(x, y)` | Decrypts the specified AES-encrypted binary value using the provided key. | `x` is `varbinary`, `y` is `string`, returns `varbinary` |
+| `X509_CERT_EXP_DAYS(str)` | Returns certificate expiration information, in JSON format, for the specified X509 certificate. | `str` is `string`, returns `json` |
+| `PKCS7_CERT_EXP_DAYS(str)` | Returns certificate expiration information, in JSON format, for the specified PKCS7 certificate. | `str` is `string`, returns `json` |
+
+## Vector Functions <Tag description={"v25.1+"} />
 
 Vector functions are used for mathematical operations on vectors, such as distance calculations and transformations. These are especially useful for machine learning and similarity computations.
 
@@ -859,112 +809,81 @@ Expected output:
 
 ## Document Functions <Tag description={"v24.5.3+"} />
 
-Document functions are essential for working with JSON and YAML data, which is common in Kubernetes objects and other structured documents. They provide a way to parse, query, and transform these formats directly within SQL.
+| **Function**                       | **Description**                                                                                                                                                                                                                                                                     |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `jsonParse(value, skipValidation)` | Parses a `value` (`CLOB` or `BLOB`) and returns a `json` object. `skipValidation` indicates whether pre-parsing validation of `value` should be skipped.                                                                                                                            |
+| `jsonObject(c1, c2, ..., cn)`      | Returns a `json` object based on a list of columns. The resulting object contains fields in the form of `column_name: column_value`.                                                                                                                                                |
+| `yamlAsJSON(value)`                | Converts `value` (`CLOB`), which is expected to be a valid YAML document, into a `json` object.                                                                                                                                                                                     |
+| `jsonPath(value, path)`            | Evaluates a [JsonPath](https://datatracker.ietf.org/doc/rfc9535/) expression on `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed. |
+| `jsonJq(value, query)`             | Applies a [jq](https://jqlang.github.io/jq/) query to `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed.                           |
+| `jsonPathAsString(value, path)`    | Same as `jsonPath` but returns a `string` instead of a `json` object.                                                                                                                                                                                                               |
+| `jsonJqAsString(value, query)`     | Same as `jsonJq` but returns a `string` instead of a `json` object.                                                                                                                                                                                                                 |
+
+#### Examples
+
+**Parsing JSON Documents**
+
+```sql
+SELECT jsonParse(config_json, true) AS parsed_config
+FROM CONFIG_TABLE;
+```
 
 ---
 
-#### `jsonParse(value, skipValidation)`
-
-Parses a `value` (`CLOB` or `BLOB`) into a `json` object. If `skipValidation` is set to `true`, the function skips pre-parsing validation of `value`.
+**Extracting Fields with JsonPath**
 
 ```sql
-SELECT 
-  jsonParse('{"key": "value"}', true) AS parsed_json
-FROM NODE
-LIMIT 1;
+SELECT jsonObject(metadata__name, spec__providerID) AS node_summary
+FROM NODE;
 ```
 
-Expected output:
+(assuming `metadata__name` and `spec__providerID` are string columns)
+
+---
+
+**Using JSON Objects Directly**
+
+```sql
+SELECT jsonObject(metadata__labels, status__nodeInfo) AS node_summary
+FROM NODE;
+```
+
+Expected output (assuming `metadata__labels` and `status__nodeInfo` are json columns):
 
 ```
-| parsed_json     |
+| node_summary                         |
+|--------------------------------------|
+| {"metadata__name":"kbl-dev-master-1","status__conditions":[ {
+  "lastHeartbeatTime" : "2025-05-18T14:30:15Z",
+  "lastTransitionTime" : "2025-03-12T14:07:28Z",
+  "message" : "kubelet has sufficient memory available",
+  "reason" : "KubeletHasSufficientMemory",
+  "status" : "False",
+  "type" : "MemoryPressure"
+}, {
+  "lastHeartbeatTime" : "2025-05-18T14:30:15Z",
+  "lastTransitionTime" : "2025-03-12T14:07:28Z",
+  "message" : "kubelet has no disk pressure",
+  "reason" : "KubeletHasNoDiskPressure",
+  "status" : "False",
+  "type" : "DiskPressure"
+} ]} |
+```
+
+---
+
+**YAML to JSON Conversion**
+
+```sql
+SELECT yamlAsJSON(manifest_yaml) AS manifest_json
+FROM CONFIG_MAPS;
+```
+
+Expected output (assuming `manifest_yaml` contains valid YAML documents):
+
+```
+| manifest_json   |
 |-----------------|
 | {"key":"value"} |
-```
-
----
-
-#### `jsonObject(c1, c2, ..., cn)`
-
-Returns a `json` object based on a list of columns. The resulting object contains fields in the form of `column_name: column_value`.
-
-```sql
-SELECT 
-  jsonObject(clusterName, schema, metadata__name) AS node_info
-FROM NODE
-LIMIT 1;
-```
-
-Expected output:
-
-```
-| node_info                                                                |
-|--------------------------------------------------------------------------|
-| {"clusterName":"kube1","schema":"kube1","metadata__name":"dev-master-1"} |
-```
-
----
-
-#### `yamlAsJSON(value)`
-
-Converts a `CLOB` containing YAML into a `json` object.
-
-```sql
-SELECT yamlAsJSON('name: example-node'||chr(10)||'cluster: my-cluster');
-```
-
-Expected output:
-
-```
-| parsed_yaml                                    |
-|------------------------------------------------|
-| {"name":"example-node","cluster":"my-cluster"} |
-```
-
----
-
-#### `jsonPath(value, path)`
-
-Evaluates a [JsonPath](https://datatracker.ietf.org/doc/rfc9535/) expression on `value`, which should be a `json` document. Always returns a `json` object.
-
-```sql
-SELECT 
-  jsonPath(status__allocatable, '$.cpu') AS cpu_capacity
-FROM NODE
-```
-
----
-
-#### `jsonJq(value, query)`
-
-Applies a [jq](https://jqlang.github.io/jq/) query to `value`, which should be a `json` document. Always returns a `json` object.
-
-```sql
-SELECT 
-  jsonJq(status__allocatable, '.cpu') AS cpu_capacity
-FROM NODE
-```
-
----
-
-#### `jsonPathAsString(value, path)`
-
-Similar to `jsonPath` but returns a `string` instead of a `json` object. This is particularly useful when you need to compare the extracted value directly in a `WHERE` clause.
-
-```sql
-SELECT 
-  jsonPathAsString(status__allocatable, '$.cpu') AS cpu_capacity
-FROM NODE
-```
-
----
-
-#### `jsonJqAsString(value, query)`
-
-Similar to `jsonJq` but returns a `string` instead of a `json` object.
-
-```sql
-SELECT 
-  jsonJqAsString(status__allocatable, '.cpu') AS cpu_capacity
-FROM NODE
+| {"foo":"bar"}   |
 ```

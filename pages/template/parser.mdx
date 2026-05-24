@@ -1,3 +1,5 @@
+import Tag from '../../component/Tag'
+
 # Template Parser
 
 In Kubling, almost all files are parsed as templates. 
@@ -14,7 +16,35 @@ This delimiter is used to print the result of an expression. Expressions can be 
 
 ### `{% ... %}` delimiter
 
-his delimiter is used to change the control flow of the template and to control the template context (variables).
+This delimiter is used to change the control flow of the template and to control the template context (variables).
+
+### `include` <Tag description={"v26.2+"} />
+
+The `include` tag allows a template to render another template inline as part of the current rendering process.
+
+Included templates inherit the current rendering context and can therefore access the same variables available to the parent template.
+
+```yaml
+virtualDatabases:
+  - 'vdb/EndpointsVDB.yaml'
+
+authentication:
+  scriptFilePath: "auth/authenticator_basic.js"
+
+{% include "endpoints.yaml" %}
+```
+
+Included template paths are resolved relative to the current template location. This behavior works transparently for both filesystem-based templates and templates loaded from bundles.
+
+Additional variables can be injected into the included template context using the `with` keyword:
+
+```yaml
+{% include "endpoints.yaml" with {"foo":"bar"} %}
+```
+
+In this case, the included template receives:
+- The original rendering context
+- The additional variables defined in the `with` map
 
 ### Variables
 

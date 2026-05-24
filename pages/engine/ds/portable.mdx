@@ -131,10 +131,21 @@ properties:
     description: "Path to file where to store the database."
   filePassword:
     type: "string"
+  useKublingDDL:
+    type: "boolean"
+    description: "Indicates that the provided DDL should be interpreted using the\
+      \ Kubling DDL syntax instead of native H2. When enabled, Kubling will translate\
+      \ the schema definition into H2-compatible DDL before execution. This mode is\
+      \ mutually exclusive with migration scripts: when this option is true, the migrationDir\
+      \ configuration must not be set."
   ddl:
     type: "string"
     description: "Allows to run a DDL in the REMOTE data source once the connection\
       \ is established."
+  ddlfilePaths:
+    type: "array"
+    items:
+      type: "string"
   ddlFilePaths:
     type: "array"
     description: "Allows to run multiple DDL, loaded from external file paths, in\
@@ -217,11 +228,11 @@ Flyway requires a table to track migration state. For this purpose, Kubling auto
   For stateful, non-ephemeral Kubling instances that rely on a local database, we strongly recommend using migrations instead of embedding schema creation logic in a single H2 DDL file.
 </Callout>
 
-## Recommendations
+### Recommendations
 
 Here are some best practices and useful notes when using Flyway-based migrations in Kubling:
 
-### Use Versioned Files with Clear Naming
+#### Use Versioned Files with Clear Naming
 Follow Flyway’s naming convention:
 `V<version_number>__<description>.sql`
 
@@ -232,25 +243,25 @@ Examples:
 
 This helps track schema evolution clearly and consistently.
 
-### One Logical Change per Migration
+#### One Logical Change per Migration
 Keep each migration file focused on a single change (e.g., creating a table, adding a column).  
 This improves readability and makes it easier to troubleshoot if a migration fails.
 
-### What Happens If a Migration Fails?
+#### What Happens If a Migration Fails?
 - **Kubling will abort the engine initialization process and exit with an error message.**
 - Flyway stops the process immediately at the failing script.
 - Successful migrations remain applied.
 - The failing migration is not marked as executed and will be retried on the next engine startup.
 - **There is no automatic rollback**. If rollback is required, it must be defined inside the SQL script using transactional logic.
 
-### No Manual Schema Changes
+#### No Manual Schema Changes
 Avoid modifying the database schema outside of migrations.  
 Manual changes may cause checksum errors or future migrations to fail.
 
-### Do Not Modify the Audit Table
+#### Do Not Modify the Audit Table
 The table `KUBLING_MIGRATION_AUDIT` is managed internally and must not be edited or cleared manually.
 
-### Retrying a Failed Migration
+#### Retrying a Failed Migration
 To retry:
 1. Fix the faulty migration file.
 2. Restart the engine.
@@ -258,8 +269,40 @@ To retry:
 
 Do **not** rename or remove the failing file, as this will break integrity checks.
 
-### Test Before Production
+#### Test Before Production
 If running a stateful or non-ephemeral Kubling instance, always test migrations in a staging environment to avoid irreversible schema changes.
 
-### Version Control Your Migrations
+#### Version Control Your Migrations
 Migration files are part of your application’s state. Always include them in version control to keep environments consistent.
+
+## Use Kubling DDL <Tag description={"v26.2+"} />
+
+Instead of writing H2-specific DDL definitions, schemas can also be defined using native [Kubling DDL syntax](/engine/ddl).
+
+This allows schema definitions to remain aligned with Kubling concepts and reduces dependency on database-specific syntax.
+
+Example configuration:
+
+```yaml
+dataSources:
+  - name: "portable_1"
+    dataSourceType: "PORTABLE_LOCAL"
+    configObject:
+      ...
+      useKublingDDL: true
+      ddlFilePaths:
+        - "bundle:full.sql"
+    schema:
+      type: "PHYSICAL"
+      properties:
+        catalog: "PORTABLE-1"
+        ...
+```
+
+The referenced `full.sql` file must follow Kubling DDL syntax.
+
+During initialization Kubling automatically translates the definition into the underlying storage schema required by the data source engine.
+
+<Callout type='warning'>
+At the moment Kubling DDL cannot be combined with schema migrations. This limitation is expected to be addressed in future releases.
+</Callout>

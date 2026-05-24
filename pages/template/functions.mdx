@@ -1,3 +1,5 @@
+import Tag from '../../component/Tag'
+
 # Template Functions
 
 ### Built-in functions
@@ -23,6 +25,8 @@ the number of parallel calls they support. They are available in all templates.
 | `getTablesByDirectives(vdb: string, schema : string, directives : string) string[]`          | Returns the list of table names of a specific `schema` with specified [`directives`](/Engine/DDL#table-directives). The format expected for `directives` param is a semicolon separated list of names. When `vdb` and/or `schema` contain the special param `all`, function searches in all registered Virtual Databases and Schemas respectively. |
 | `getTablesByDirectivesAndValues(vdb: string, schema : string, directives : string) string[]` | Returns the list of table names of a specific `schema` with specified [`directives`](/Engine/DDL#table-directives) and values. Searching mechanism is the same as in `getTablesByDirectives`, but this function expects also a directive value, in the form `directive:value`, for example `supports_idempotency:false`.                           |
 | `getTablesByTags(vdb: string, schema : string, tags : string) string[]`                      | Returns the list of table names that contain specified `tags`. The format expected for `tags` param is a semicolon separated list of values. When `vdb` and/or `schema` contain the special param `all`, function searches in all registered Virtual Databases and Schemas respectively.                                                           |
+| `templateDirPath() : string`                                                                 | <Tag description={"v26.2+"} /> Returns the absolute filesystem path of the directory containing the template currently being rendered.                                                                                                                                                                                                                                            |
+| `bundleDirPath() : string`                                                                   | <Tag description={"v26.2+"} /> Returns the absolute filesystem path of the bundle associated with the current rendering context.                                                                                                                                                                                                                                                  |
 
 ### Meta-functions
 | Function                                             | Description                                                                                                                                                                                                                                                                                                                     |

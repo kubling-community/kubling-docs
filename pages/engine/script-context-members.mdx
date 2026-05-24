@@ -255,12 +255,18 @@ A wrapper `object` that contains information about a file being added in the bod
 
 #### `DBEngine`
 
-Allows to execute queries by directly accessing the Engine. It is important to note that CUD operations (`INSERT`, `UPDATE` and `DELETE`) are **not supported** by design.
+Allows scripts to execute queries and update operations directly against the Engine.
 
-| Function                                                                  | Description                                                                                                                                             |
-|---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `executeQuery(vdbName : string, query : string) : QueryResultProxyObject` | Executes a data-retrieval query (`SELECT`) using one of the internal opened sessions. It returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
-| `executeUpdate(vdbName : string, query : string) : integer`               | Executes an update command (`INSERT`, `UPDATE`, `DELETE`, `UPSERT`) using one of the internal opened sessions. It returns the affected rows.            |
+Operations are executed within the current authentication context unless a privileged variant is explicitly used.
+
+| Function                                                                            | Description                                                                                                                                                       |
+|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `executeQuery(vdbName : string, query : string) : QueryResultProxyObject`           | Executes a `SELECT` statement using the credentials present in the current authentication context. Returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
+| `executeUpdate(vdbName : string, query : string) : integer`                         | Executes an update statement (`INSERT`, `UPDATE`, `DELETE`, `UPSERT`) using the credentials present in the current authentication context. Returns the affected rows. |
+| `executeTransaction(vdbName : string, commands : string[]) : integer`               | Executes multiple update statements as a single transaction using the credentials present in the current authentication context. Returns the total affected rows. |
+| `executeQueryPrivileged(vdbName : string, query : string) : QueryResultProxyObject` | Executes a `SELECT` statement using an internal privileged session. Returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
+| `executeUpdatePrivileged(vdbName : string, query : string) : integer`               | Executes an update statement (`INSERT`, `UPDATE`, `DELETE`, `UPSERT`) using an internal privileged session. Returns the affected rows. |
+| `executeTransactionPrivileged(vdbName : string, commands : string[]) : integer`     | Executes multiple update statements as a single transaction using an internal privileged session. Returns the total affected rows. |
 
 ### resultSetScript
 
@@ -365,19 +371,39 @@ Only common members.
 ## Authentication/Authorization script
 
 ### `auth`
-An `object` used to exchange information between the script and the session manager.
 
-| Function                      | Description                                                                                                                  |
-|-------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| `userName : string`           | Contains the username informed by the remote client to initialize a session (login).                                         |
-| `credentials : string`        | Contains the credentials (i.e. password or token) informed by the remote client to initialize a session (login).             |
-| `trust()`                     | Accepts the login request and informs to the session manager that remote client is allowed to establish a permanent session. |
-| `bad()`                       | Rejects the login, and closes the session, due to invalid username or credential.                                            |
-| `bad(message : string)`       | Same as `bad()` but with the possibility to add a custom reason message which is sent to the remote client.                  |
-| `locked()`                    | Rejects the login, and closes the session, due to a locked or disabled user.                                                 |
-| `locked(message : string)`    | Same as `locked()` but with the possibility to add a custom reason message which is sent to the remote client.               |
-| `addPrincipal(name : string)` | Associates a principal name to the session.                                                                                  |
-| `addRole(name : string)`      | Associates a role name to the session.                                                                                       |
+An `object` used to exchange authentication and session-establishment information between the script and the session manager.
+
+| Function                          | Description                                                                                                                            |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `authenticationSource : string`   | Indicates which transport or entry point initiated the authentication request. Possible values include `SOCKET_TRANSPORT` and `HTTP`.  |
+| `userName : string`               | Contains the username provided by the remote client during session initialization.                                                     |
+| `credentials : string`            | Contains the credentials (such as a password or token) provided by the remote client during session initialization.                    |
+| `metadata : object`               | Contains metadata associated with the authentication request. For HTTP-based authentication, this object includes the request headers. |
+| `httpAuthenticationType : string` | Indicates the HTTP authentication mechanism detected by the engine. See below for details.                                             |
+| `trust()`                         | Accepts the authentication request and allows the remote client to establish a persistent session.                                     |
+| `bad()`                           | Rejects the authentication request due to invalid credentials or authentication failure.                                               |
+| `bad(message : string)`           | Same as `bad()`, but allows a custom reason message to be returned to the remote client.                                               |
+| `locked()`                        | Rejects the authentication request because the user is locked or disabled.                                                             |
+| `locked(message : string)`        | Same as `locked()`, but allows a custom reason message to be returned to the remote client.                                            |
+| `addPrincipal(name : string)`     | Associates a principal with the authenticated session.                                                                                 |
+| `addRole(name : string)`          | Associates a role with the authenticated session.                                                                                      |
+
+#### HTTP Authentication Type Detection
+
+When authentication is initiated through the HTTP transport, Kubling attempts to infer the authentication mechanism used by the remote client and exposes the result through `auth.httpAuthenticationType`.
+
+The detected type reflects how credentials or identity information were presented to the engine, independently of whether the authentication request is ultimately accepted or rejected.
+
+Possible values are:
+
+| Value     | Description                                                                            |
+|-----------|----------------------------------------------------------------------------------------|
+| `BEARER`  | The request contains an `Authorization: Bearer` header.                                |
+| `BASIC`   | The request contains an HTTP Basic Authentication header.                              |
+| `MTLS`    | Authentication information was derived from a mutually authenticated TLS session.      |
+| `API_KEY` | The request contains an API key recognized by the configured authentication initiator. |
+| `NONE`    | No recognizable HTTP authentication mechanism was detected.                            |
 
 ## Endpoint Script
 

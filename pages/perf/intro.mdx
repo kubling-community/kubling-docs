@@ -1,0 +1,44 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Performance Tracer <Tag description={"v26.2+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+Performance Tracer captures low-level execution activity inside Kubling and provides detailed visibility into the internal behavior of the engine during workload execution.
+
+The tracer records execution events across critical subsystems such as query processing, source interactions, buffering operations, MVCC activities and other internal execution paths. The generated information can be used to understand how the engine behaves under different configurations and workload characteristics.
+
+## Purpose
+
+Performance Tracer was initially introduced as an internal engineering capability to evaluate the impact of changes made to the engine.
+
+As new features and optimizations are introduced, understanding their real impact becomes important. In some cases a feature may improve performance for certain workloads while negatively affecting others.
+
+Typical questions include:
+
+- Does enabling RocksDB-based buffer caching introduce overhead for small workloads?
+- Does a particular optimization improve throughput or simply move the bottleneck elsewhere?
+- Under what workload characteristics should a feature be enabled or disabled?
+
+Performance Tracer provides detailed execution information intended to support this type of analysis.
+
+## Typical use cases
+
+Performance Tracer can be used to evaluate and compare:
+
+- configuration changes
+- source implementations
+- query behavior
+- cache strategies
+- feature enablement decisions
+- workload-specific tuning
+- realistic or simulated execution scenarios
+
+The tracer is particularly useful in environments where performance characteristics and tuning decisions have significant operational impact.
+
+<Callout type="warning">
+Performance Tracer is **not intended for production workloads**.
+
+Tracing generates large amounts of information and intercepts critical execution paths inside the engine. Although collection is designed to minimize impact through asynchronous processing and pluggable collectors, tracing still introduces additional CPU, memory, storage and execution overhead.
+
+Performance Tracer should primarily be used in development environments, benchmarking exercises and controlled testing scenarios.
+</Callout>

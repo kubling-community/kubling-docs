@@ -1,5 +1,21 @@
 # Product changelog
 
+## v26.2.2
+
+- Removed Java-related metrics from `SYSMETRICS.METRICS`, as they do not provide meaningful information when running Kubling as a native binary image.
+
+## v26.2.1
+
+- Changed the HTTP security interceptor to use randomly generated anonymous identities for unauthenticated requests, improving isolation and reducing potential exposure of internal users.
+
+## v26.2
+
+- Extended Script Endpoints security integration with support for authenticated execution context propagation.
+- Introduced Performance Tracer, enabling low-level execution analysis and workload-based performance tuning.
+- Added RocksDB-backed buffering capabilities for large temporary workloads and memory-constrained environments.
+- Added native Kubling DDL support for Portable Local data sources, allowing schema definitions without relying on database-specific syntax.
+- Introduced automatic schema documentation generation from configuration schemas.
+
 ## v26.1.5
 - Upgraded dependencies affected by critical vulnerabilities.
 - Upgraded the JavaScript engine to improve throughput and reduce response time in cold execution contexts.

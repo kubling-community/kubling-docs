@@ -1,0 +1,204 @@
+# Usage
+
+Performance Tracer intentionally does not prescribe a fixed analysis methodology.
+
+The generated event model is designed to support workload-specific analysis and custom metrics depending on what you are trying to understand or optimize.
+
+A typical analysis session usually follows a progression similar to this:
+
+1. Execute workloads
+2. Inspect run-level metrics
+3. Investigate query behavior
+4. Detect anomalies
+5. Compare runs
+
+## Step 1: Execute workloads
+
+Performance analysis becomes significantly more useful when multiple executions can be compared.
+
+For that reason, workloads are typically executed [using explicit `RUN_ID` values](/concepts/env#perf_tracer_run_id).
+
+Example:
+
+```yaml
+PERF_TRACER_RUN_ID: no-buffer
+```
+
+Typical scenarios include:
+
+- comparing cache strategies
+- evaluating feature enablement
+- testing datasource implementations
+- measuring optimization impact
+
+Example execution set:
+
+| Run ID | Configuration |
+|---------|---------------|
+| no-buffer | Buffer manager disabled |
+| buffer-normal | Disk buffer enabled |
+| buffer-rocks | RocksDB buffer enabled |
+
+In most situations realistic workloads tend to provide more meaningful results than isolated synthetic benchmarks because they capture interactions between execution planning, buffering, source activity and other engine components.
+
+## Step 2: Inspect run-level metrics
+
+Analysis usually starts from a broad view before moving into individual query behavior.
+
+`RUN_SUMMARY` aggregates execution information at run level and helps determine whether different executions behave differently before drilling down into specific queries.
+
+```sql copy
+SELECT
+    RUN_ID,
+    QUERIES,
+    TOTAL_DURATION_NANOS,
+    SOURCE_CALLS,
+    BUFFER_EVENTS
+FROM RUN_SUMMARY
+ORDER BY TOTAL_DURATION_NANOS;
+```
+
+Example output:
+
+| RUN_ID | TOTAL(ms) | SOURCE_CALLS | BUFFER_EVENTS |
+|---------|----------:|-------------:|--------------:|
+| no-buffer | 346 | 659 | 0 |
+| buffer-rocks | 357 | 659 | 152 |
+| buffer-normal | 370 | 659 | 154 |
+
+In this example all executions generated similar source activity while buffering introduced additional activity without providing measurable benefit for this particular workload.
+
+At this stage the objective is simply determining whether measurable differences exist between runs.
+
+## Step 3: Investigate query behavior
+
+Global metrics may hide localized regressions.
+
+Two executions can have similar total duration while a small subset of queries behaves very differently.
+
+`QUERY_PROFILE` exposes query duration relative to the average behavior of its own execution.
+
+```sql copy
+SELECT *
+FROM QUERY_PROFILE
+WHERE RUN_ID='buffer-rocks'
+ORDER BY VS_RUN_AVG_RATIO DESC;
+```
+
+Example interpretation:
+
+| Ratio | Meaning |
+|---------|----------|
+| 1.0 | Average query behavior |
+| >1.0 | Slower than run average |
+| \<1.0 | Faster than run average |
+
+Higher ratios indicate queries consuming a disproportionate amount of execution time and are often good candidates for deeper investigation.
+
+## Step 4: Detect anomalies
+
+Not every slow query necessarily represents a problem.
+
+Small timing variations naturally occur between executions.
+
+`QUERY_OUTLIERS` applies heuristic filtering to reduce noise and focuses on queries behaving significantly worse than the rest of their own run.
+
+```sql copy
+SELECT *
+FROM QUERY_OUTLIERS
+ORDER BY DURATION_NANOS DESC;
+```
+
+The objective is not simply ranking queries by duration, but identifying execution behavior that deviates from expected patterns.
+
+## Step 5: Compare runs
+
+Once multiple executions have been collected, comparisons can be performed across runs.
+
+Example dimensions frequently compared include:
+
+- total execution duration
+- source activity
+- buffering overhead
+- query distributions
+- detected outliers
+- system metrics
+- resource utilization
+
+The objective is usually not identifying which execution is faster, but understanding the reason behind behavioral differences.
+
+## Custom metrics
+
+Performance Tracer intentionally exposes low-level execution information instead of enforcing predefined KPIs.
+
+Different workloads frequently require different interpretations and optimization criteria.
+
+Users are encouraged to create workload-specific metrics and custom analytical views.
+
+Examples:
+
+- rows processed per source
+- cache efficiency indicators
+- source-to-buffer ratios
+- query distribution statistics
+- workload-specific scoring functions
+
+The built-in views provided by Performance Tracer should be considered a starting point rather than a complete analytical model.
+
+---
+
+# Advanced analysis patterns
+
+Performance Tracer intentionally exposes low-level execution information and does not enforce a specific interpretation model.
+
+Different workloads frequently require different analysis criteria and different optimization strategies.
+
+The following examples illustrate how raw execution metrics can be translated into tuning decisions.
+
+## Source filtering efficiency
+
+When implementing custom data sources, especially JavaScript-based data sources, one useful signal is the difference between:
+
+- `ROWS_READ`
+- `ROWS_RETURNED`
+
+Both metrics are available through source execution events.
+
+```sql copy
+SELECT
+    DATASOURCE_NAME,
+    AVG(ROWS_READ) AS AVG_ROWS_READ,
+    AVG(ROWS_RETURNED) AS AVG_ROWS_RETURNED
+FROM SOURCE_EXECUTION_END
+GROUP BY DATASOURCE_NAME
+```
+
+Example:
+
+| DATASOURCE | AVG_ROWS_READ | AVG_ROWS_RETURNED |
+|------------|--------------:|------------------:|
+| OrdersAPI  |        100000 |               250 |
+| UsersAPI   |           500 |               480 |
+
+In this example `OrdersAPI` retrieves significantly more information from the remote system than is ultimately returned to the query execution.
+
+This does not necessarily indicate an incorrect implementation.
+
+Kubling is intentionally designed to support scenarios where filtering or projection cannot be pushed to external systems.
+
+However, a large and persistent difference may indicate that:
+
+- remote filtering could be improved
+- projection pushdown opportunities exist
+- unnecessary payloads are being transferred
+
+Possible optimization decisions could include:
+
+- improving remote query generation
+- reducing transferred payload size
+- enabling disk buffering
+- enabling RocksDB-backed buffering
+
+The decision is not necessarily intended to improve execution speed directly.
+
+In workloads involving large volumes of intermediate data, buffering strategies may instead improve memory behavior and increase execution stability.

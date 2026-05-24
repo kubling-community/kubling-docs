@@ -9,6 +9,7 @@ export default {
   modules: 'Modules',
   security: 'Security',
   observability: 'Observability',
+  perf: 'Performance Tracer',
   cli: 'CLI',
   testcontainers: "Testcontainers",
   schemas: 'Configuration files schemas',

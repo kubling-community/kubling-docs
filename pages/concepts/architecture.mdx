@@ -1,4 +1,5 @@
 import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # Architecture
 
@@ -94,3 +95,51 @@ Instead of altering schemas and tables on the fly, Kubling treats these objects 
 When changes are necessary, users modify the configuration and redeploy the instance.
 
 If an issue arises, you could easily roll back to a previous version using CI/CD pipelines or workflows, ensuring both flexibility and consistency in operations.
+
+## Script Engine Runtime Optimization <Tag description={"v26.2+"} />
+
+Kubling can tune the execution strategy of the scripting engine according to the vector capabilities available on the host CPU.
+
+Modern processors expose different levels of vector instruction support, allowing certain workloads to execute more efficiently by processing multiple values in parallel. Script-heavy workloads may benefit from these optimizations through improved throughput and lower execution overhead.
+
+The configured vector level should be understood as a requested optimization level rather than a forced execution mode.
+
+During startup, Kubling evaluates the capabilities available on the host system and determines the effective execution level that will be used by the scripting engine.
+
+If a configured level exceeds the capabilities detected on the host CPU, Kubling automatically falls back to the highest compatible level in order to prevent runtime failures caused by unsupported instructions.
+
+### Startup Resolution Process
+
+During startup, Kubling performs the following steps:
+
+1. Detects the vector capabilities available on the host CPU
+2. Determines the highest compatible execution level
+3. Evaluates any explicitly configured level
+4. Automatically adjusts the final level if necessary
+
+As a result, unsupported optimizations cannot be enabled accidentally.
+
+### Available Levels
+
+| Level      | Description                                                                                             |
+|------------|---------------------------------------------------------------------------------------------------------|
+| `BASIC`    | Prioritizes broad compatibility across different hardware platforms.                                    |
+| `ADVANCED` | Enables additional runtime optimizations for modern processors supporting extended vector instructions. |
+| `EXTREME`  | Enables the most aggressive optimization strategy available for supported hardware.                     |
+
+### Configuration
+
+Example:
+
+```yaml
+scriptingEngine:
+  vectorLevel: ADVANCED
+```
+
+<Callout type="info">
+If no vector level is explicitly configured, Kubling automatically selects the most appropriate level for the current environment.
+</Callout>
+
+<Callout type="warning">
+The configured vector level acts as an optimization request rather than a hard requirement. Kubling may automatically select a lower compatible level if the requested level exceeds the capabilities available on the host CPU.
+</Callout>

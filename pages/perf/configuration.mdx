@@ -1,0 +1,486 @@
+import { Callout } from 'nextra/components'
+
+# Configuration
+
+Performance tracer is enabled at [application level](/schemas#main-application-configuration).
+
+Sample:
+
+```yaml
+performanceTracer:
+  enabled: true
+```
+
+When enabled, Kubling instruments multiple internal execution paths and emits low-level execution events.
+
+These events are sent to an internal collector pipeline responsible for processing and forwarding information to one or more configured collectors.
+
+<Callout type="info">
+
+Collectors are independent from each other and multiple collectors can run simultaneously.
+
+</Callout>
+
+---
+
+# Collectors
+
+Collectors define how captured events are persisted or presented.
+
+Each collector consumes the same internal event stream but stores or exposes information differently depending on the intended usage.
+
+Typical scenarios include:
+
+- quick debugging through console output
+- exporting traces to files
+- storing execution information for later analysis and comparison
+
+## Console
+
+When enabled, all events are serialized as YAML and printed through the application logger at `INFO` level.
+
+This collector does not require additional configuration:
+
+```yaml
+performanceTracer:
+  enabled: true
+  printToLogger: true
+```
+
+<Callout type="warning">
+
+Under heavy workloads this collector can significantly affect execution performance due to stdout or logging bottlenecks.
+
+Use this collector only for small-scale debugging scenarios.
+
+</Callout>
+
+## JSON files
+
+This collector serializes all events as JSON and writes them to files.
+
+```yaml
+performanceTracer:
+  enabled: true
+  jsonFile:
+    enabled: true
+    directoryPath: "{{ templateDirPath() }}/perftracer"
+    flushOnAppTermination: true
+```
+
+Each generated file corresponds to a single `runId` and contains all collected events associated with that execution.
+
+## Persistence strategy
+
+`flushOnAppTermination` changes the collector persistence strategy.
+
+When enabled, events are accumulated in memory during execution and are only persisted when the collector detects an application shutdown event.
+
+This mode can significantly reduce runtime I/O overhead and is particularly useful for benchmarking scenarios or controlled tests where:
+
+- workloads are relatively small
+- memory consumption is not a concern
+- minimizing tracing overhead is important
+
+The trade-off is that all pending information exists only in memory until shutdown occurs.
+
+<Callout type="warning">
+
+If the application is forcefully terminated or crashes before a graceful shutdown sequence occurs, all accumulated events may be lost.
+
+</Callout>
+
+## Database
+
+This collector persists tracing information into a dedicated Kubling virtual database.
+
+Unlike console or file-based collectors, database persistence enables filtering, querying and comparison across multiple runs, making it particularly useful for benchmarking and tuning activities.
+
+Typical use cases include:
+
+- benchmarking exercises
+- comparing configuration changes
+- identifying regressions
+- workload analysis
+- tuning activities
+
+```yaml
+performanceTracer:
+  enabled: true
+  database:
+    enabled: true
+    vdbName: "PerfTracerVDB"
+    schemaName: "PerfTracer"
+    directoryPath: "{{ templateDirPath() }}/db/perftracer"
+```
+
+<details>
+<summary>Built-in Performance Tracer DB DDL</summary>
+```sql showLineNumbers
+CREATE
+FOREIGN TABLE REQUEST_START (
+    ID integer NOT NULL AUTO_INCREMENT,
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    CONSTRAINT PK_REQUEST_START PRIMARY KEY(ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+
+CREATE
+FOREIGN TABLE QUERY_START (
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    SQL_TEXT clob,
+    CONSTRAINT PK_QUERY_START PRIMARY KEY(QUERY_ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+
+CREATE
+FOREIGN TABLE QUERY_END (
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    SUCCESS boolean,
+    CONSTRAINT PK_QUERY_END PRIMARY KEY(QUERY_ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+
+CREATE
+FOREIGN TABLE SOURCE_START (
+    SOURCE_EXECUTION_ID string NOT NULL,
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    CONNECTOR_ID string,
+    CONSTRAINT PK_SOURCE_START PRIMARY KEY(SOURCE_EXECUTION_ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+
+CREATE
+FOREIGN TABLE SOURCE_END (
+    SOURCE_EXECUTION_ID string NOT NULL,
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    ROWS_READ long,
+    ROWS_RETURNED long,
+    DURATION_NANOS long,
+    CONSTRAINT PK_SOURCE_END PRIMARY KEY(SOURCE_EXECUTION_ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+
+CREATE
+FOREIGN TABLE SOURCE_EXECUTION_START (
+    SOURCE_EXECUTION_ID string NOT NULL,
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    CONNECTOR_ID string,
+    DATASOURCE_NAME string,
+    COMMAND_PUSHED clob,
+    COMMAND_TYPE string,
+    CONSTRAINT PK_SOURCE_EXECUTION_START PRIMARY KEY(SOURCE_EXECUTION_ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+
+CREATE
+FOREIGN TABLE SOURCE_EXECUTION_END (
+    SOURCE_EXECUTION_ID string NOT NULL,
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    ROWS_READ long,
+    ROWS_RETURNED long,
+    SOURCE_READ_DURATION_NS long,
+    CONSTRAINT PK_SOURCE_EXECUTION_END PRIMARY KEY(SOURCE_EXECUTION_ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+
+CREATE
+FOREIGN TABLE BUFFER_EVENT (
+    ENTRY_ID integer NOT NULL AUTO_INCREMENT,
+    QUERY_ID string NOT NULL,
+    RUN_ID string,
+    TS_NANOS long NOT NULL,
+    EVENT_TYPE string,
+    BYTES long,
+    ELEMENTS long,
+    CONSTRAINT PK_BUFFER_EVENT PRIMARY KEY(ENTRY_ID)
+) OPTIONS (
+    UPDATABLE TRUE
+);
+```
+</details>
+
+<Callout type="info">
+
+The database collector automatically detects and ignores its own internal interactions with the engine.
+
+Operations generated by the collector itself (for example event persistence commands) are intentionally excluded from tracing.
+
+This prevents recursive event generation and, more importantly, avoids introducing artificial noise into the resulting measurements.
+
+As a result, collected metrics reflect only the actual workload under analysis and not the internal activity generated by the tracing infrastructure itself.
+
+</Callout>
+
+### Query string compression
+
+Query commands may represent a large portion of generated storage.
+
+The `compressQueries` configuration flag enables compression of stored command text in order to reduce disk usage.
+
+Compressed content can later be restored using the standard [string function](/engine/queries/functions#string-functions) `decompress`.
+
+### Storage considerations
+
+Collectors process events asynchronously to reduce impact on engine execution paths.
+
+Internally the tracer uses worker queues to process incoming events. Under extremely heavy workloads, if queue capacity becomes exhausted, collectors may decide to drop incoming events rather than blocking execution.
+
+When the application terminates normally, collectors attempt to complete all pending work before shutdown. Forced process termination may prevent pending events from being persisted.
+
+There is a dedicated endpoint that can be used to monitor pending work and collector status. See [usage page](/perf/usage) for additional information.
+
+### Run persistence
+
+Performance Tracer databases are intentionally reusable.
+
+This allows multiple executions performed using different configurations or environments to be stored in the same tracing database.
+
+You can therefore accumulate multiple runs in a single tracing database and later perform comparison and longitudinal analysis across executions.
+
+### Built-in analysis views
+
+The database collector automatically creates a small set of built-in analytical views intended to simplify common performance analysis tasks.
+
+These views aggregate and correlate low-level tracing events into higher-level metrics so users can immediately start exploring results without manually joining event tables.
+
+The generated views are intended as convenience helpers and may also serve as examples for creating custom analysis views.
+
+#### RUN_SUMMARY
+
+Provides a high-level summary of an entire execution run.
+
+One row is generated for each `RUN_ID`.
+
+Typical metrics include:
+
+- number of executed queries
+- total execution duration
+- average query duration
+- minimum and maximum query duration
+- source call statistics
+- total rows processed
+- buffer activity statistics
+
+Typical use cases:
+
+- compare multiple runs executed under different configurations
+- evaluate feature enablement impact
+- identify global regressions
+- compare workload behavior
+
+Example:
+
+```sql copy
+SELECT *
+FROM RUN_SUMMARY
+ORDER BY TOTAL_DURATION_NANOS;
+```
+
+<details>
+<summary>RUN_SUMMARY definition</summary>
+
+```sql showLineNumbers copy
+CREATE VIEW RUN_SUMMARY AS
+SELECT Q.RUN_ID,
+
+       COUNT(*)                              AS QUERIES,
+
+       SUM(Q.DURATION_NANOS)                 AS TOTAL_DURATION_NANOS,
+       AVG(Q.DURATION_NANOS)                 AS AVG_DURATION_NANOS,
+       MIN(Q.DURATION_NANOS)                 AS MIN_DURATION_NANOS,
+       MAX(Q.DURATION_NANOS)                 AS MAX_DURATION_NANOS,
+
+       COALESCE(SE.SOURCE_CALLS, 0)          AS SOURCE_CALLS,
+       COALESCE(SE.TOTAL_ROWS_READ, 0)       AS TOTAL_ROWS_READ,
+       COALESCE(SE.TOTAL_ROWS_RETURNED, 0)   AS TOTAL_ROWS_RETURNED,
+
+       COALESCE(BE.BUFFER_EVENTS, 0)         AS BUFFER_EVENTS,
+       COALESCE(BE.TOTAL_BUFFER_BYTES, 0)    AS TOTAL_BUFFER_BYTES,
+       COALESCE(BE.TOTAL_BUFFER_ELEMENTS, 0) AS TOTAL_BUFFER_ELEMENTS
+
+FROM (SELECT QS.RUN_ID,
+             QS.QUERY_ID,
+             (QE.TS_NANOS - QS.TS_NANOS) AS DURATION_NANOS
+      FROM QUERY_START QS
+               JOIN QUERY_END QE
+                    ON QS.QUERY_ID = QE.QUERY_ID
+                        AND QS.RUN_ID = QE.RUN_ID) Q
+
+         LEFT JOIN (SELECT RUN_ID,
+                           COUNT(*)           AS SOURCE_CALLS,
+                           SUM(ROWS_READ)     AS TOTAL_ROWS_READ,
+                           SUM(ROWS_RETURNED) AS TOTAL_ROWS_RETURNED
+                    FROM SOURCE_EXECUTION_END
+                    GROUP BY RUN_ID) SE
+                   ON Q.RUN_ID = SE.RUN_ID
+
+         LEFT JOIN (SELECT RUN_ID,
+                           COUNT(*)      AS BUFFER_EVENTS,
+                           SUM(BYTES)    AS TOTAL_BUFFER_BYTES,
+                           SUM(ELEMENTS) AS TOTAL_BUFFER_ELEMENTS
+                    FROM BUFFER_EVENT
+                    GROUP BY RUN_ID) BE
+                   ON Q.RUN_ID = BE.RUN_ID
+
+GROUP BY Q.RUN_ID,
+         SE.SOURCE_CALLS,
+         SE.TOTAL_ROWS_READ,
+         SE.TOTAL_ROWS_RETURNED,
+         BE.BUFFER_EVENTS,
+         BE.TOTAL_BUFFER_BYTES,
+         BE.TOTAL_BUFFER_ELEMENTS;
+```
+
+</details>
+
+#### QUERY_PROFILE
+
+Provides per-query execution information relative to the average behavior of its corresponding run.
+
+Besides raw query duration, the view computes:
+
+- query duration
+- average duration for the run
+- relative execution ratio (`VS_RUN_AVG_RATIO`)
+
+The ratio indicates how expensive a query is relative to the average execution time of its own run.
+
+Examples:
+
+- `1.0` → query duration equals run average
+- `2.0` → query is twice as slow as average
+- `0.5` → query is half of average duration
+
+Typical use cases:
+
+- identify expensive queries
+- compare execution distribution
+- investigate workload imbalance
+
+Example:
+
+```sql copy
+SELECT *
+FROM QUERY_PROFILE
+ORDER BY VS_RUN_AVG_RATIO DESC;
+```
+
+<details>
+<summary>QUERY_PROFILE definition</summary>
+
+```sql showLineNumbers copy
+CREATE VIEW QUERY_PROFILE AS
+SELECT Q.RUN_ID,
+       Q.QUERY_ID,
+       Q.DURATION_NANOS,
+
+       CASE
+           WHEN RS.AVG_DURATION_NANOS = 0 THEN NULL
+           ELSE Q.DURATION_NANOS * 1.0 / RS.AVG_DURATION_NANOS
+           END AS VS_RUN_AVG_RATIO
+
+FROM (SELECT QS.RUN_ID,
+             QS.QUERY_ID,
+             (QE.TS_NANOS - QS.TS_NANOS) AS DURATION_NANOS
+      FROM QUERY_START QS
+               JOIN QUERY_END QE
+                    ON QS.QUERY_ID = QE.QUERY_ID
+                        AND QS.RUN_ID = QE.RUN_ID) Q
+
+         JOIN RUN_SUMMARY RS
+              ON Q.RUN_ID = RS.RUN_ID;
+```
+
+</details>
+
+#### QUERY_OUTLIERS
+
+Provides automatic slow-query detection using heuristic filtering.
+
+The view intentionally excludes minor timing variations and focuses on queries that are significantly slower than the rest of their run.
+
+Current heuristic:
+
+- query duration must be at least `3x` slower than the run average
+- query duration must be at least `5 ms`
+
+Both conditions are applied simultaneously:
+
+- ratio filtering avoids noisy micro-queries
+- absolute duration filtering avoids false positives in extremely fast runs
+
+Typical use cases:
+
+- detect anomalous query behavior
+- identify candidate optimizations
+- detect regressions
+- isolate problematic workloads
+
+Example:
+
+```sql copy
+SELECT *
+FROM QUERY_OUTLIERS
+ORDER BY DURATION_NANOS DESC;
+```
+
+<details>
+<summary>QUERY_OUTLIERS definition</summary>
+
+```sql showLineNumbers copy
+CREATE VIEW QUERY_OUTLIERS AS
+SELECT X.RUN_ID,
+       X.QUERY_ID,
+       X.DURATION_NANOS,
+       X.RUN_AVG_DURATION_NANOS,
+       X.VS_RUN_AVG_RATIO
+
+FROM (SELECT Q.RUN_ID,
+             Q.QUERY_ID,
+             Q.DURATION_NANOS,
+
+             RS.AVG_DURATION_NANOS AS RUN_AVG_DURATION_NANOS,
+
+             CASE
+                 WHEN RS.AVG_DURATION_NANOS = 0 THEN NULL
+                 ELSE Q.DURATION_NANOS * 1.0 / RS.AVG_DURATION_NANOS
+                 END               AS VS_RUN_AVG_RATIO
+
+      FROM (SELECT QS.RUN_ID,
+                   QS.QUERY_ID,
+                   (QE.TS_NANOS - QS.TS_NANOS) AS DURATION_NANOS
+            FROM QUERY_START QS
+                     JOIN QUERY_END QE
+                          ON QS.QUERY_ID = QE.QUERY_ID
+                              AND QS.RUN_ID = QE.RUN_ID) Q
+
+               JOIN RUN_SUMMARY RS
+                    ON Q.RUN_ID = RS.RUN_ID) X
+
+WHERE X.VS_RUN_AVG_RATIO >= 3.0
+  AND X.DURATION_NANOS >= 5000000;
+```
+
+</details>

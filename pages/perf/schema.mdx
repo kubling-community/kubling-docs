@@ -1,0 +1,227 @@
+## Performance Tracer Event Schema
+
+Performance Tracer events represent low-level execution activity captured while a Kubling request is being processed, delegated to external sources, 
+or interacting with internal engine components such as the buffer manager.
+
+All events share a common envelope:
+
+```yaml
+PerformanceEvent:
+  runId: string
+  queryId: string
+  vdbName: string
+  vdbVersion: string
+  timestamp: long # monotonic time in nanoseconds
+  type: EventType
+```
+
+`runId` identifies a tracer execution run. It is resolved once per process from `PERF_TRACER_RUN_ID`; if the variable is not present, 
+Kubling generates a random 16-character alphanumeric identifier.
+
+`timestamp` is generated using system's `nanoTime()`. 
+Because this is a monotonic clock, timestamps should be interpreted as relative measurements inside the same execution run rather than as wall-clock time.
+
+### Request activity events
+
+```yaml
+REQUEST_START:
+  extends: PerformanceEvent
+```
+
+Request events represent transport-level internal processing activity.
+
+`REQUEST_START` marks initialization of internal request processing and can be used to correlate subsequent execution activity.
+
+### Query lifecycle events
+
+```yaml
+QUERY_START:
+  extends: PerformanceEvent
+  sql: string
+
+QUERY_END:
+  extends: PerformanceEvent
+  success: boolean
+  error: string | null
+```
+
+Query lifecycle events represent the high-level execution boundaries of a command submitted to Kubling.
+
+`QUERY_START` captures the SQL representation of the incoming command.
+
+`QUERY_END` marks completion of the execution lifecycle and records whether the operation completed successfully. If execution fails, the associated error information is attached.
+
+
+### Source lifecycle events
+
+```yaml
+SOURCE_START:
+  extends: PerformanceEvent
+  connectorName: string
+  tupleSourceId: string
+
+SOURCE_END:
+  extends: PerformanceEvent
+  connectorName: string
+  tupleSourceId: string
+  rowsReturned: long
+  rowsRead: long
+  duration: long
+```
+
+Source lifecycle events describe the **engine-side lifecycle of tuple sources** used during query execution.
+
+`SOURCE_START` marks initialization of a source instance.
+
+`SOURCE_END` marks completion and records execution statistics including rows read, rows returned, and total duration.
+
+### Source execution events
+
+```yaml
+SOURCE_EXECUTION_START:
+  extends: PerformanceEvent
+  connectorName: string
+  datasourceName: string
+  tupleSourceId: string
+  commandPushed: string
+  sourceCommandType: SourceCommandType
+
+SOURCE_EXECUTION_END:
+  extends: PerformanceEvent
+  connectorName: string
+  datasourceName: string
+  tupleSourceId: string
+  rowsRead: long | null
+  rowsReturned: long | null
+  sourceReadDurationNanos: long | null
+  sourceCommandType: SourceCommandType
+```
+
+Source execution events describe work performed **inside datasource's translators and adapters**.
+
+`SOURCE_EXECUTION_START` records initiation of an execution operation and captures the pushed command.
+
+`SOURCE_EXECUTION_END` records execution statistics such as rows read, rows returned, and source read duration.
+
+Supported source command types:
+
+```yaml
+SourceCommandType:
+  - QUERY
+  - INSERT
+  - UPDATE
+  - DELETE
+```
+
+### Buffer events
+
+```yaml
+BUFFER_EVENT:
+  extends: PerformanceEvent
+  bufferEventType: BufferEventType
+  bytes: long
+  elements: long
+```
+
+Buffer events describe activity within the buffer manager.
+
+`bytes` represents the amount of data involved in the operation.
+
+`elements` represents the number of affected elements or pages depending on the implementation path emitting the event.
+
+Supported buffer event types:
+
+```yaml
+BufferEventType:
+  - READ
+  - LOGICAL_WRITE
+  - LOGICAL_READ
+  - PHYSICAL_WRITE
+  - SPILL
+```
+
+Where:
+
+| Event | Description |
+|---------|-------------|
+| READ | Read operation against the buffer |
+| LOGICAL_WRITE | Logical insertion or update of buffer contents |
+| LOGICAL_READ | Logical access to existing contents |
+| PHYSICAL_WRITE | Data persisted to underlying storage |
+| SPILL | Memory contents moved to secondary storage |
+
+### Conceptual event hierarchy
+
+```yaml
+PerformanceEvent:
+  shared_fields:
+    - runId
+    - queryId
+    - vdbName
+    - vdbVersion
+    - timestamp
+    - type
+
+  request_activity:
+    - RequestStartEvent
+
+  query_lifecycle:
+    - QueryStartEvent
+    - QueryEndEvent
+
+  source_lifecycle:
+    - SourceStartEvent
+    - SourceEndEvent
+
+  source_execution:
+    - SourceExecutionStartEvent
+    - SourceExecutionEndEvent
+
+  buffer_activity:
+    - BufferEvent
+```
+
+### Interpretation model
+
+A query execution produces a complete sequence of Performance Tracer events representing the execution path observed by Kubling.
+
+Events are emitted in temporal order and collectively describe the progression of a request through different execution stages.
+
+Typical event families include:
+
+- `REQUEST_START`  
+  Marks initialization of transport-level request processing.
+
+- `QUERY_START` and `QUERY_END`  
+  Represent logical query execution boundaries.
+
+- `SOURCE_START` and `SOURCE_END`  
+  Represent the lifecycle of engine-side tuple sources.
+
+- `SOURCE_EXECUTION_*`  
+  Represent execution activity inside datasource translators and adapters.
+
+- `BUFFER_EVENT`  
+  Represent interactions with the buffer manager.
+
+Not all executions necessarily involve every event family. For example, a query may execute without external datasource interactions or without generating buffer activity.
+
+Events should be interpreted as a continuous execution timeline and correlated using shared identifiers.
+
+Primary correlation fields:
+
+```yaml
+correlation:
+  primary:
+    - runId
+    - queryId
+    - vdbName
+    - vdbVersion
+
+  source_specific:
+    - connectorName
+    - datasourceName
+    - tupleSourceId
+```
+
+This correlation model allows reconstruction of the complete execution flow of a request, from transport initialization through datasource activity and internal engine processing.
