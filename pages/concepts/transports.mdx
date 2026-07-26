@@ -1,0 +1,114 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Transports
+
+A transport defines how a remote client establishes a session with Kubling and exchanges SQL commands and results with the Engine.
+
+Kubling currently provides three transports:
+
+| Transport                | Configuration key | Default port | Recommended use                                                            |
+|--------------------------|-------------------|-------------:|----------------------------------------------------------------------------|
+| gRPC                     | `grpc`            |      `50051` | New client applications, services, agents, and multi-language environments |
+| Native                   | `nativeProtocol`  |      `35482` | Java applications using the Kubling JDBC driver                            |
+| PostgreSQL compatibility | `pgProtocol`      |      `35432` | Existing tools that require the PostgreSQL wire protocol                   |
+
+Transport selection does not change the Virtual Database being accessed or the authorization rules applied by the Engine. 
+It determines the connection protocol, the client model, and how commands and results are represented on the wire.
+
+## gRPC <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+The gRPC transport is the recommended standard for new clients and service-to-service communication.
+
+It exposes a [public protobuf contract](https://github.com/kubling-community/kubling-grpc) designed for generated clients and SDKs across different programming languages. 
+This makes it suitable for service-to-service communication, infrastructure agents, automation platforms, and applications that should not depend on Java or JDBC.
+
+The current contract covers:
+
+* Session login, logout, and validation
+* SQL queries with streamed result batches
+* SQL statements that do not return a result set
+* Positional query parameters
+* Explicit transaction lifecycle operations
+* Server information and capability discovery
+
+Query results are returned as protobuf messages containing column metadata and positional row values. 
+Large result sets can be delivered as a stream of independent batches instead of requiring the entire result set to be materialized in a single response.
+
+<Callout type="warning">
+The gRPC transport is currently available as Preview. It is already the recommended direction for new client applications, 
+but its public contract may still receive compatibility-affecting changes before being declared stable.
+</Callout>
+
+### Session
+
+The API is session-oriented, but the Kubling session is not bound to a specific network connection or client process. 
+A client authenticates through the session service and receives an expiring token that represents the logical Kubling session.
+
+The token can be used across multiple gRPC channels and, when explicitly shared, across different components of a distributed application. 
+Operations performed with the same token use the same Kubling session context, including its authentication identity and active transaction state. 
+This allows multiple services or workers to coordinate operations as part of the same transaction without requiring them to share a physical connection.
+
+Because the token grants access to an existing session, it must be treated as a credential. 
+Applications sharing a session are also responsible for coordinating concurrent operations and the transaction lifecycle.
+
+## Native protocol
+
+The native transport is Kubling's established binary protocol and is consumed through the Kubling JDBC driver.
+
+It provides the broadest access to JDBC semantics and remains the preferred option for Java applications. 
+Applications can use familiar JDBC concepts such as connections, statements, result sets, metadata, and transactions while executing queries against any Virtual Database deployed in Kubling.
+
+For existing Java systems, the native transport remains the primary client option. New clients outside the Java ecosystem should generally prefer gRPC.
+
+## PostgreSQL compatibility protocol
+
+The PostgreSQL compatibility transport implements a subset of the PostgreSQL wire protocol. 
+It allows Kubling to accept connections from PostgreSQL clients and PostgreSQL-compatible ODBC tooling without operating as a PostgreSQL database.
+
+The transport supports common query execution flows, including simple queries and prepared or bound statements. 
+However, compatibility is limited to the protocol features and data representations implemented by Kubling.
+
+<Callout type="warning">
+Kubling is not a PostgreSQL server. Clients that depend on PostgreSQL system catalogs, extensions, server-specific metadata, o
+r undocumented protocol behavior may not work correctly.
+</Callout>
+
+This transport is maintained as a compatibility option for existing tools. 
+Significant expansion of PostgreSQL-specific compatibility is not currently a priority, and it is not the recommended foundation for new Kubling applications.
+
+## Choosing a transport
+
+Use **gRPC** when building a new client, especially for service-to-service communication, automation, agents, or applications written outside the Java ecosystem.
+
+Use the **native protocol** when building or maintaining a Java application that requires JDBC and the broadest JDBC-oriented access to Kubling capabilities.
+
+Use the **PostgreSQL compatibility protocol** when an existing client or tool requires the PostgreSQL wire protocol and 
+its behavior is compatible with the subset implemented by Kubling.
+
+## Configuration
+
+Each transport is configured independently and can be enabled according to the requirements of the deployment.
+
+```yaml
+transports:
+  grpc:
+    enable: true
+    bindAddress: "0.0.0.0"
+    portNumber: 50051
+
+  nativeProtocol:
+    enable: true
+    bindAddress: "0.0.0.0"
+    portNumber: 35482
+
+  pgProtocol:
+    enable: true
+    bindAddress: "0.0.0.0"
+    portNumber: 35432
+```
+
+Transport configuration can also enable server-side TLS and define an IP whitelist or blacklist independently for each protocol. 
+See [Communication security](/Security/communication) for certificate and network filtering configuration.
+
+Authentication is evaluated when a client requests a session, and the same session and [RBAC](/Security/rbac) model is applied regardless of the selected transport.

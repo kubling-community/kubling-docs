@@ -82,6 +82,9 @@ properties:
       nativeProtocol:
         type: "object"
         $ref: "schema:kubling:dbvirt:config:app:Transport"
+      grpc:
+        type: "object"
+        $ref: "schema:kubling:dbvirt:config:app:Transport"
   management:
     type: "object"
     id: "schema:kubling:dbvirt:config:app:Management"
@@ -1421,23 +1424,27 @@ properties:
             properties:
               field:
                 type: "string"
-                description: "Field name."
+                description: "Name of the field to be evaluated."
               dataType:
                 type: "string"
-                description: "Engine data type."
+                description: "Engine data type of the field."
               value:
                 type: "object"
                 id: "schema:kubling:InnerObject"
-                description: "Value to compare."
+                description: "Value used by the comparison operation."
               operation:
-                type: "string"
-                enum:
-                - "EQUAL"
-                - "NOT_EQUAL"
-                - "GREATER_THAN"
-                - "GREATER_THAN_OR_EQUAL"
-                - "LESS_THAN"
-                - "LESS_THAN_OR_EQUAL"
+                type: "object"
+                id: "schema:kubling:dbvirt:translation:scripting:base:member:proxy:EnumObject<com:kubling:dbvirt:translation:scripting:base:member:filter:FilterValue:Operation>"
+                properties:
+                  value:
+                    type: "string"
+                    enum:
+                    - "EQUAL"
+                    - "NOT_EQUAL"
+                    - "GREATER_THAN"
+                    - "GREATER_THAN_OR_EQUAL"
+                    - "LESS_THAN"
+                    - "LESS_THAN_OR_EQUAL"
         assertThat:
           type: "string"
           description: "Assertion to be test."
@@ -2531,7 +2538,7 @@ properties:
     description: "A comma-separated list of local UDP ports to bind SNMP requests\
       \ to. Supports individual ports (e.g., \"1162\") and port ranges (e.g., \"1162-1164\"\
       ). You can mix both formats: \"1162,1164-1166,1170\". All port numbers must\
-      \ be in the range 1?65535, and ranges must be ordered (start <= end). Kubling\
+      \ be in the range 1–65535, and ranges must be ordered (start <= end). Kubling\
       \ will attempt to bind to these ports in order until one is available."
   community:
     type: "string"
@@ -2884,4 +2891,3 @@ properties:
         value:
           type: "string"
 ```
-

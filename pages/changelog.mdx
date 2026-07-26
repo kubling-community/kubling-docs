@@ -1,5 +1,13 @@
 # Product changelog
 
+## v26.3
+
+- Introduced the Preview gRPC transport, with session-based authentication, streamed query results, statement execution, 
+explicit transaction management, TLS, IP filtering, and transport observability.
+- Added the RANDINT() and RANDLONG() functions for generating random integer and long values.
+- Improved native binary compatibility with systems using 64 KB memory pages, 
+preventing segmentation faults reported on some ARM64 environments, including Raspberry Pi 5.
+
 ## v26.2.2
 
 - Removed Java-related metrics from `SYSMETRICS.METRICS`, as they do not provide meaningful information when running Kubling as a native binary image.
