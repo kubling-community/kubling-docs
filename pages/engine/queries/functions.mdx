@@ -193,7 +193,7 @@ FROM NODE;
 
 Kubling provides ANSI SQL 2003 window functions, allowing aggregate functions to be applied to subsets of the result set without requiring a `GROUP BY` clause. Window functions are similar to aggregate functions but require the use of an `OVER` clause or a window specification.
 
-### **Usage**
+### Usage
 
 ```sql
 aggregate [FILTER (WHERE ...)] OVER ( [PARTITION BY ...] [ORDER BY ...] [frame] )
@@ -204,23 +204,23 @@ aggregate [FILTER (WHERE ...)] OVER ( [PARTITION BY ...] [ORDER BY ...] [frame] 
 
 Where:
 
-- **Partition Clause:** Divides the result set into partitions, each treated independently.
-- **Frame Clause:** Defines the subset of the partition for which the window function is calculated.
+- Partition Clause: Divides the result set into partitions, each treated independently.
+- Frame Clause: Defines the subset of the partition for which the window function is calculated.
 
-**Partition Clause:**
+Partition Clause:
 
 ```sql
 PARTITION BY expression [, expression]* 
 ```
 
-**Frame Clause:**
+Frame Clause:
 
 ```sql
 RANGE | ROWS frameBound 
 | BETWEEN frameBound AND frameBound
 ```
 
-**Frame Bound Options:**
+Frame Bound Options:
 
 ```sql
 UNBOUNDED PRECEDING 
@@ -232,42 +232,38 @@ UNBOUNDED PRECEDING
 
 ---
 
-### **Analytical Function Definitions**
+### Analytical Function Definitions
 
-#### **Ranking Functions:**
+#### Ranking Functions:
 
-- **`RANK()`** - Assigns a rank to each row within a partition, with gaps for identical values.
-- **`DENSE_RANK()`** - Similar to `RANK()` but without gaps between rank values.
-- **`PERCENT_RANK()`** - Calculates the relative rank of a row within a partition as `(RANK - 1) / (RC - 1)`, where `RC` is the total row count.
-- **`CUME_DIST()`** - Computes the cumulative distribution as `PR / RC`, where `PR` is the rank of the row including peers and `RC` is the total row count.
+- `RANK()` - Assigns a rank to each row within a partition, with gaps for identical values.
+- `DENSE_RANK()` - Similar to `RANK()` but without gaps between rank values.
+- `PERCENT_RANK()` - Calculates the relative rank of a row within a partition as `(RANK - 1) / (RC - 1)`, where `RC` is the total row count.
+- `CUME_DIST()` - Computes the cumulative distribution as `PR / RC`, where `PR` is the rank of the row including peers and `RC` is the total row count.
 
-#### **Value Functions:**
+#### Value Functions:
 
-- **`FIRST_VALUE(val)`** - Returns the first value in the window frame.
-- **`LAST_VALUE(val)`** - Returns the last value in the window frame.
-- **`LEAD(val [, offset [, default]])`** - Returns the value at the specified offset ahead of the current row.
-- **`LAG(val [, offset [, default]])`** - Returns the value at the specified offset behind the current row.
-- **`NTH_VALUE(val, n)`** - Returns the nth value in the window frame.
+- `FIRST_VALUE(val)` - Returns the first value in the window frame.
+- `LAST_VALUE(val)` - Returns the last value in the window frame.
+- `LEAD(val [, offset [, default]])` - Returns the value at the specified offset ahead of the current row.
+- `LAG(val [, offset [, default]])` - Returns the value at the specified offset behind the current row.
+- `NTH_VALUE(val, n)` - Returns the nth value in the window frame.
 
-#### **Row Value Functions:**
+#### Row Value Functions:
 
-- **`ROW_NUMBER()`** - Assigns a unique sequential number to each row within a partition.
-- **`NTILE(n)`** - Distributes rows into `n` approximately equal parts.
+- `ROW_NUMBER()` - Assigns a unique sequential number to each row within a partition.
+- `NTILE(n)` - Distributes rows into `n` approximately equal parts.
 
----
-
-### **Processing Notes**
+### Processing Notes
 
 - Window functions can only appear in the `SELECT` and `ORDER BY` clauses.
 - Window functions cannot be nested.
 - The `PARTITION BY` and `ORDER BY` clauses cannot contain subqueries or outer references.
 - The default frame is `RANGE UNBOUNDED PRECEDING`, which also implies the default end bound of `CURRENT ROW`.
 - `RANGE` computes over a row and its peers, while `ROWS` computes over every row individually.
-- **`LEAD`**, **`LAG`**, **`NTH_VALUE`** require an `ORDER BY` in the window specification.
+- `LEAD`, `LAG`, `NTH_VALUE` require an `ORDER BY` in the window specification.
 
----
-
-### **Examples: Windowed Results**
+### Examples: Windowed Results
 
 ```sql
 SELECT 
@@ -290,58 +286,96 @@ FROM Employees.STAFF;
 | Suzie | 150000 | 150000  | 1    | 1          | 1       |
 ```
 
----
-
-### **Considerations and Limitations**
+### Considerations and Limitations
 
 - Windowed aggregates cannot use `DISTINCT` if the window specification is ordered.
 - Analytical value functions like **`LEAD`**, **`LAG`**, **`NTH_VALUE`** require an ordering clause.
 - `RANGE` cannot use `n PRECEDING` or `n FOLLOWING`.
 
----
-
-### **Additional Notes**
+### Additional Notes
 
 For predictable ordering, always use `ORDER BY` in your `SELECT` statement, as window functions alone do not guarantee row order.
 
 ## General Functions
 
-### Numeric Functions
+## Numeric functions
 
-| **Function**             | **Description**                                                                       | **Datatype Constraint**                                          |
-|--------------------------|---------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| `+` `-` `*` `/`          | Standard numeric operators.                                                           | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` |
-| `ABS(x)`                 | Returns the absolute value of `x`.                                                    | Numeric types (same as above)                                    |
-| `ACOS(x)`                | Returns the arc cosine of `x`.                                                        | `double`, `bigdecimal`                                           |
-| `ASIN(x)`                | Returns the arc sine of `x`.                                                          | `double`, `bigdecimal`                                           |
-| `ATAN(x)`                | Returns the arc tangent of `x`.                                                       | `double`, `bigdecimal`                                           |
-| `ATAN2(x, y)`            | Returns the arc tangent of `y / x` using the signs to determine the correct quadrant. | `double`, `bigdecimal`                                           |
-| `CEILING(x)`             | Returns the smallest integer greater than or equal to `x`.                            | `double`, `float`                                                |
-| `COS(x)`                 | Returns the cosine of `x`.                                                            | `double`, `bigdecimal`                                           |
-| `COT(x)`                 | Returns the cotangent of `x`.                                                         | `double`, `bigdecimal`                                           |
-| `DEGREES(x)`             | Converts radians to degrees.                                                          | `double`, `bigdecimal`                                           |
-| `EXP(x)`                 | Returns e^x (Euler's number raised to the power of `x`).                              | `double`, `float`                                                |
-| `FLOOR(x)`               | Returns the largest integer less than or equal to `x`.                                | `double`, `float`                                                |
-| `FORMATBIGDECIMAL(x, y)` | Formats `x` using format `y`.                                                         | `bigdecimal`, `string`                                           |
-| `FORMATBIGINTEGER(x, y)` | Formats `x` using format `y`.                                                         | `biginteger`, `string`                                           |
-| `FORMATDOUBLE(x, y)`     | Formats `x` using format `y`.                                                         | `double`, `string`                                               |
-| `FORMATFLOAT(x, y)`      | Formats `x` using format `y`.                                                         | `float`, `string`                                                |
-| `FORMATINTEGER(x, y)`    | Formats `x` using format `y`.                                                         | `integer`, `string`                                              |
-| `FORMATLONG(x, y)`       | Formats `x` using format `y`.                                                         | `long`, `string`                                                 |
-| `LOG(x)`                 | Returns the natural logarithm (base e) of `x`.                                        | `double`, `float`                                                |
-| `LOG10(x)`               | Returns the base 10 logarithm of `x`.                                                 | `double`, `float`                                                |
-| `MOD(x, y)`              | Returns the remainder of `x / y`.                                                     | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` |
-| `POWER(x, y)`            | Returns `x` raised to the power of `y`.                                               | `double`, `bigdecimal`, `biginteger`                             |
-| `RADIANS(x)`             | Converts degrees to radians.                                                          | `double`, `bigdecimal`                                           |
-| `ROUND(x, y)`            | Rounds `x` to `y` decimal places.                                                     | `integer`, `float`, `double`, `bigdecimal`                       |
-| `SIGN(x)`                | Returns `1` if `x > 0`, `0` if `x = 0`, `-1` if `x < 0`.                              | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` |
-| `SIN(x)`                 | Returns the sine of `x`.                                                              | `double`, `bigdecimal`                                           |
-| `SQRT(x)`                | Returns the square root of `x`.                                                       | `long`, `double`, `bigdecimal`                                   |
-| `TAN(x)`                 | Returns the tangent of `x`.                                                           | `double`, `bigdecimal`                                           |
-| `BITAND(x, y)`           | Returns the bitwise AND of `x` and `y`.                                               | `integer`                                                        |
-| `BITOR(x, y)`            | Returns the bitwise OR of `x` and `y`.                                                | `integer`                                                        |
-| `BITXOR(x, y)`           | Returns the bitwise XOR of `x` and `y`.                                               | `integer`                                                        |
-| `BITNOT(x)`              | Returns the bitwise NOT of `x`.                                                       | `integer`                                                        |
+Kubling provides arithmetic operators and functions for numeric calculations, random value generation, rounding, trigonometry, formatting, and bitwise operations.
+
+### Arithmetic operators
+
+| Operator | Accepted types                                                   | Description                               |
+| -------- | ---------------------------------------------------------------- | ----------------------------------------- |
+| `+`      | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` | Adds two numeric values.                  |
+| `-`      | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` | Subtracts one numeric value from another. |
+| `*`      | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` | Multiplies two numeric values.            |
+| `/`      | `integer`, `long`, `float`, `double`, `biginteger`, `bigdecimal` | Divides one numeric value by another.     |
+
+### Random values
+
+| Function      | Arguments       | Returns   | Description                                                                                                                                                                                 |
+|---------------|-----------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `RANDINT()`   | None            | `integer` | Returns a random integer.                                                                                                                                                                   |
+| `RANDLONG()`  | None            | `long`    | Returns a random long value.                                                                                                                                                                |
+| `RANDFLOAT()` | None            | `float`   | Returns a random float value.                                                                                                                                                               |
+| `RAND()`      | None            | `double`  | Returns a random value using the generator already initialized for the query. If no generator exists, one is initialized using the system clock.                                            |
+| `RAND(x)`     | `x`: seed value | `double`  | Initializes a new random generator using `x` as its seed and returns a random value. The seed only affects Kubling `RAND` evaluations, not random functions executed by underlying sources. |
+
+### Absolute values and rounding
+
+| Function      | Arguments                                   | Returns          | Description                                                                          |
+| ------------- | ------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `ABS(x)`      | `x`: numeric                                | Same type as `x` | Returns the absolute value of `x`.                                                   |
+| `CEILING(x)`  | `x`: `double` or `float`                    | Numeric          | Returns the smallest integer value greater than or equal to `x`.                     |
+| `FLOOR(x)`    | `x`: `double` or `float`                    | Numeric          | Returns the largest integer value less than or equal to `x`.                         |
+| `ROUND(x, y)` | `x`: numeric; `y`: number of decimal places | Numeric          | Rounds `x` to `y` decimal places.                                                    |
+| `SIGN(x)`     | `x`: numeric                                | `integer`        | Returns `1` when `x` is positive, `0` when it is zero, and `-1` when it is negative. |
+
+### Trigonometric functions
+
+| Function      | Arguments                          | Returns | Description                                                                            |
+| ------------- | ---------------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| `ACOS(x)`     | `x`: `double` or `bigdecimal`      | Numeric | Returns the arc cosine of `x`.                                                         |
+| `ASIN(x)`     | `x`: `double` or `bigdecimal`      | Numeric | Returns the arc sine of `x`.                                                           |
+| `ATAN(x)`     | `x`: `double` or `bigdecimal`      | Numeric | Returns the arc tangent of `x`.                                                        |
+| `ATAN2(x, y)` | `x`, `y`: `double` or `bigdecimal` | Numeric | Returns an angle based on the signs of both arguments, selecting the correct quadrant. |
+| `COS(x)`      | `x`: `double` or `bigdecimal`      | Numeric | Returns the cosine of `x`.                                                             |
+| `COT(x)`      | `x`: `double` or `bigdecimal`      | Numeric | Returns the cotangent of `x`.                                                          |
+| `SIN(x)`      | `x`: `double` or `bigdecimal`      | Numeric | Returns the sine of `x`.                                                               |
+| `TAN(x)`      | `x`: `double` or `bigdecimal`      | Numeric | Returns the tangent of `x`.                                                            |
+| `DEGREES(x)`  | `x`: `double` or `bigdecimal`      | Numeric | Converts an angle from radians to degrees.                                             |
+| `RADIANS(x)`  | `x`: `double` or `bigdecimal`      | Numeric | Converts an angle from degrees to radians.                                             |
+
+### Exponents and logarithms
+
+| Function      | Arguments                              | Returns | Description                                        |
+| ------------- | -------------------------------------- | ------- | -------------------------------------------------- |
+| `EXP(x)`      | `x`: `double` or `float`               | Numeric | Returns Euler's number raised to the power of `x`. |
+| `LOG(x)`      | `x`: `double` or `float`               | Numeric | Returns the natural logarithm of `x`.              |
+| `LOG10(x)`    | `x`: `double` or `float`               | Numeric | Returns the base-10 logarithm of `x`.              |
+| `POWER(x, y)` | `x`, `y`: supported numeric values     | Numeric | Returns `x` raised to the power of `y`.            |
+| `SQRT(x)`     | `x`: `long`, `double`, or `bigdecimal` | Numeric | Returns the square root of `x`.                    |
+| `MOD(x, y)`   | `x`, `y`: numeric                      | Numeric | Returns the remainder of `x / y`.                  |
+
+### Numeric formatting
+
+| Function                      | Arguments                             | Returns  | Description                            |
+| ----------------------------- | ------------------------------------- | -------- | -------------------------------------- |
+| `FORMATBIGDECIMAL(x, format)` | `x`: `bigdecimal`; `format`: `string` | `string` | Formats `x` using the supplied format. |
+| `FORMATBIGINTEGER(x, format)` | `x`: `biginteger`; `format`: `string` | `string` | Formats `x` using the supplied format. |
+| `FORMATDOUBLE(x, format)`     | `x`: `double`; `format`: `string`     | `string` | Formats `x` using the supplied format. |
+| `FORMATFLOAT(x, format)`      | `x`: `float`; `format`: `string`      | `string` | Formats `x` using the supplied format. |
+| `FORMATINTEGER(x, format)`    | `x`: `integer`; `format`: `string`    | `string` | Formats `x` using the supplied format. |
+| `FORMATLONG(x, format)`       | `x`: `long`; `format`: `string`       | `string` | Formats `x` using the supplied format. |
+
+### Bitwise functions
+
+| Function       | Arguments           | Returns   | Description                             |
+| -------------- | ------------------- | --------- | --------------------------------------- |
+| `BITAND(x, y)` | `x`, `y`: `integer` | `integer` | Returns the bitwise AND of `x` and `y`. |
+| `BITOR(x, y)`  | `x`, `y`: `integer` | `integer` | Returns the bitwise OR of `x` and `y`.  |
+| `BITXOR(x, y)` | `x`, `y`: `integer` | `integer` | Returns the bitwise XOR of `x` and `y`. |
+| `BITNOT(x)`    | `x`: `integer`      | `integer` | Returns the bitwise complement of `x`.  |
 
 #### Examples
 
@@ -370,49 +404,84 @@ SELECT
   BITXOR(5, 3) AS bitwise_xor;  -- Returns 6 (0101 XOR 0011)
 ```
 
-### String Functions
+### String operators
 
-| **Function**                                     | **Description**                                                                                                                                          | **Datatype Constraint**                          |
-|--------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------|
-| `x \|\| y`                                       | Concatenates `x` and `y`. Returns `null` if either `x` or `y` is `null`.                                                                                 | `string`, `clob`                                 |
-| `ASCII(x)`                                       | Returns the ASCII value of the first character in `x`. Returns `null` for an empty string.                                                               | `string`, returns `integer`                      |
-| `CHR(x)` / `CHAR(x)`                             | Returns the character corresponding to the ASCII value `x`.                                                                                              | `integer`, returns `string`                      |
-| `CONCAT(x, y)`                                   | Concatenates `x` and `y` with ANSI semantics. Returns `null` if either is `null`.                                                                        | `string`, returns `string`                       |
-| `CONCAT2(x, y)`                                  | Concatenates `x` and `y` with non-ANSI semantics. If either is `null`, returns the non-null value.                                                       | `string`, returns `string`                       |
-| `ENDSWITH(x, y)`                                 | Returns `true` if `y` ends with `x`. Returns `null` if either is `null`.                                                                                 | `string`, returns `boolean`                      |
-| `INITCAP(x)`                                     | Capitalizes the first letter of each word in `x` and lowercases the rest.                                                                                | `string`, returns `string`                       |
-| `INSERT(str1, start, length, str2)`              | Inserts `str2` into `str1` at the specified start position, replacing `length` characters.                                                               | `string`, `integer`, `string`, returns `string`  |
-| `LCASE(x)`                                       | Converts `x` to lowercase.                                                                                                                               | `string`, returns `string`                       |
-| `LEFT(x, y)`                                     | Returns the leftmost `y` characters of `x`.                                                                                                              | `string`, `integer`, returns `string`            |
-| `LENGTH(x)`                                      | Returns the number of characters in `x`.                                                                                                                 | `string`, returns `integer`                      |
-| `LOCATE(x, y)`                                   | Returns the position of the first occurrence of `x` in `y`.                                                                                              | `string`, `string`, returns `integer`            |
-| `LOCATE(x, y, z)`                                | Returns the position of the first occurrence of `x` in `y`, starting from position `z`.                                                                  | `string`, `string`, `integer`, returns `integer` |
-| `LPAD(x, y)`                                     | Pads `x` with spaces on the left to make it `y` characters long.                                                                                         | `string`, `integer`, returns `string`            |
-| `LPAD(x, y, z)`                                  | Pads `x` on the left to make it `y` characters long, using character `z`.                                                                                | `string`, `integer`, `string`, returns `string`  |
-| `LTRIM(x)`                                       | Removes leading whitespace from `x`.                                                                                                                     | `string`, returns `string`                       |
-| `QUERYSTRING(path [, expr [AS name] ...])`       | Returns a URL query string based on the provided path and optional parameters.                                                                           | `string`, returns `string`                       |
-| `REPEAT(str1, instances)`                        | Repeats `str1` a specified number of times.                                                                                                              | `string`, `integer`, returns `string`            |
-| `RIGHT(x, y)`                                    | Returns the rightmost `y` characters of `x`.                                                                                                             | `string`, `integer`, returns `string`            |
-| `RPAD(x, y)`                                     | Pads `x` with spaces on the right to make it `y` characters long.                                                                                        | `string`, `integer`, returns `string`            |
-| `RPAD(x, y, z)`                                  | Pads `x` on the right to make it `y` characters long, using character `z`.                                                                               | `string`, `integer`, `string`, returns `string`  |
-| `RTRIM(x)`                                       | Removes trailing whitespace from `x`.                                                                                                                    | `string`, returns `string`                       |
-| ``TRIM([[LEADING\|TRAILING\|BOTH] [x] FROM] y)`` | Trims characters from the beginning, end, or both ends of `y`.                                                                                           | `string`, returns `string`                       |
-| `SPACE(x)`                                       | Returns a string of `x` space characters.                                                                                                                | `integer`, returns `string`                      |
-| `SUBSTRING(x, y)`                                | Returns the substring of `x`, starting from position `y`.                                                                                                | `string`, `integer`, returns `string`            |
-| `SUBSTRING(x, y, z)`                             | Returns the substring of `x`, starting from position `y` with length `z`.                                                                                | `string`, `integer`, `integer`, returns `string` |
-| `UCASE(x)`                                       | Converts `x` to uppercase.                                                                                                                               | `string`, returns `string`                       |
-| `UNESCAPE(x)`                                    | Unescapes characters in `x`, including Unicode and octal sequences.                                                                                      | `string`, returns `string`                       |
-| `REPLACE(x, y, z)`                               | Replaces all occurrences of `y` in `x` with `z`.                                                                                                         | `string`, `string`, `string`, returns `string`   |
-| `REGEXP_REPLACE(str, pattern, sub [, flags])`    | Replaces one or more occurrences of `pattern` in `str` with `sub`. Supports flags for global (`g`), multiline (`m`), and case-insensitive (`i`) matches. | `string`, `string`, `string`, returns `string`   |
-| `TOBASE64(str)`    |  |    |
-| `TOBASE64(str, encoding)`    |  |    |
-| `FROMBASE64(str)`    |  |    |
-| `FROMBASE64(str, encoding)`    |  |    |
-| `COMPRESS(str)`    | Compresses a string using the Deflate algorithm with UTF-8 encoding. Returns the compressed output as a Base64-encoded clob.  |    |
-| `COMPRESS(str, charset)`    | Compresses a string using the Deflate algorithm with UTF-8 encoding. Returns the compressed output as a Base64-encoded clob.  |    |
-| `DECOMPRESS(str)`    | Decompresses (inflates) a Base64-encoded string using the Deflate algorithm, assuming UTF-8 as the charset. Returns the decompressed content as clob.  |    |
-| `DECOMPRESS(str, charset)`    |   |    |
-| `TOKENIZE(str, charset)`    | Extracts tokens of a string, using the specified delimiter, and returns an array.  |    |
+| Operator   | Accepted types               | Returns                 | Description                                                         |
+| ---------- | ---------------------------- | ----------------------- | ------------------------------------------------------------------- |
+| `x \|\| y` | `x`, `y`: `string` or `clob` | String-compatible value | Concatenates `x` and `y`. Returns `null` if either value is `null`. |
+
+### String functions
+
+#### Concatenation and case conversion
+
+| Function        | Arguments          | Returns  | Description                                                                                                    |
+| --------------- | ------------------ | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `CONCAT(x, y)`  | `x`, `y`: `string` | `string` | Concatenates `x` and `y` using ANSI null semantics. Returns `null` if either value is `null`.                  |
+| `CONCAT2(x, y)` | `x`, `y`: `string` | `string` | Concatenates `x` and `y` using non-ANSI null semantics. If either value is `null`, returns the non-null value. |
+| `INITCAP(x)`    | `x`: `string`      | `string` | Capitalizes the first letter of each word in `x` and converts the remaining letters to lowercase.              |
+| `LCASE(x)`      | `x`: `string`      | `string` | Converts `x` to lowercase.                                                                                     |
+| `UCASE(x)`      | `x`: `string`      | `string` | Converts `x` to uppercase.                                                                                     |
+
+#### Character conversion and inspection
+
+| Function                   | Arguments                            | Returns    | Description                                                                                        |
+|----------------------------|--------------------------------------|------------|----------------------------------------------------------------------------------------------------|
+| `ASCII(x)`                 | `x`: `string`                        | `integer`  | Returns the ASCII value of the first character in `x`. Returns `null` when `x` is an empty string. |
+| `CHR(x)` / `CHAR(x)`       | `x`: `integer`                       | `string`   | Returns the character corresponding to the ASCII value `x`.                                        |
+| `LENGTH(x)`                | `x`: `string`                        | `integer`  | Returns the number of characters in `x`.                                                           |
+| `ENDSWITH(suffix, source)` | `suffix`, `source`: `string`         | `boolean`  | Returns `true` if `source` ends with `suffix`. Returns `null` if either value is `null`.           |
+| `TOBASE64(str)`            | `str`: `string`                      | `string`   | Encodes `str` as Base64 using UTF-8.                                                               |
+| `TOBASE64(str, encoding)`  | `str`, `encoding`: `string`          | `string`   | Encodes `str` as Base64 using the specified character encoding.                                    |
+| `TOKENIZE(str, delimiter)` | `str`: `string`; `delimiter`: `char` | `string[]` | Splits `str` using the specified delimiter and returns the resulting tokens as an array.           |
+
+#### Searching and extracting
+
+| Function                                     | Arguments                                                       | Returns   | Description                                                                                          |
+| -------------------------------------------- | --------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| `LEFT(x, length)`                            | `x`: `string`; `length`: `integer`                              | `string`  | Returns the leftmost `length` characters of `x`.                                                     |
+| `RIGHT(x, length)`                           | `x`: `string`; `length`: `integer`                              | `string`  | Returns the rightmost `length` characters of `x`.                                                    |
+| `LOCATE(search, source)`                     | `search`, `source`: `string`                                    | `integer` | Returns the position of the first occurrence of `search` in `source`.                                |
+| `LOCATE(search, source, start)`              | `search`, `source`: `string`; `start`: `integer`                | `integer` | Returns the position of the first occurrence of `search` in `source`, beginning at position `start`. |
+| `SUBSTRING(x, start)`                        | `x`: `string`; `start`: `integer`                               | `string`  | Returns the substring of `x` beginning at position `start`.                                          |
+| `SUBSTRING(x, start, length)`                | `x`: `string`; `start`, `length`: `integer`                     | `string`  | Returns up to `length` characters from `x`, beginning at position `start`.                           |
+| `INSERT(source, start, length, replacement)` | `source`, `replacement`: `string`; `start`, `length`: `integer` | `string`  | Replaces `length` characters in `source`, beginning at position `start`, with `replacement`.         |
+
+#### Padding and trimming
+
+| Function                                                    | Arguments                                     | Returns  | Description                                                                       |
+| ----------------------------------------------------------- | --------------------------------------------- | -------- | --------------------------------------------------------------------------------- |
+| `LPAD(x, length)`                                           | `x`: `string`; `length`: `integer`            | `string` | Pads `x` with spaces on the left until it reaches the requested length.           |
+| `LPAD(x, length, padding)`                                  | `x`, `padding`: `string`; `length`: `integer` | `string` | Pads `x` on the left using `padding` until it reaches the requested length.       |
+| `RPAD(x, length)`                                           | `x`: `string`; `length`: `integer`            | `string` | Pads `x` with spaces on the right until it reaches the requested length.          |
+| `RPAD(x, length, padding)`                                  | `x`, `padding`: `string`; `length`: `integer` | `string` | Pads `x` on the right using `padding` until it reaches the requested length.      |
+| `LTRIM(x)`                                                  | `x`: `string`                                 | `string` | Removes leading whitespace from `x`.                                              |
+| `RTRIM(x)`                                                  | `x`: `string`                                 | `string` | Removes trailing whitespace from `x`.                                             |
+| `TRIM([[LEADING\|TRAILING\|BOTH] [character] FROM] source)` | `character`, `source`: `string`               | `string` | Removes the selected character from the beginning, end, or both ends of `source`. |
+
+#### Replacement, repetition, and escaping
+
+| Function                                                 | Arguments                                   | Returns  | Description                                                                                                                                      |
+| -------------------------------------------------------- | ------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `REPEAT(x, instances)`                                   | `x`: `string`; `instances`: `integer`       | `string` | Repeats `x` the specified number of times.                                                                                                       |
+| `REPLACE(source, search, replacement)`                   | `source`, `search`, `replacement`: `string` | `string` | Replaces every occurrence of `search` in `source` with `replacement`.                                                                            |
+| `REGEXP_REPLACE(source, pattern, replacement [, flags])` | All arguments: `string`                     | `string` | Replaces occurrences matching `pattern` in `source`. Supported flags include global (`g`), multiline (`m`), and case-insensitive (`i`) matching. |
+| `SPACE(length)`                                          | `length`: `integer`                         | `string` | Returns a string containing the requested number of space characters.                                                                            |
+| `UNESCAPE(x)`                                            | `x`: `string`                               | `string` | Resolves escaped characters in `x`, including Unicode and octal sequences.                                                                       |
+
+#### URL query construction
+
+| Function                                         | Arguments                                    | Returns  | Description                                                          |
+| ------------------------------------------------ | -------------------------------------------- | -------- | -------------------------------------------------------------------- |
+| `QUERYSTRING(path [, expression [AS name] ...])` | `path`: `string`; optional named expressions | `string` | Creates a URL query string from `path` and the supplied expressions. |
+
+#### Encoding and compression
+
+| Function                 | Arguments                | Returns | Description                                                                                                                            |
+| ------------------------ | ------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `COMPRESS(x)`            | `x`: `string`            | `clob`  | Compresses `x` using the Deflate algorithm and UTF-8 encoding. Returns the compressed content as a Base64-encoded `clob`.              |
+| `COMPRESS(x, charset)`   | `x`, `charset`: `string` | `clob`  | Compresses `x` using the Deflate algorithm and the specified character set. Returns the compressed content as a Base64-encoded `clob`. |
+| `DECOMPRESS(x)`          | `x`: `string`            | `clob`  | Decompresses a Base64-encoded Deflate value using UTF-8 as the character set.                                                          |
+| `DECOMPRESS(x, charset)` | `x`, `charset`: `string` | `clob`  | Decompresses a Base64-encoded Deflate value using the specified character set.                                                         |
 
 #### Examples
 
@@ -440,19 +509,19 @@ SELECT
   REGEXP_REPLACE('abc123def', '[0-9]', 'X', 'g') AS masked; -- Returns 'abcXXXdef'
 ```
 
-### Type Conversion Functions
+### Type conversion functions
 
-| **Function**                            | **Description**                                                                                                       | **Datatype Constraint** |
-|-----------------------------------------|-----------------------------------------------------------------------------------------------------------------------|-------------------------|
-| `CONVERT(x, type)`                      | Converts `x` to the specified `type`. The target `type` must be a standard data type.                                 | `any`, returns `type`   |
-| `CAST(x AS type)`                       | Identical to `CONVERT`. Converts `x` to the specified `type`.                                                         | `any`, returns `type`   |
-| `TO_CHARS(blob, encoding)`              | Converts a `BLOB` value into a character representation using the specified encoding.                                 | `blob`, returns `clob`  |
-| `TO_CHARS(blob, encoding, well_formed)` | Same as `TO_CHARS(blob, encoding)`, but allows control over malformed or invalid byte sequences during decoding.      | `blob`, returns `clob`  |
-| `TO_BYTES(clob, encoding)`              | Converts a `CLOB` value into a binary representation using the specified encoding.                                    | `clob`, returns `blob`  |
-| `TO_BYTES(clob, encoding, well_formed)` | Same as `TO_BYTES(clob, encoding)`, but allows control over malformed or invalid character sequences during encoding. | `clob`, returns `blob`  |
+| Function                                | Arguments                                                      | Returns       | Description                                                                                                                                                               |
+| --------------------------------------- | -------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CONVERT(x, type)`                      | `x`: any value; `type`: standard Kubling data type             | Target `type` | Converts `x` to the specified data type.                                                                                                                                  |
+| `CAST(x AS type)`                       | `x`: any value; `type`: standard Kubling data type             | Target `type` | Converts `x` to the specified data type. Equivalent to `CONVERT(x, type)`.                                                                                                |
+| `TO_CHARS(blob, encoding)`              | `blob`: `blob`; `encoding`: `string`                           | `clob`        | Decodes the binary content of `blob` into characters using the specified character encoding.                                                                              |
+| `TO_CHARS(blob, encoding, well_formed)` | `blob`: `blob`; `encoding`: `string`; `well_formed`: `boolean` | `clob`        | Decodes the binary content of `blob` using the specified character encoding. The `well_formed` flag controls the handling of malformed or invalid byte sequences.         |
+| `TO_BYTES(clob, encoding)`              | `clob`: `clob`; `encoding`: `string`                           | `blob`        | Encodes the character content of `clob` into bytes using the specified character encoding.                                                                                |
+| `TO_BYTES(clob, encoding, well_formed)` | `clob`: `clob`; `encoding`: `string`; `well_formed`: `boolean` | `blob`        | Encodes the character content of `clob` using the specified character encoding. The `well_formed` flag controls the handling of malformed or invalid character sequences. |
 
-<Callout>
-  Options specified on the target type, such as length, precision, scale, etc., are effectively ignored - the engine simply converts from one object type to another.
+<Callout> 
+  Conversion only changes the value's data type. Additional target type options, such as length, precision, or scale, are ignored. 
 </Callout>
 
 #### Examples
@@ -475,39 +544,73 @@ SELECT
   CONVERT('{"key": "value"}', json) AS json_obj;  -- Returns {"key": "value"}
 ```
 
-### Date and Time Functions
+### Date and time functions
 
-| **Function** | **Description** | **Datatype Constraint** |
-|--------------|-----------------|-------------------------|
-| `CURDATE()` / `CURRENT_DATE()` | Returns the current date. Same value for all invocations in a single user command. | Returns `date` |
-| `CURTIME()` / `CURRENT_TIME()` | Returns the current time. Same value for all invocations in a single user command. | Returns `time` |
-| `NOW()` / `CURRENT_TIMESTAMP()` | Returns the current timestamp (date and time with millisecond precision). Same value for all invocations in a single user command. | Returns `timestamp` |
-| `DAYNAME(x)` | Returns the name of the day for the given date or timestamp in the default locale. | `x` in {`date`, `timestamp`}, returns `string` |
-| `DAYOFMONTH(x)` | Returns the day of the month for the given date or timestamp. | `x` in {`date`, `timestamp`}, returns `integer` |
-| `DAYOFWEEK(x)` | Returns the day of the week (Sunday = 1, Saturday = 7). | `x` in {`date`, `timestamp`}, returns `integer` |
-| `DAYOFYEAR(x)` | Returns the day number within the year for the given date or timestamp. | `x` in {`date`, `timestamp`}, returns `integer` |
-| `EPOCH(x)` | Returns the seconds since the Unix epoch with microsecond precision. | `x` in {`date`, `timestamp`}, returns `double` |
-| `EXTRACT(FIELD FROM x)` | Returns the specified `FIELD` from the date value `x`. Fields include `YEAR`, `MONTH`, `DAYOFMONTH`, `HOUR`, `MINUTE`, `SECOND`, `EPOCH`, etc. | `x` in {`date`, `time`, `timestamp`}, returns `integer` or `double` |
-| `FORMATDATE(x, y)` | Formats the date `x` using the format `y`. | `x` is `date`, `y` is `string`, returns `string` |
-| `FORMATTIME(x, y)` | Formats the time `x` using the format `y`. | `x` is `time`, `y` is `string`, returns `string` |
-| `FORMATTIMESTAMP(x, y)` | Formats the timestamp `x` using the format `y`. | `x` is `timestamp`, `y` is `string`, returns `string` |
-| `FROM_MILLIS(millis)` | Returns the `timestamp` value for the given milliseconds since Unix epoch. | `long` UTC timestamp in milliseconds |
-| `FROM_UNIXTIME(unix_timestamp)` | Returns the Unix timestamp as a `string` in the default format `yyyy/mm/dd hh:mm:ss`. | `long` Unix timestamp (in seconds) |
-| `HOUR(x)` | Returns the hour component (in 24-hour format). | `x` in {`time`, `timestamp`}, returns `integer` |
-| `MINUTE(x)` | Returns the minute component. | `x` in {`time`, `timestamp`}, returns `integer` |
-| `MODIFYTIMEZONE(timestamp, startTimeZone, endTimeZone)` | Returns a timestamp adjusted for the difference between `startTimeZone` and `endTimeZone`. | Strings for time zones, returns `timestamp` |
-| `MONTH(x)` | Returns the month component. | `x` in {`date`, `timestamp`}, returns `integer` |
-| `MONTHNAME(x)` | Returns the name of the month in the default locale. | `x` in {`date`, `timestamp`}, returns `string` |
-| `PARSEDATE(x, y)` | Parses a date from `x` using the format `y`. | `x`, `y` are `string`, returns `date` |
-| `PARSETIME(x, y)` | Parses a time from `x` using the format `y`. | `x`, `y` are `string`, returns `time` |
-| `PARSETIMESTAMP(x, y)` | Parses a timestamp from `x` using the format `y`. | `x`, `y` are `string`, returns `timestamp` |
-| `QUARTER(x)` | Returns the quarter of the year. | `x` in {`date`, `timestamp`}, returns `integer` |
-| `SECOND(x)` | Returns the seconds component. | `x` in {`time`, `timestamp`}, returns `integer` |
-| `TIMESTAMPCREATE(date, time)` | Creates a timestamp from a `date` and a `time`. | `date` is `date`, `time` is `time`, returns `timestamp` |
-| `TO_MILLIS(timestamp)` | Returns the UTC timestamp in milliseconds. | Timestamp value |
-| `UNIX_TIMESTAMP(unix_timestamp)` | Returns the Unix timestamp (in seconds). | `unix_timestamp` as `string`, returns `long` |
-| `WEEK(x)` | Returns the week of the year (1-53). | `x` in {`date`, `timestamp`}, returns `integer` |
-| `YEAR(x)` | Returns the four-digit year. | `x` in {`date`, `timestamp`}, returns `integer` |
+#### Current date and time
+
+The current date and time functions return a stable value throughout the execution of a single user command.
+
+| Function                        | Arguments | Returns     | Description                                                                                                                       |
+| ------------------------------- | --------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `CURDATE()` / `CURRENT_DATE()`  | None      | `date`      | Returns the current date. All invocations within the same user command return the same value.                                     |
+| `CURTIME()` / `CURRENT_TIME()`  | None      | `time`      | Returns the current time. All invocations within the same user command return the same value.                                     |
+| `NOW()` / `CURRENT_TIMESTAMP()` | None      | `timestamp` | Returns the current date and time with millisecond precision. All invocations within the same user command return the same value. |
+
+#### Date and time components
+
+| Function        | Arguments                  | Returns   | Description                                                           |
+| --------------- | -------------------------- | --------- | --------------------------------------------------------------------- |
+| `DAYNAME(x)`    | `x`: `date` or `timestamp` | `string`  | Returns the localized name of the day of the week.                    |
+| `DAYOFMONTH(x)` | `x`: `date` or `timestamp` | `integer` | Returns the day of the month.                                         |
+| `DAYOFWEEK(x)`  | `x`: `date` or `timestamp` | `integer` | Returns the day of the week, where Sunday is `1` and Saturday is `7`. |
+| `DAYOFYEAR(x)`  | `x`: `date` or `timestamp` | `integer` | Returns the day number within the year.                               |
+| `HOUR(x)`       | `x`: `time` or `timestamp` | `integer` | Returns the hour component using the 24-hour clock.                   |
+| `MINUTE(x)`     | `x`: `time` or `timestamp` | `integer` | Returns the minute component.                                         |
+| `MONTH(x)`      | `x`: `date` or `timestamp` | `integer` | Returns the month component.                                          |
+| `MONTHNAME(x)`  | `x`: `date` or `timestamp` | `string`  | Returns the localized name of the month.                              |
+| `QUARTER(x)`    | `x`: `date` or `timestamp` | `integer` | Returns the quarter of the year, from `1` to `4`.                     |
+| `SECOND(x)`     | `x`: `time` or `timestamp` | `integer` | Returns the seconds component.                                        |
+| `WEEK(x)`       | `x`: `date` or `timestamp` | `integer` | Returns the week of the year, from `1` to `53`.                       |
+| `YEAR(x)`       | `x`: `date` or `timestamp` | `integer` | Returns the four-digit year.                                          |
+
+#### Component extraction
+
+| Function                | Arguments                                                                  | Returns               | Description                                                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EXTRACT(field FROM x)` | `field`: supported date or time field; `x`: `date`, `time`, or `timestamp` | `integer` or `double` | Extracts the specified component from `x`. Supported fields include `YEAR`, `MONTH`, `DAYOFMONTH`, `HOUR`, `MINUTE`, `SECOND`, and `EPOCH`. |
+
+#### Formatting and parsing
+
+| Function                        | Arguments                            | Returns     | Description                                                |
+| ------------------------------- | ------------------------------------ | ----------- | ---------------------------------------------------------- |
+| `FORMATDATE(x, format)`         | `x`: `date`; `format`: `string`      | `string`    | Formats `x` using the specified date pattern.              |
+| `FORMATTIME(x, format)`         | `x`: `time`; `format`: `string`      | `string`    | Formats `x` using the specified time pattern.              |
+| `FORMATTIMESTAMP(x, format)`    | `x`: `timestamp`; `format`: `string` | `string`    | Formats `x` using the specified timestamp pattern.         |
+| `PARSEDATE(value, format)`      | `value`, `format`: `string`          | `date`      | Parses `value` as a date using the specified pattern.      |
+| `PARSETIME(value, format)`      | `value`, `format`: `string`          | `time`      | Parses `value` as a time using the specified pattern.      |
+| `PARSETIMESTAMP(value, format)` | `value`, `format`: `string`          | `timestamp` | Parses `value` as a timestamp using the specified pattern. |
+
+#### Epoch conversion
+
+| Function                    | Arguments                  | Returns     | Description                                                                                                                                                         |
+|-----------------------------|----------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `EPOCH(x)`                  | `x`: `date` or `timestamp` | `double`    | Returns the number of seconds elapsed since the Unix epoch, including fractional microseconds.                                                                      |
+| `FROM_MILLIS(milliseconds)` | `milliseconds`: `long`     | `timestamp` | Creates a timestamp from the number of milliseconds elapsed since the Unix epoch.                                                                                   |
+| `TO_MILLIS(x)`              | `x`: `timestamp`           | `long`      | Returns the number of milliseconds elapsed between the Unix epoch and `x`.                                                                                          |
+| `FROM_UNIXTIME(seconds)`    | `seconds`: `long`          | `string`    | Converts Unix epoch seconds to a timestamp string using the runtime's default time zone. The result uses the format `yyyy-MM-dd HH:mm:ss`.                          |
+| `UNIX_TIMESTAMP(value)`     | `value`: `string`          | `long`      | Parses a timestamp string and returns the corresponding Unix epoch value in seconds. The input must use the JDBC timestamp format `yyyy-[m]m-[d]d HH:mm:ss[.f...]`. |
+
+<Callout>
+  `FROM_UNIXTIME` and `UNIX_TIMESTAMP` use the runtime's default time zone. 
+  Their results may therefore differ between Kubling instances configured with different time zones.
+</Callout>
+
+#### Timestamp construction and timezone adjustment
+
+| Function                                                      | Arguments                                                                | Returns     | Description                                                                                     |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------- |
+| `TIMESTAMPCREATE(date, time)`                                 | `date`: `date`; `time`: `time`                                           | `timestamp` | Creates a timestamp by combining the supplied date and time values.                             |
+| `MODIFYTIMEZONE(timestamp, source_timezone, target_timezone)` | `timestamp`: `timestamp`; `source_timezone`, `target_timezone`: `string` | `timestamp` | Adjusts `timestamp` by applying the offset difference between the source and target time zones. |
 
 #### `TIMESTAMPADD`
 Adds a specified interval amount to a timestamp.
@@ -563,12 +666,28 @@ Note:
 - The date part difference is counted regardless of how close the timestamps are.  
 - For example, `'2025-01-02 00:00:00.0'` is still considered 1 hour ahead of `'2025-01-01 23:59:59.999999'`.
 
-### Decode Functions
+### Decode functions
 
-| **Function**                | **Description**                                                                                                                                                                                                                                                                                                                              | **Datatype Constraint**                         |
-|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| `DECODESTRING(x, y [, z])`  | Decodes the column `x` using a string of value pairs `y` with an optional delimiter `z` and returns the decoded column as a string. If a delimiter is not specified, a comma (`,`) is used. The format for `y` is `SearchDelimResultDelimSearchDelimResult[DelimDefault]`. Returns `Default` if specified, or `x` if there are no matches.   | All parameters and return type are `string`.    |
-| `DECODEINTEGER(x, y [, z])` | Decodes the column `x` using a string of value pairs `y` with an optional delimiter `z` and returns the decoded column as an integer. If a delimiter is not specified, a comma (`,`) is used. The format for `y` is `SearchDelimResultDelimSearchDelimResult[DelimDefault]`. Returns `Default` if specified, or `x` if there are no matches. | All parameters are `string`; returns `integer`. |
+Decode functions map an input value to a result using a delimiter-separated sequence of search-result pairs.
+
+The mapping string uses the following structure:
+
+```text
+search<delimiter>result<delimiter>search<delimiter>result[<delimiter>default]
+```
+
+If no delimiter is provided, a comma (`,`) is used.
+
+When the input matches one of the search values, the corresponding result is returned. If no match exists, the optional default value is returned. When no default is provided, the original input value is returned.
+
+| Function                                       | Arguments                                                     | Returns   | Description                                                                                                         |
+| ---------------------------------------------- | ------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
+| `DECODESTRING(input, mappings [, delimiter])`  | `input`, `mappings`: `string`; `delimiter`: optional `string` | `string`  | Decodes `input` using the search-result pairs defined in `mappings`.                                                |
+| `DECODEINTEGER(input, mappings [, delimiter])` | `input`, `mappings`: `string`; `delimiter`: optional `string` | `integer` | Decodes `input` using the search-result pairs defined in `mappings` and converts the selected result to an integer. |
+
+<Callout>
+  Values returned by `DECODEINTEGER`, including the optional default value or the original input fallback, must be convertible to `integer`.
+</Callout>
 
 #### Examples
 
@@ -595,18 +714,14 @@ haproxy-ingress-r579p                   |ingress-controller|kube1      |Ready,Fa
 ingress-default-backend-6468f96589-cm9kh|ingress-controller|kube1      |Ready,False   |
 ```
 
----
-
-**Using Default Value**
+Using Default Value
 
 ```sql
 SELECT DECODESTRING(status, '200:OK,404:Not Found', ':', 'Unknown Status') AS status_message 
 FROM API_LOGS;
 ```
 
----
-
-**Integer Decoding**
+Integer Decoding
 
 ```sql
 SELECT DECODEINTEGER(priority, '1:Low,2:Medium,3:High', ':', '0') AS priority_label 
@@ -700,29 +815,43 @@ SELECT
 FROM NODE;
 ```
 
-### Security Functions
+### Cryptographic functions
 
-| **Function** | **Description** | **Datatype Constraint** |
-|---|---|---|
-| `MD5(str)` | Computes the MD5 hash of the specified plain text string. | `str` is `string`, returns `string` |
-| `MD5(bin)` | Computes the MD5 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
-| `HASH(str)` | Computes the SHA-256 hash of the specified plain text string and returns the result encoded as Base64. | `str` is `string`, returns `string` |
-| `SHA1(str)` | Computes the SHA-1 hash of the specified plain text string. | `str` is `string`, returns `string` |
-| `SHA1(bin)` | Computes the SHA-1 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
-| `SHA2_256(str)` | Computes the SHA-256 hash of the specified plain text string. | `str` is `string`, returns `string` |
-| `SHA2_256(bin)` | Computes the SHA-256 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
-| `SHA2_512(str)` | Computes the SHA-512 hash of the specified plain text string. | `str` is `string`, returns `string` |
-| `SHA2_512(bin)` | Computes the SHA-512 hash of the specified binary value. | `bin` is `varbinary`, returns `string` |
-| `AES_ENCRYPT(x, y)` | Encrypts the specified value using the AES algorithm with `AES/CBC/PKCS5Padding` and the provided key. | `x` is `string` or `varbinary`, `y` is `string`, returns `varbinary` |
-| `AES_DECRYPT(x, y)` | Decrypts the specified AES-encrypted binary value using the provided key. | `x` is `varbinary`, `y` is `string`, returns `varbinary` |
-| `X509_CERT_EXP_DAYS(str)` | Returns certificate expiration information, in JSON format, for the specified X509 certificate. | `str` is `string`, returns `json` |
-| `PKCS7_CERT_EXP_DAYS(str)` | Returns certificate expiration information, in JSON format, for the specified PKCS7 certificate. | `str` is `string`, returns `json` |
+#### Hashing
+
+| Function        | Arguments          | Returns     | Description                                                                                                                 |
+| --------------- | ------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `MD5(str)`      | `str`: `string`    | `varbinary` | Computes the MD5 digest of the UTF-8 encoded value of `str`.                                                                |
+| `MD5(bin)`      | `bin`: `varbinary` | `varbinary` | Computes the MD5 digest of the supplied binary value.                                                                       |
+| `HASH(str)`     | `str`: `string`    | `string`    | Computes the SHA-256 digest of the UTF-8 encoded value of `str` and returns it as a URL-safe Base64 string without padding. |
+| `SHA1(str)`     | `str`: `string`    | `varbinary` | Computes the SHA-1 digest of the UTF-8 encoded value of `str`.                                                              |
+| `SHA1(bin)`     | `bin`: `varbinary` | `varbinary` | Computes the SHA-1 digest of the supplied binary value.                                                                     |
+| `SHA2_256(str)` | `str`: `string`    | `varbinary` | Computes the SHA-256 digest of the UTF-8 encoded value of `str`.                                                            |
+| `SHA2_256(bin)` | `bin`: `varbinary` | `varbinary` | Computes the SHA-256 digest of the supplied binary value.                                                                   |
+| `SHA2_512(str)` | `str`: `string`    | `varbinary` | Computes the SHA-512 digest of the UTF-8 encoded value of `str`.                                                            |
+| `SHA2_512(bin)` | `bin`: `varbinary` | `varbinary` | Computes the SHA-512 digest of the supplied binary value.                                                                   |
+
+<Callout type="warning">
+  MD5 and SHA-1 are retained for compatibility and should not be used for new security-sensitive applications. Prefer SHA-256 or SHA-512.
+</Callout>
+
+#### Symmetric encryption
+
+| Function              | Arguments                                     | Returns     | Description                                                     |
+| --------------------- | --------------------------------------------- | ----------- | --------------------------------------------------------------- |
+| `AES_ENCRYPT(x, key)` | `x`: `string` or `varbinary`; `key`: `string` | `varbinary` | Encrypts `x` using `AES/CBC/PKCS5Padding` and the supplied key. |
+| `AES_DECRYPT(x, key)` | `x`: `varbinary`; `key`: `string`             | `varbinary` | Decrypts an AES-encrypted binary value using the supplied key.  |
+
+#### Certificate inspection
+
+| Function                           | Arguments               | Returns | Description                                                                         |
+| ---------------------------------- | ----------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `X509_CERT_EXP_DAYS(certificate)`  | `certificate`: `string` | `json`  | Returns expiration information for the supplied X.509 certificate as a JSON value.  |
+| `PKCS7_CERT_EXP_DAYS(certificate)` | `certificate`: `string` | `json`  | Returns expiration information for the supplied PKCS#7 certificate as a JSON value. |
 
 ## Vector Functions <Tag description={"v25.1+"} />
 
 Vector functions are used for mathematical operations on vectors, such as distance calculations and transformations. These are especially useful for machine learning and similarity computations.
-
----
 
 #### `vectorStringToArray`
 
@@ -740,8 +869,6 @@ Expected output:
 |-----------------|
 | [0.1, 0.2, 0.3] |
 ```
-
----
 
 #### `euclideanDistance`
 
@@ -763,8 +890,6 @@ Expected output:
 | 5.196    |
 ```
 
----
-
 #### `innerProduct`
 
 Calculates the **dot product** of two vectors.
@@ -784,8 +909,6 @@ Expected output:
 |-------------|
 | 32.0        |
 ```
-
----
 
 #### `cosineDistance`
 
@@ -807,30 +930,35 @@ Expected output:
 | 1.0             |
 ```
 
-## Document Functions <Tag description={"v24.5.3+"} />
+## Document functions <Tag description={"v24.5.3+"} />
 
-| **Function**                       | **Description**                                                                                                                                                                                                                                                                     |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `jsonParse(value, skipValidation)` | Parses a `value` (`CLOB` or `BLOB`) and returns a `json` object. `skipValidation` indicates whether pre-parsing validation of `value` should be skipped.                                                                                                                            |
-| `jsonObject(c1, c2, ..., cn)`      | Returns a `json` object based on a list of columns. The resulting object contains fields in the form of `column_name: column_value`.                                                                                                                                                |
-| `yamlAsJSON(value)`                | Converts `value` (`CLOB`), which is expected to be a valid YAML document, into a `json` object.                                                                                                                                                                                     |
-| `jsonPath(value, path)`            | Evaluates a [JsonPath](https://datatracker.ietf.org/doc/rfc9535/) expression on `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed. |
-| `jsonJq(value, query)`             | Applies a [jq](https://jqlang.github.io/jq/) query to `value`, which is expected to be a valid `json` document (`string` or `CLOB`). Always returns a `json` document, even if it’s a single value. In such cases, transform it to other types as needed.                           |
-| `jsonPathAsString(value, path)`    | Same as `jsonPath` but returns a `string` instead of a `json` object.                                                                                                                                                                                                               |
-| `jsonJqAsString(value, query)`     | Same as `jsonJq` but returns a `string` instead of a `json` object.                                                                                                                                                                                                                 |
+Document functions allow JSON and YAML content to be parsed, constructed, queried, and transformed directly within SQL expressions.
+
+| Function                           | Arguments                                              | Returns  | Description                                                                                                                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jsonParse(value, skipValidation)` | `value`: `clob` or `blob`; `skipValidation`: `boolean` | `json`   | Parses `value` as a JSON document. When `skipValidation` is `true`, Kubling skips validation before parsing the supplied content.                                                                                    |
+| `jsonObject(c1, c2, ..., cn)`      | `c1` through `cn`: columns                             | `json`   | Creates a JSON object from the supplied columns. Each field uses the column name as its key and the column value as its value.                                                                                       |
+| `yamlAsJSON(value)`                | `value`: `clob`                                        | `json`   | Parses a valid YAML document and returns its equivalent JSON representation.                                                                                                                                         |
+| `jsonPath(value, path)`            | `value`: `string` or `clob`; `path`: `string`          | `json`   | Evaluates an [RFC 9535 JSONPath](https://datatracker.ietf.org/doc/rfc9535/) expression against a valid JSON document. The result is always returned as `json`, including when the expression selects a scalar value. |
+| `jsonJq(value, query)`             | `value`: `string` or `clob`; `query`: `string`         | `json`   | Applies a [jq](https://jqlang.github.io/jq/) query to a valid JSON document. The result is always returned as `json`, including when the query produces a scalar value.                                              |
+| `jsonPathAsString(value, path)`    | `value`: `string` or `clob`; `path`: `string`          | `string` | Evaluates a JSONPath expression and returns the result as a string instead of a `json` value.                                                                                                                        |
+| `jsonJqAsString(value, query)`     | `value`: `string` or `clob`; `query`: `string`         | `string` | Applies a jq query and returns the result as a string instead of a `json` value.                                                                                                                                     |
+
+<Callout>
+  `jsonPath` and `jsonJq` always return the `json` data type, even when the selected result is a single scalar value. 
+  Use the corresponding `AsString` function or an explicit type conversion when a string result is required.
+</Callout>
 
 #### Examples
 
-**Parsing JSON Documents**
+Parsing JSON Documents
 
 ```sql
 SELECT jsonParse(config_json, true) AS parsed_config
 FROM CONFIG_TABLE;
 ```
 
----
-
-**Extracting Fields with JsonPath**
+Extracting Fields with JsonPath
 
 ```sql
 SELECT jsonObject(metadata__name, spec__providerID) AS node_summary
@@ -839,9 +967,7 @@ FROM NODE;
 
 (assuming `metadata__name` and `spec__providerID` are string columns)
 
----
-
-**Using JSON Objects Directly**
+Using JSON Objects Directly
 
 ```sql
 SELECT jsonObject(metadata__labels, status__nodeInfo) AS node_summary
@@ -870,9 +996,7 @@ Expected output (assuming `metadata__labels` and `status__nodeInfo` are json col
 } ]} |
 ```
 
----
-
-**YAML to JSON Conversion**
+YAML to JSON Conversion
 
 ```sql
 SELECT yamlAsJSON(manifest_yaml) AS manifest_json

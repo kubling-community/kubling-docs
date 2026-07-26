@@ -3,5 +3,6 @@ export default {
   "env": "Environment Variables",
   "architecture": "",
   "artifacts": "",
+  "transports": "",
   "production": ""
 }

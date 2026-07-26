@@ -13,4 +13,4 @@ This repository hosts the source code for the [Kubling Docs](https://docs.kublin
 
 ## Building
 
-This site is generated using [nextra](https://nextra.site/docs) and built internally using Jenkins
+This site is generated using [nextra](https://nextra.site/docs) and built using Github Workflows.
