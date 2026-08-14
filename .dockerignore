@@ -1,0 +1,6 @@
+.agents
+.codex
+.github
+.next
+node_modules
+npm-debug.log*
