@@ -1,6 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'nextra-theme-docs/style.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-gilroyLight: 'gilroy-light';
+  --font-gilroyExtraBold: 'gilroy-extra-bold';
+  --font-gilroyMedium: 'gilroy-medium';
+  --font-gilroyHeavy: 'gilroy-heavy';
+  --font-gilroyBold: 'gilroy-bold';
+  --font-gilroyRegular: 'gilroy-regular';
+  --color-kubling-green: #26a69a;
+  --color-kubling-green-hover: #5baaa2;
+  --color-kubling-light-green: #67e9a2;
+  --color-kubling-dark-violet: #0b0122;
+  --color-kubling-med-violet: #571b96;
+  --color-kubling-light-violet: #863ae8;
+}
 
 @font-face {
       font-family: 'gilroy-bold';
