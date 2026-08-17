@@ -37,31 +37,24 @@ Use this option only when strict memory constraints are necessary.
 ### Data Source Level (aka Schema)
 In each data source, caching can be enabled or disabled and the TTL specified:
 ```yaml
-- name: kube1
-    dataSourceType: KUBERNETES
-    properties:
-    cluster_name: kube1
-    configObject:
-    contextVariables: {}
-    configFile: //kube1-kubernetes.json
-    blankNamespaceStrategy: ALL
+- name: inventory
+  dataSourceType: PROVIDER_GRPC
+  configObject:
+    address: inventory-provider
+    port: 50051
     cache:
-        enabled: true
-        ttlSeconds: 43200
-    schema:
+      enabled: true
+      ttlSeconds: 43200
+  schema:
     type: PHYSICAL
-    properties:
-        cluster_name: kube1
     cacheDefaultStrategy: CACHE
-    ddlFilePaths:
-        - //kube1-kubernetes.ddl
 ```
 
 `ttlSeconds` specifies how long a single cache entry remains in the cache before it is evicted. By default, entries have a lifespan of 43,200 seconds (12 hours).
 
 ### Table level
 
-In some cases, finer cache control is necessary, such as enabling or disabling caching on a [per-table basis](/Engine/DDL#table-directives). 
+In some cases, finer cache control is necessary, such as enabling or disabling caching on a [per-table basis](/engine/ddl#common-table-directives).
 When caching is enabled at the data source level, you can specify at the table level whether to include or exclude a specific table from caching 
 by using a table-specific directive:
 
@@ -105,7 +98,7 @@ Size-based eviction can further be configured by either the number of elements o
 ### Time-based
 Time-based eviction occurs when an entry's TTL (Time-To-Live) expires. 
 The default TTL is configured at the Data Source level via the `ttlSeconds` parameter but can be overridden on a per-table basis using the cache_ttl directive, 
-as explained in the [Table Directives section](/Engine/DDL#table-directives).
+as explained in the [Table Directives section](/engine/ddl#common-table-directives).
 
 ```sql
 CREATE FOREIGN TABLE EVENT

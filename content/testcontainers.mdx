@@ -54,8 +54,7 @@ KublingContainer<?> kublingContainer =
             "ENABLE_WEB_CONSOLE", "FALSE",
             "SCRIPT_LOG_LEVEL", "DEBUG",
             "APP_CONFIG", DEFAULT_CONTAINER_APP_CONFIG,
-            "DESCRIPTOR_BUNDLE", DEFAULT_CONTAINER_BUNDLE,
-            "CASSANDRA_ADDRESS", "cassandra"
+            "DESCRIPTOR_BUNDLE", DEFAULT_CONTAINER_BUNDLE
         ))
         .withLogConsumer(new Slf4jLogConsumer(log))
         .withCopyFileToContainer(
@@ -88,11 +87,20 @@ kublingContainer.start();
 
 ## Notes
 
-- By default, `KublingContainer` uses the latest Community Edition (CE) core image. If you require a specific version, 
-you can pass it as a parameter during instantiation, for example:  
+- By default, `KublingContainer` uses the image selected by the library. You
+  can pass another image explicitly, for example:
   ```java
   new KublingContainer<>(DockerImageName.parse("kubling/kubling:latest"))
   ```
+
+  Rolling samples may intentionally follow `latest` under continuous
+  validation. Tests that must reproduce a deployed environment should use the
+  same immutable image tag as that deployment.
+
+- To test a `PROVIDER_GRPC` data source, attach the provider container to the
+  same Testcontainers network and register its network alias in the VDB.
+  Native source credentials and connection settings belong to the provider,
+  not to the Kubling container.
 
 - If you're testing **Agentic capabilities** through the **Kubling Agent Platform**, be aware that running multiple Kubling instances in parallel 
 can significantly increase resource usage, specifically **requests per minute (RPM)** and **tokens per minute (TPM)**.  

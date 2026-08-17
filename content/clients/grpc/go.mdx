@@ -1,0 +1,230 @@
+import { Callout, Steps } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Go SDK <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+The official Go SDK provides a small, idiomatic layer over Kubling's public
+gRPC contract. It handles channel creation, login and token propagation, and
+adds typed row accessors plus helpers for statements and transactions.
+
+This guide targets `sdk-go/v0.1.1`, requires Go 1.25 or newer and uses the
+provider-backed VDB from the [Quickstart setup](/clients/grpc#use-the-quickstart-sample).
+
+<Callout type="info">
+  Pin an SDK version in applications and upgrade deliberately. Both the client
+  transport and the current SDK are Preview APIs.
+</Callout>
+
+## Install the SDK
+
+<Steps>
+
+### Create a Go module
+
+```shell copy
+mkdir kubling-grpc-client
+cd kubling-grpc-client
+go mod init example.com/kubling-grpc-client
+```
+
+### Add the released SDK
+
+```shell copy
+go get github.com/kubling-community/kubling-grpc/sdk-go@v0.1.1
+```
+
+### Create the client
+
+Save the following program as `main.go`:
+
+```go copy
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/kubling-community/kubling-grpc/sdk-go/client"
+	"github.com/kubling-community/kubling-grpc/sdk-go/result"
+)
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
+	cli, err := client.NewClient(client.Options{
+		Address:  "localhost:50061",
+		Username: "quickstart",
+		Password: "quickstart",
+		VDBName:  "ProviderQuickstartVDB",
+	})
+	if err != nil {
+		return err
+	}
+
+	defer cli.Close()
+	defer cli.Logout()
+
+	queryResult, err := result.Query(cli, `
+		SELECT id, name, status, active
+		FROM provider.PROJECT
+		ORDER BY id
+	`)
+	if err != nil {
+		return err
+	}
+
+	rows := queryResult.Rows()
+	defer rows.Close()
+
+	for rows.Next() {
+		id, err := rows.String("id")
+		if err != nil {
+			return err
+		}
+
+		name, err := rows.String("name")
+		if err != nil {
+			return err
+		}
+
+		status, err := rows.Char("status")
+		if err != nil {
+			return err
+		}
+
+		active, err := rows.Bool("active")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s | %s | %s | %t\n", id, name, status, active)
+	}
+
+	return nil
+}
+```
+
+`Logout` closes the logical Engine session. `Close` closes only the network
+channel. Because deferred calls run in reverse order, the example logs out
+before closing the channel.
+
+### Run it
+
+```shell copy
+go run .
+```
+
+Expected output:
+
+```text
+project-1 | Provider SDK | A | true
+project-2 | Engine Integration | P | true
+```
+
+</Steps>
+
+## Execute a statement
+
+Use `exec.Exec` for `INSERT`, `UPDATE` or `DELETE` statements:
+
+```go copy
+import "github.com/kubling-community/kubling-grpc/sdk-go/exec"
+
+execResult, err := exec.Exec(cli, `
+	UPDATE provider.TASK
+	SET completed = true
+	WHERE id = 'task-2'
+`)
+if err != nil {
+	return err
+}
+
+fmt.Printf("affected rows: %d\n", execResult.AffectedRows())
+```
+
+The Quickstart returns `affected rows: 1`. Recreating the provider container
+restores its initial in-memory state.
+
+## Manage a transaction
+
+Transactions belong to the logical Kubling session represented by the token:
+
+```go copy
+import "github.com/kubling-community/kubling-grpc/sdk-go/tx"
+
+transaction, err := tx.Begin(cli)
+if err != nil {
+	return err
+}
+
+committed := false
+defer func() {
+	if !committed {
+		_ = transaction.Rollback()
+	}
+}()
+
+_, err = transaction.Exec(`
+	UPDATE provider.TASK
+	SET completed = true
+	WHERE id = 'task-2'
+`)
+if err != nil {
+	return err
+}
+
+if err := transaction.Commit(); err != nil {
+	return err
+}
+committed = true
+```
+
+Whether the physical change uses a native transaction, MVCC or compensation
+depends on the VDB and source capabilities. The SDK transaction controls the
+Engine session; it does not change those semantics.
+
+## Typed values
+
+`Rows` exposes typed accessors matching Kubling logical values, including
+`String`, `Bool`, `Byte`, `Short`, `Integer`, `Long`, `BigInteger`, `Float`,
+`Double`, `Decimal`, `Date`, `Time`, `Timestamp`, `Bytes` and `JSON`.
+
+Use `Value(column)` when the column can be `NULL` or when code must inspect its
+runtime representation. A typed accessor reports an error for `NULL`, an
+unknown column or an incompatible value type.
+
+## Sessions and concurrent clients
+
+`client.NewClient` opens a channel and logs in. To intentionally reuse an
+existing logical session on another channel, pass `cli.Token()` to
+`client.NewClientWithToken`. Clients sharing a token also share transaction
+state and must agree on who may commit, roll back or log out.
+
+Prefer one independently authenticated session per application workflow unless
+cross-channel coordination is explicitly required.
+
+## Current SDK boundaries
+
+The gRPC wire contract streams query batches, but `result.Query` currently
+collects all batches before returning a `Result`. For incremental processing,
+use the generated `QueryService` client as shown in the
+[protocol reference](/clients/grpc/protocol#consume-the-result-stream-directly).
+
+The high-level helpers also do not currently expose positional parameters,
+custom batch size or the `returnGeneratedKeys` request flag. Those features are
+available through the generated protobuf client.
+
+<Callout type="warning">
+  The current connection helper tries TLS without verifying the server
+  certificate and falls back to plaintext if that probe fails. Do not treat
+  this automatic detection as production server-identity verification. Use a
+  generated gRPC client configured with trusted credentials when certificate
+  verification is required.
+</Callout>
+
+See the [protocol reference](/clients/grpc/protocol) for direct RPC access and
+[Communication security](/security/communication) for the Engine listener.

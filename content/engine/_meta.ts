@@ -3,7 +3,6 @@ export default {
   "data-types": "Data Types",
   "ddl": "DDL",
   "queries": "Queries",
-  "script-context-members": "",
   "ds": "Data Sources",
   "aggregators": "Aggregators",
   "cache": "",

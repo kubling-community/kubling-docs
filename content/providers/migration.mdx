@@ -1,0 +1,130 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Migrate from built-in data sources <Tag description={"v26.4+"} />
+
+<Callout type="warning">
+  The built-in `KUBERNETES`, `REDIS` and `CASSANDRA` data source
+  implementations were removed in Kubling 26.4. A VDB that still uses one of
+  these types fails during startup with a migration error.
+</Callout>
+
+The legacy type names may still be recognized by configuration parsing so the
+engine can report a targeted error. They do not enable the former embedded
+adapters.
+
+## What changes
+
+Previously, source endpoints, credentials and adapter configuration lived in
+the Kubling VDB or engine filesystem. With providers, that information belongs
+to a separate provider process. The VDB registers only a `PROVIDER_GRPC`
+endpoint and keeps federation-level concerns such as cache, health and Soft
+Transactions.
+
+| Removed type | Replacement | Migration considerations |
+| --- | --- | --- |
+| `KUBERNETES` | [Kubernetes provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/kubernetes) | Run one provider instance per cluster. The provider discovers resources dynamically, so compare the resulting schema with the former built-in DDL before migrating queries. |
+| `REDIS` | [Redis provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/redis) | Move Redis connection and table definitions into provider configuration. The current official provider exposes configured Redis Hash tables; legacy String and Sorted Set models are not drop-in compatible. |
+| `CASSANDRA` | [Cassandra provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/cassandra) | Move hosts, credentials, TLS and keyspace settings into provider-owned namespaces. Schema metadata is discovered from Cassandra. |
+
+## Migration sequence
+
+1. Select and pin an immutable official provider image version.
+2. Create the provider-specific configuration outside the Kubling VDB.
+3. Deploy the provider where both Kubling and the remote source can reach it.
+4. Replace the legacy data source with a `PROVIDER_GRPC` registration.
+5. Start Kubling and inspect the schema discovered from the provider.
+6. Update queries, VDB enrichment and write paths for any schema or capability
+   differences.
+7. Validate health, representative queries, mutations and transaction behavior
+   before removing the legacy configuration.
+
+Migration is not a blind replacement of `dataSourceType`. Configuration
+ownership and, depending on the provider, the discovered schema both change.
+
+<Callout type="error">
+  Do not copy legacy native connection settings into the `PROVIDER_GRPC`
+  `configObject`, assume the old and new schemas are identical, or leave source
+  credentials in the VDB. Configure the native source in the provider and
+  validate the model returned by `GetSchema`.
+</Callout>
+
+## Example: Kubernetes
+
+The old VDB configured the Kubernetes client inside the engine:
+
+```yaml
+dataSources:
+  - name: "production-cluster"
+    dataSourceType: "KUBERNETES"
+    configObject:
+      configFile: "/etc/kubling/kubeconfig"
+      blankNamespaceStrategy: "ALL"
+    schema:
+      type: "PHYSICAL"
+```
+
+In 26.4, the kubeconfig and resource discovery settings move to the Kubernetes
+provider:
+
+```yaml
+# provider.yaml
+kubeconfig: /etc/kubling/kubeconfig
+blankNamespaceStrategy: ALL
+
+schema:
+  fieldExpansionDepth: 3
+  include:
+    - "v1/*"
+    - "apps/v1/*"
+```
+
+Kubling then registers that process as the physical data source:
+
+```yaml
+# VDB descriptor
+dataSources:
+  - name: "production-cluster"
+    dataSourceType: "PROVIDER_GRPC"
+    configObject:
+      address: "kubernetes-provider"
+      port: 50051
+      timeoutMillis: 30000
+      securityConfig:
+        mode: "PLAINTEXT"
+      contributesToHealth: true
+    schema:
+      type: "PHYSICAL"
+```
+
+The provider exposes one cluster. To federate several clusters, deploy one
+provider instance for each cluster and register each instance as a separate
+Kubling data source. Aggregator schemas or virtual models can then present a
+unified view.
+
+## Validate the migrated VDB
+
+Before switching production traffic, verify at least:
+
+- provider and aggregate Kubling health.
+- the discovered schemas, tables, column types and keys.
+- representative filters, ordering, pagination and joins.
+- insert, update and delete paths used by the VDB.
+- generated values and row identity where applicable.
+- native or Soft Transaction behavior used by the workload.
+- cache behavior and invalidation if engine-side caching is enabled.
+
+Treat a schema or capability change as an application compatibility change,
+even when the provider reaches the same native source.
+
+## Provider-owned configuration
+
+Use the provider's versioned documentation as the source of truth for native
+connection settings:
+
+- [Kubernetes configuration](https://github.com/kubling-community/kubling-providers/tree/main/providers/kubernetes)
+- [Redis configuration](https://github.com/kubling-community/kubling-providers/tree/main/providers/redis)
+- [Cassandra configuration](https://github.com/kubling-community/kubling-providers/tree/main/providers/cassandra)
+
+Credentials remain inside the provider boundary and are not sent to Kubling
+through the provider protocol.

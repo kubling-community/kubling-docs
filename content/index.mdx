@@ -1,45 +1,75 @@
 # Welcome to Kubling
 
-Kubling is a federated, SQL-based engine designed to reason over operational state across heterogeneous systems, platforms, and environments.
+Kubling is an open-source, SQL-based federation engine for reasoning over and
+safely operating live state across heterogeneous systems, platforms and
+environments.
 
-It enables teams to query, interpret, evaluate, and safely mutate live operational state consistently, 
-even when that state spans databases, APIs, infrastructure, workflows, and industrial systems — without introducing a centralized control plane or data ingestion pipeline.
+It runs close to the systems that own the data and exposes them through one
+strongly typed, schema-first model. Kubling does not require a central
+ingestion pipeline or copy operational state into a warehouse before it can be
+queried.
 
-## What Kubling is designed for
+## The answer is never in one system
 
-Kubling is built for on-prem, cloud, hybrid, and edge environments, where locality, responsibility boundaries, and system heterogeneity matter.
+“Can we deploy this change safely?”
 
-It operates close to the source, federating operational data in place and exposing it through a unified, schema-based interface that behaves consistently across environments.
+The running state may be in Kubernetes, ownership in a service catalog, open
+work in a task system and customer impact in a database. None of those systems
+has the complete answer, and their state keeps changing while the decision is
+being made.
 
-## The problem it addresses
+Modern operations are no longer limited by lack of visibility. They are
+limited by the difficulty of evaluating and coordinating decisions across
+systems that were never designed to work as one.
 
-Modern operations are no longer limited by lack of visibility.  
-They are limited by the difficulty of coordinating decisions across systems.
+Teams usually bridge that gap with scripts that call several APIs, normalize
+identifiers, join responses in memory and then attempt a sequence of writes.
+Those scripts quickly become critical infrastructure: difficult to test,
+audit, reuse or compensate when the fourth system fails after the first three
+have already changed.
 
-Kubling addresses this by making operational state explicit and queryable as a whole — allowing decisions to be evaluated in context, rather than inferred from disconnected signals.
+## One operational model over live systems
 
-## How it works (at a high level)
+Kubling makes operational state explicit and queryable as a whole, so a
+decision can be evaluated in context instead of inferred from disconnected
+signals.
 
-At its core, Kubling uses SQL as a unifying operational language, combined with a strongly typed, schema-first model.
+SQL acts as the unifying operational language. Providers and data sources
+translate that model into the operations each remote system can preserve,
+while Virtual Databases combine their physical schemas into reusable
+operational views.
 
-Kubling provides native connectors for a wide range of systems, including relational and NoSQL databases, infrastructure platforms, industrial protocols, and other Kubling instances — enabling true federation and the construction of operational graphs across domains.
+Applications can query and join current state across system boundaries, expose
+controlled operations and coordinate changes with explicit security and
+transaction semantics. The source systems remain the owners of their data;
+Kubling does not require moving it into a centralized repository first.
 
-For API-based or document-oriented systems, Kubling allows clients to define lightweight data source translators using JavaScript.  
-These injected modules treat APIs as first-class data sources, making it possible to model, query, and operate on them with the same semantics as structured systems.
+This model is designed for on-premises, cloud, hybrid and edge environments,
+where locality, responsibility boundaries and system heterogeneity matter.
 
-Across both native connectors and injected modules, the engine preserves transactional consistency, isolation, and clear operational semantics.
+## Built for operational decisions
+
+- deployment and change-safety checks that depend on several systems.
+- internal platforms that need one contract over heterogeneous infrastructure.
+- investigation and remediation workflows that combine live state.
+- hybrid and edge operations where central ingestion is impractical.
+- AI agents that need typed, permission-aware reads and actions.
+
+## Start here
+
+- [Run the Quickstart](/quickstart) to understand the local Kubling, provider
+  and Studio workflow.
+- [Connect an application through gRPC](/clients/grpc) using the public
+  protobuf contract or the official Go SDK.
+- [Explore Providers](/providers) to learn how source integrations
+  advertise schemas and capabilities.
+- [Understand the architecture](/concepts/architecture) before designing a
+  production Virtual Database.
+- [Plan a production deployment](/concepts/production) when moving beyond a
+  local environment.
 
 ## What Kubling is not
 
-Kubling is not a data warehouse or an analytics platform.
-
-It is designed to operate directly on live operational systems, focusing on correctness, coordination, and decision evaluation rather than reporting or post-hoc analysis.
-
-## Where Kubling fits best
-
-Kubling is a good fit for teams building or operating:
-
-- Operational platforms and internal tooling
-- Workflow-driven systems and orchestrators
-- Industrial, infrastructure, or hybrid environments
-- AI-assisted operational systems that require precise, governed actions
+Kubling is not a data warehouse or a general-purpose analytics platform. It is
+designed to operate on current system state, with an emphasis on correctness,
+coordination and explicit operational semantics.

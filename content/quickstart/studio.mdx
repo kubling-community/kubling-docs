@@ -1,0 +1,70 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Explore with Kubling Studio
+
+Kubling Studio is the embedded workspace for exploring, querying and operating
+a running Kubling instance. It is not a mutable data-source configuration
+wizard: providers and production VDB definitions remain version-controlled
+deployment artifacts.
+
+<Callout type="info">
+  Embedded Studio is served from `/console` when `ENABLE_WEB_CONSOLE` is
+  enabled. Protect it with the same network, TLS and identity controls used for
+  the instance HTTP APIs.
+</Callout>
+
+## First exploration
+
+<Steps>
+
+### Open Studio
+
+In the Quickstart, open
+[http://localhost:8282/console](http://localhost:8282/console) and enter
+`quickstart` as both username and password. The values only satisfy the local
+login form; the sample VDB has no authentication delegate and does not persist
+them.
+
+### Select the Virtual Database
+
+Choose `ProviderQuickstartVDB`. Studio loads its live catalog from Kubling and
+shows the physical `provider` schema imported through the Provider gRPC
+contract.
+
+### Inspect the catalog
+
+Expand `provider` and inspect the `PROJECT`, `TASK`, `AUDIT_EVENT` and
+`TYPE_SAMPLE` tables. Schema DDL inspection shows keys, types, mutability and
+annotations reported by the provider.
+
+### Use SQL Workspace
+
+SQL Workspace provides catalog-aware completion, query history, dynamic result
+grids and mutation feedback. Follow the Quickstart's
+[deterministic query and mutation](/quickstart#query-deterministic-data) to
+exercise both read and write paths against the In-memory provider.
+
+</Steps>
+
+## Other Studio surfaces
+
+| Surface | What it shows |
+| --- | --- |
+| Catalog | VDBs, schemas, tables, columns and provider-reported DDL. |
+| Activity | Live engine, worker-pool, request and session information. |
+| Schedules | Configured scheduled JavaScript tasks and their source. |
+| Functions | Built-in and module-provided SQL and template functions. |
+| Endpoints | Query and action templates plus JavaScript endpoint routes. |
+| Modules | Installed JavaScript module-backed data sources and metadata. |
+
+These views describe the selected Kubling instance. They do not replace
+version-controlled provider configuration, application configuration or VDB
+descriptors.
+
+## Next steps
+
+- [Choose a provider](/providers/catalog) for a real source.
+- [Register a provider](/providers#register-a-provider-in-kubling)
+  in a VDB.
+- Review [HTTP security](/security/http) before exposing Studio outside a
+  trusted local environment.

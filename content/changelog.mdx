@@ -1,8 +1,18 @@
 # Product changelog
 
+## v26.4
+
+- Introduced the [external gRPC provider mechanism](/providers), which moves
+  source-specific connectivity, schema discovery and execution outside the
+  Kubling engine.
+- Removed the built-in `KUBERNETES`, `REDIS` and `CASSANDRA` data source
+  implementations. These integrations are now deployed independently and
+  registered in Kubling as `PROVIDER_GRPC` data sources. Existing VDBs must
+  follow the [provider migration guide](/providers/migration).
+
 ## v26.3
 
-- Introduced the Preview gRPC transport, with session-based authentication, streamed query results, statement execution, 
+- Introduced the Preview [gRPC client transport](/clients/grpc), with session-based authentication, streamed query results, statement execution,
 explicit transaction management, TLS, IP filtering, and transport observability.
 - Added the RANDINT() and RANDLONG() functions for generating random integer and long values.
 - Improved native binary compatibility with systems using 64 KB memory pages, 
@@ -154,7 +164,7 @@ Although the necessary dependencies were present, the classes were marked as unr
 - Introduced an HTTP endpoint to display query plans, similar to the `EXPLAIN` command in other database engines.  
 
 ## v24.5.7
-- Added support for SQL query functions, defined in modules. Configuration mechanism has changed, [please check it here](/Modules/Functions/SQL)
+- Added support for SQL query functions, defined in modules. Configuration mechanism has changed, [please check it here](/modules/functions/sql)
 - Added Portable Local data source.
 - Enhanced clarity and detail in error messages for critical failures.
 
@@ -172,18 +182,18 @@ This resolves issues where containers could not be stopped and restarted due to 
 - Removed the metric `kubling.engine.sql.plan.enqueued_time.max` and replaced it with `kubling.engine.sql.plan.enqueued.max`.
 
 ## v24.5.4
-- Implemented the distinction between `passthrough` and regular access in Database data sources. Therefore, you can now extend schemas also in these type of data sources. [Learn more](/Engine/ds/db-data-sources).
+- Implemented the distinction between `passthrough` and regular access in Database data sources. Therefore, you can now extend schemas also in these type of data sources. [Learn more](/engine/ds/db-data-sources).
 - Added support for parameter lists in SQL functions.
-- Updated function module loading (SQL and Template) to support multiple modules instead of a single one. Changes to naming resolution were introduced; read more [here](/Modules/Functions/SQL) and [here](/Modules/Functions/Template).
+- Updated function module loading (SQL and Template) to support multiple modules instead of a single one. Changes to naming resolution were introduced; read more [here](/modules/functions/sql) and [here](/modules/functions/template).
 - It is no longer necessary to pass random values for generated fields in `INSERT` and `UPDATE` operations. The Query Engine now identifies and handles these fields automatically before executing the final command.
 - Fixed an issue that prevented the use of non-generated fields as filters with subqueries.
 - Updated embedded web console to reflect the above-mentioned changes.
 - Official images were renamed to `kubling/kubling-ce` and `kubling/kubling-cli`.
 
 ## v24.5.3
-- Implemented Cache. [See here.](/Engine/cache)
-- Added metrics to monitor Cache. [See here.](/Observability/metrics#cache-related-metrics-)
-- Implemented first-class Document functions. [See here.](/Engine/queries#document-functions-)
+- Implemented Cache. [See here.](/engine/cache)
+- Added metrics to monitor Cache. [See here.](/observability/metrics#cache-related-metrics)
+- Implemented first-class Document functions. [See here.](/engine/queries/functions#document-functions)
 - Engine Stream Buffer can now use local disk. See the `buffer` configuration option in the [main application configuration](/schemas#main-application-configuration).
 - Updated embedded web console to reflect the above-mentioned changes.
 

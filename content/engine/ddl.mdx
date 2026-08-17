@@ -18,7 +18,7 @@ This capability simplifies working with deeply nested data structures, making it
 
 <Callout>
   DDL files are parsed as templates, meaning that you can use context properties.<br/>
-  [See more about template parser.](/Template/parser)
+  [See more about template parser.](/template/parser)
 </Callout>
 
 ## Define a `TABLE`
@@ -70,14 +70,15 @@ OPTIONS(updatable true,
 ```
 
 <Callout type='info'>
-  Double underscore in field name has a special meaning in the context of a Script Document Data Source. [See here for more information.](DDL#path-like-access)
+  Double underscore in field name has a special meaning in the context of a Script Document Data Source. [See here for more information.](#path-like-access)
 </Callout>
 
 ## Options
 
 <Callout type='warning'>
-  Following options work ony in document data sources. However, we are implementing them also in non-document Adapters, like `POSTGRESQL`.<br/>
-  You can follow the progress in [roadmap section.](/roadmap#support-all-ddl-options-in-non-document-data-sources-analysis-high-prio)
+  The following options are specific to document data sources unless the
+  documentation for another data source explicitly states that it supports
+  them.
 </Callout>
 
 *Options* is the mechanism used by the Engine to pass meta-information from the `TABLE` definition to the query processor (QP).<br/>
@@ -103,9 +104,9 @@ Internally, each listed `OPTION` but `tags` is referred as `DIRECTIVE` since, as
 |---------------------|-----------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ANNOTATION`        | String                | Any                                                                  | A short natural language description that provides semantic meaning for the object. This is used to build the Semantic Schema and helps LLMs understand the role and purpose of the object.              |
 | `val_constant`      | String                | Any                                                                  | Defines a constant field value.                                                                                                                                                                          |
-| `val_variable`      | String                | Any                                                                  | The value of the field is get from the properties. [More information.](/Engine/properties)                                                                                                               |
+| `val_variable`      | String                | Any                                                                  | The value of the field is get from the properties. [More information.](/engine/properties)                                                                                                               |
 | `val_pk`            | String                | [field+field+...]                                                    | Creates a calculated `PK` based on a field set.<br/>Since the value is not stored anywhere, when filtering using this field, the QP replaces the `WHERE` section by the original list of field's values. |
-| `call_func`         | String                | {`call_func 'fn_name<field, field,...>'`}                            | Calls a function (built-in or [user-defined](/Modules/Functions/SQL)) to get the field value.<br/>Function parameters can be other's fields values.                                                      |
+| `call_func`         | String                | {`call_func 'fn_name<field, field,...>'`}                            | Calls a function (built-in or [user-defined](/modules/functions/sql)) to get the field value.<br/>Function parameters can be other's fields values.                                                      |
 | `UUID`              | String                | —                                                                    | A unique identifier for the column, typically used to distinguish it within metadata or schema definitions.                                                                                              |
 | `NAMEINSOURCE`      | String                | —                                                                    | The name of the column as it exists in the source (foreign) database. If omitted, the column name defined in the model is used for querying.                                                             |
 | `CASE_SENSITIVE`    | `'TRUE'` \| `'FALSE'` | `'TRUE'`, `'FALSE'`                                                  | Indicates whether the column values are case-sensitive.                                                                                                                                                  |
@@ -124,7 +125,7 @@ Internally, each listed `OPTION` but `tags` is referred as `DIRECTIVE` since, as
 | `DISTINCT_VALUES`   | Long                  | —                                                                    | Estimated or known number of distinct values in the column. Useful for indexing or optimization.                                                                                                         |
 
 <Callout type='info'>
-  Specific directives are listed in each [data source documentation](/Engine/ds/intro).
+  Specific directives are listed in each [data source documentation](/engine/ds/intro).
 </Callout>
 
 ### Schema post-precessing in Document data sources

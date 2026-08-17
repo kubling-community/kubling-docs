@@ -22,7 +22,7 @@ conn = pg8000.connect(
 
 cur = conn.cursor()
 
-cur.execute("SELECT * from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('dbvirt-samples');")
+cur.execute("SELECT * from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('kubling-samples');")
 allRows = cur.fetchall()
 
 for allCols in allRows:

@@ -1,5 +1,3 @@
-import { Callout } from 'nextra/components'
-
 # Hibernate
 
 ## Usage
@@ -37,6 +35,7 @@ In case you want to specify client networking properties, add the property to th
 hibernate.connection.url=jdbc:teiid:MinimalVDB@mms://localhost:35482;connectionPropsFilePath=/path/to/client-settings.properties
 ```
 
-<Callout type='info'>
-  [We prepared an example](https://github.com/kubling-community/dbvirt-samples/tree/main/hibernate) in which you will find the Hibernate Dialect in action on a Spring Boot project.
-</Callout>
+The configured VDB must be available and its native transport must be enabled
+before Hibernate creates its connection pool. The Quickstart sample does
+not expose the native transport because Studio communicates through the
+instance HTTP APIs.
