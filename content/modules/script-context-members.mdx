@@ -1,12 +1,16 @@
 import { Callout } from 'nextra/components'
 import Tag from '../../component/Tag'
 
-# Script Context Member
+# Script Context Members
 
 When your scripts are executed, specific objects, known as bound objects, are automatically injected into the execution context. 
 These objects allow your scripts to interact directly with the Engine, enabling more complex operations than simply returning a single value. 
 Instead of limiting scripts to basic functions, you can write robust programs that populate data or perform tasks using these member objects. 
 After execution, the Engine evaluates these objects to retrieve the necessary results.
+
+This reference covers the objects available to Script Data Sources, script
+functions, authentication delegates and Endpoint Scripts. Each script type
+receives only the members that apply to its execution contract.
 
 Besides, some bounds are meant to support your scripts with the most common tasks and, since they are statically compiled, you can expect much better performance
 compared to having them as code in your scripts. 
@@ -42,7 +46,7 @@ so it is Engine-scoped, whereas `contextVars` is Script-scoped, making `global` 
 
 #### `helper`
 
-Convenience `class` with some functionality not always included in a scripting language spec, [like the ECMAScript](schemas#script-module-bundle-information-file-bundle-script-infoyaml).
+Convenience `class` with some functionality not always included in a scripting language spec, [like the ECMAScript](/schemas#script-module-bundle-information-file-bundle-script-infoyaml).
 
 | Function                            | Description                                                                                                         |
 |-------------------------------------|---------------------------------------------------------------------------------------------------------------------|
@@ -102,7 +106,7 @@ Built-in HTTP/s client, designed to be faster than a client implementation withi
 
 | Function                                                                       | Description                                                                                                                |
 |--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `exec(rawRequestParam : object<HTTPRequestParam>) : object<HTTPRequestReturn>` | Executes an HTTP request. See [how build a request](#rawrequestparam) and [schema of returned object](#httprequestreturn). |
+| `exec(rawRequestParam : object<HTTPRequestParam>) : object<HTTPRequestReturn>` | Executes an HTTP request. See [how to build a request](#httpclihttprequestparam) and the [schema of the returned object](#httpclihttprequestreturn). |
 | `newFileWrapper(name : string) : FileWrapper`                                  | Creates and returns a new [`FileWrapper`](#httpclifilewrapper) that can be added to the `form` KV.                         |
 
 ##### `httpCli.HTTPRequestParam`

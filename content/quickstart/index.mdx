@@ -1,0 +1,155 @@
+import { Callout, Steps } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Quickstart <Tag description={"v26.4+"} />
+
+Run Kubling, Kubling Studio and the official In-memory provider as one
+disposable Docker Compose project. The complete walkthrough requires no Go,
+Java, Kubernetes cluster, database server, source credentials or host-installed
+SQL client.
+
+The runnable project is maintained in the public
+[`kubling-samples`](https://github.com/kubling-community/kubling-samples/tree/main/quickstart)
+repository. Compose generates the descriptor bundle, verifies provider health,
+starts Kubling and waits for aggregate readiness.
+
+<Callout type="info">
+  The samples repository intentionally follows the current public `latest`
+  images and validates them continuously in CI. This rolling policy is for
+  supported samples and local exploration. Pin exact Kubling and provider
+  versions in production deployments.
+</Callout>
+
+## Requirements
+
+- Git
+- Docker Engine
+- Docker Compose v2
+
+<Steps>
+
+### Clone the samples repository
+
+```shell copy
+git clone --depth 1 https://github.com/kubling-community/kubling-samples.git
+cd kubling-samples/quickstart
+```
+
+### Start the stack
+
+```shell copy
+docker compose up --wait
+```
+
+The command completes when the In-memory provider is reachable through its
+gRPC `Health` RPC and Kubling's aggregate health endpoint reports `UP`.
+
+The stack exposes only Kubling's HTTP port on the host. The provider remains on
+the internal Compose network.
+
+| Resource | Value |
+| --- | --- |
+| Studio | `http://localhost:8282/console` |
+| Aggregate health | `http://localhost:8282/observe/health` |
+| Virtual Database | `ProviderQuickstartVDB` |
+| Data source and schema | `provider` |
+| Provider endpoint | `provider:50051`, internal to Compose |
+
+### Open Kubling Studio
+
+Open [http://localhost:8282/console](http://localhost:8282/console). The local
+Studio login form requires non-empty values even though this VDB has no
+authentication delegate. Enter `quickstart` as both username and password.
+These values are local placeholders, are not external credentials and are not
+persisted by the sample repository.
+
+Select `ProviderQuickstartVDB` and expand the `provider` schema. Its
+`PROJECT`, `TASK`, `AUDIT_EVENT` and `TYPE_SAMPLE` tables are imported from the
+provider's `GetSchema` response; their DDL is not duplicated in the VDB.
+
+### Query deterministic data
+
+Open **SQL Workspace** and run:
+
+```sql copy
+SELECT id, name, status, active
+FROM provider.PROJECT
+ORDER BY id;
+```
+
+Expected result:
+
+| id | name | status | active |
+| --- | --- | --- | --- |
+| `project-1` | `Provider SDK` | `A` | `true` |
+| `project-2` | `Engine Integration` | `P` | `true` |
+
+### Run and verify a mutation
+
+The provider starts `task-2` with `completed = false`. Run:
+
+```sql copy
+UPDATE provider.TASK
+SET completed = true
+WHERE id = 'task-2';
+```
+
+The expected update count is `1`. Verify the provider-owned change:
+
+```sql copy
+SELECT id, title, completed
+FROM provider.TASK
+WHERE id = 'task-2';
+```
+
+Expected result:
+
+| id | title | completed |
+| --- | --- | --- |
+| `task-2` | `Build in-memory provider` | `true` |
+
+The provider returns to its initial data whenever its container is recreated.
+
+### Run the automated verification
+
+With the stack running, execute:
+
+```shell copy
+docker compose --profile test run --rm smoke-test
+```
+
+The test checks Studio, verifies both projects, resets `task-2`, performs the
+mutation and queries the final provider state. A successful run prints:
+
+```text
+Quickstart smoke test passed.
+```
+
+### Inspect or stop the stack
+
+Inspect service state or relevant logs with:
+
+```shell copy
+docker compose ps
+docker compose logs kubling provider
+```
+
+Remove the containers, network and generated descriptor volume with:
+
+```shell copy
+docker compose down --volumes
+```
+
+</Steps>
+
+## What the sample demonstrates
+
+The VDB registers `provider` as a `PROVIDER_GRPC` data source and delegates
+physical schema ownership, queries and mutations to the external provider.
+Kubling owns the VDB, federation planning and the client-facing Studio
+workflow.
+
+Continue with [Explore with Studio](/quickstart/studio) for the rest of the
+workspace, [enable the client gRPC transport](/clients/grpc#use-the-quickstart-sample)
+to connect an application, or [choose a provider](/providers/catalog)
+when you are ready to connect a real source.

@@ -84,7 +84,7 @@ For example, with `endpointVersion: v1` and `endpointName: getIt`, the resulting
 ```
 
 <Callout type="info">
-See details of the request and response members [in the script member reference page.](/engine/script-context-members#endpoint-script)
+See details of the request and response members [in the script member reference page.](/modules/script-context-members#endpoint-script)
 </Callout>
 
 ## Authentication <Tag description={"v26.2+"} />
@@ -93,10 +93,10 @@ Endpoints can participate in the same [RBAC mechanism](/security/rbac) used by t
 
 When authentication is enabled, the incoming HTTP request is associated with an authenticated session before the endpoint handler is executed. If an [authentication delegation](/security/rbac#authentication-script-delegate) is configured, the authentication flow is resolved through the configured script delegate.
 
-As a result, RBAC-aware script context members can operate using the authenticated user associated with the request. This is particularly relevant for [`DBEngine`](/engine/script-context-members#dbengine), which can execute queries and updates using the request-scoped security context.
+As a result, RBAC-aware script context members can operate using the authenticated user associated with the request. This is particularly relevant for [`DBEngine`](/modules/script-context-members#dbengine), which can execute queries and updates using the request-scoped security context.
 
 <Callout type="warning">
 If `requiresAuthentication` is enabled but no authentication delegation is configured, Kubling associates the request with an internal privileged session.
 
-In this scenario, operations executed through [`DBEngine`](/engine/script-context-members#dbengine) using impersonated execution semantics behave equivalently to privileged execution.
+In this scenario, operations executed through [`DBEngine`](/modules/script-context-members#dbengine) using impersonated execution semantics behave equivalently to privileged execution.
 </Callout>

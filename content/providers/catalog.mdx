@@ -1,0 +1,21 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+import ProviderCatalog from '../../component/providers/ProviderCatalog'
+
+# Provider catalog <Tag description={"v26.4+"} />
+
+Find provider implementations that connect Kubling to external systems. Search
+by product or capability, or narrow the catalog by category and provider type.
+
+<Callout type="info">
+  Every provider currently listed is developed and released by the Kubling
+  project. **Official** identifies that ownership; **Integration** connects a
+  production source, while **Reference** is intended for development and
+  compatibility testing. Provider APIs and releases are pre-1.0, so pin an
+  exact image version and review compatibility notes before upgrading.
+</Callout>
+
+For versioning, compatibility and contribution guidance, see the
+[Provider overview](/providers#releases-and-compatibility).
+
+<ProviderCatalog />

@@ -1,6 +1,7 @@
 export default {
   index: 'Introduction',
   quickstart: 'Quickstart',
+  providers: 'Providers',
   clients: 'Clients',
   concepts: 'Concepts',
   template: 'Template',

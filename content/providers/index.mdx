@@ -1,0 +1,309 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Providers <Tag description={"v26.4+"} />
+
+Providers are external processes that connect Kubling to remote systems through
+the public Provider gRPC contract. They are the extension boundary between the
+federation engine and each source-specific implementation.
+
+The diagram expands the provider-specific slice of Kubling's
+[general architecture](/concepts/architecture). Client transports and the rest
+of the query engine are intentionally omitted.
+
+<img
+  src="/img/providers-architecture.svg"
+  alt="Provider execution path from Kubling's Query Engine through the Provider gRPC boundary to remote data sources"
+/>
+
+Kubling plans and coordinates the federated query. Its provider connector
+translates each delegated source operation into messages defined by the public
+Provider gRPC contract. The external provider declares the model and
+capabilities it supports, then translates those provider-neutral requests to
+the source's native API or protocol. Source dependencies and credentials stay
+outside the engine.
+
+## Why Providers
+
+The provider boundary keeps Kubling's federation responsibilities separate
+from the lifecycle of an individual integration:
+
+- a provider can add or upgrade a native client without rebuilding Kubling.
+- providers and the engine can be deployed, scaled and released independently.
+- source endpoints, credentials and source-specific configuration remain in
+  the provider process.
+- the capability contract lets the planner push down only operations whose
+  semantics the provider can preserve.
+- the language-neutral protocol allows an OSS contributor to implement a
+  provider without modifying the engine.
+
+### Responsibility model
+
+| Kubling | Provider |
+| --- | --- |
+| Builds a federated plan across VDB models. | Connects to and configures the native source. |
+| Applies VDB semantics, policies and cross-source operations. | Discovers or declares the physical relational model. |
+| Decides what can be pushed down from advertised capabilities. | Translates supported logical operations to the native API or query language. |
+| Evaluates expressions and operations that remain in the engine. | Executes queries and mutations, then returns typed tuples or results. |
+| Coordinates engine cache, health and Soft Transaction behavior. | Reports health and optional native transaction support. |
+
+Provider namespaces and entity names are intentionally opaque to Kubling. A
+provider owns their mapping to native clusters, databases, keyspaces, APIs or
+other source concepts. The VDB can enrich that physical catalog and define
+virtual models above it without moving native connection details into Kubling.
+
+## How a request flows
+
+1. Kubling connects to the configured provider endpoint and requests its
+   capabilities and schema.
+2. The provider returns either structured relational metadata or Kubling DDL.
+3. Kubling incorporates that model into the VDB and plans incoming queries.
+4. For each source operation, Kubling acquires a logical provider connection
+   and sends only expressions supported by the provider contract.
+5. The provider translates the request, executes it natively and streams query
+   results back in typed batches. Mutations return their operation result.
+6. Kubling completes any remaining processing and closes the logical
+   connection when it is no longer required.
+
+The provider's `connection_id` is opaque. It scopes subsequent query,
+mutation and native transaction calls, but it does not expose source connection
+parameters to the engine.
+
+<Callout type="info">
+  Provider APIs, the Go SDK and official providers are currently pre-1.0. Pin
+  exact image versions and review compatibility notes before upgrading.
+</Callout>
+
+## Provider catalog
+
+Provider discovery lives in a dedicated catalog so this overview remains
+useful as the ecosystem grows. The catalog supports search and filters by
+category and type, and every entry identifies its publisher, ownership status,
+official documentation, source and container image.
+
+[Browse the Provider catalog →](/providers/catalog)
+
+The current catalog contains providers developed and released by the Kubling
+project. An **Official** badge describes ownership; it does not imply that a
+provider API has reached 1.0. **Integration** entries connect production data
+sources, while **Reference** entries exist primarily for development and
+compatibility testing.
+
+## Releases and compatibility
+
+The protocol, Go SDK and individual providers have independent release
+lifecycles:
+
+- protocol modules are published at
+  [`buf.build/kubling/kubling-providers`](https://buf.build/kubling/kubling-providers).
+- Go SDK tags use the `sdk-go/vMAJOR.MINOR.PATCH` form.
+- provider tags use the `providers/<name>/vMAJOR.MINOR.PATCH` form and publish
+  multi-platform images for `linux/amd64` and `linux/arm64`.
+
+Use the exact `vMAJOR.MINOR.PATCH` image tag selected for your deployment.
+`latest` is convenient for local exploration, but it is not a reproducible
+production dependency. Because these components are pre-1.0, read the release
+notes for protocol or configuration changes before upgrading either side of
+the connection.
+
+## Provider contract
+
+The public `ProviderService` is intentionally provider-neutral. It covers six
+areas:
+
+| Area | RPCs and behavior |
+| --- | --- |
+| Discovery | `GetCapabilities` and `GetSchema` describe exact behavior and the complete logical model. |
+| Connections | `OpenConnection` and `CloseConnection` manage opaque logical connections. |
+| Health | `Health` reports readiness plus optional non-sensitive diagnostic information. |
+| Queries | `Query` receives a logical entity, projections, filter, ordering and pagination, then streams tuple batches. |
+| Mutations | `Insert`, `Update` and `Delete` execute the mutations advertised by the provider. |
+| Transactions | `BeginTransaction`, `CommitTransaction`, `RollbackTransaction` and `IsInTransaction` are used only when native transactions are supported. |
+
+The [published protocol](https://buf.build/kubling/kubling-providers) is the
+source of truth for the wire contract. Protocol source, generated Go types and
+the SDK live in the
+[Kubling Providers repository](https://github.com/kubling-community/kubling-providers).
+
+### Schema contract
+
+`GetSchema` returns one complete logical schema in either of two forms:
+
+- **structured metadata**, preferred by providers that discover tables and
+  columns dynamically.
+- **Kubling DDL**, useful for static models that need to express the schema
+  directly.
+
+A provider should return one form, not both. When the VDB does not define its
+own DDL, Kubling imports this provider schema. Structured metadata can include
+tables, columns, keys, mutability and an opaque namespace that Kubling returns
+unchanged in later requests.
+
+Source discovery remains provider-specific. For example, Kubernetes derives
+tables from discoverable resources, Cassandra reads its native catalog, and
+Redis loads explicitly configured Hash table definitions.
+
+### Capabilities and pushdown
+
+Capabilities are a correctness contract, not a performance hint. A provider
+advertises only behavior it can evaluate with Kubling's logical semantics:
+
+- comparison, logical, null-predicate and pattern operators.
+- logical functions, never native source function names.
+- ordering and explicit or natural null ordering.
+- limit and offset support.
+- whether queries require a filter.
+- insert, update, delete and generated-value support.
+- native local transaction support.
+
+Kubling uses this information while planning. Supported work can be pushed to
+the provider; unsupported expressions remain in the engine. A provider may
+still reject an operation that is invalid for a specific table or native
+model, so metadata should also describe table and column mutability precisely.
+
+## Register a provider in Kubling
+
+Deploy and configure the provider first. Provider configuration controls the
+native endpoint, credentials, schema selection and source-specific behavior.
+Kubling's VDB registers only the gRPC endpoint and engine-level behavior:
+
+```yaml copy
+dataSources:
+  - name: "inventory"
+    dataSourceType: "PROVIDER_GRPC"
+    configObject:
+      address: "inventory-provider"
+      port: 50051
+      timeoutMillis: 30000
+      securityConfig:
+        mode: "PLAINTEXT"
+      contributesToHealth: true
+    schema:
+      type: "PHYSICAL"
+```
+
+If `schema.ddl` and `schema.ddlFilePaths` are omitted, Kubling imports the model
+returned by `GetSchema`. A VDB can still enrich the physical schema, add
+constant columns, define aggregators or place virtual models above it.
+
+<Callout type="warning">
+  Do not place native source credentials in this `configObject`. They belong
+  in provider-owned configuration or its secret-management mechanism.
+</Callout>
+
+### Kubling configuration reference
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `address` | `localhost` | Hostname or IP address of the provider endpoint. |
+| `port` | `50051` | Provider gRPC port. |
+| `timeoutMillis` | `30000` | Maximum duration of an individual provider RPC. |
+| `securityConfig.mode` | `PLAINTEXT` | Transport mode: `PLAINTEXT`, `TLS` or `MTLS`. |
+| `securityConfig.serverName` | provider address | Expected DNS name in the provider certificate. |
+| `securityConfig.trustedCaCertificatesFilePath` | system trust store | PEM CA bundle used to validate the provider certificate. |
+| `securityConfig.clientCertificateChainFilePath` | none | PEM client certificate chain required for `MTLS`. |
+| `securityConfig.clientPrivateKeyFilePath` | none | PEM private key required for `MTLS`. |
+| `securityConfig.clientPrivateKeyPassword` | none | Password for an encrypted client private key. |
+| `cache` | disabled | Engine-side data-source cache configuration. |
+| `softTransactions` | disabled | Engine-side Soft Transaction and simulated MVCC configuration. |
+| `contributesToHealth` | `true` | Makes provider health part of the overall engine health. |
+
+`timeoutMillis` must be greater than zero. It applies to an individual provider
+RPC; select a value that accounts for source latency and the provider's own
+native timeouts.
+
+### Transport security
+
+- `PLAINTEXT` provides no transport encryption. Restrict it to loopback,
+  private development networks or another explicitly trusted boundary.
+- `TLS` authenticates the provider endpoint to Kubling. Use `serverName` when
+  certificate identity differs from the configured network address and supply
+  a private CA bundle when the system trust store is insufficient.
+- `MTLS` also authenticates Kubling to the provider endpoint and requires the
+  client certificate chain and private key.
+
+The endpoint exposed to Kubling must support the selected transport mode.
+Official provider binaries currently expose their gRPC listener directly in
+plaintext; use a trusted network boundary or a TLS-terminating proxy when TLS
+or mTLS is required.
+
+Cache and [Soft Transaction](/engine/tx/intro) settings remain engine-level
+concerns and can be configured on a `PROVIDER_GRPC` data source when their
+semantics fit the provider.
+
+## Deployment and operations
+
+Providers are regular services. A provider may run beside Kubling, as a
+sidecar, or as a separately managed service, provided Kubling can reach its
+gRPC endpoint and the provider can reach its native source.
+
+Choose the process boundary from the provider's configuration model. The
+official Kubernetes provider intentionally represents exactly one cluster, so
+multi-cluster federation uses one provider instance and one Kubling data source
+per cluster. Other providers may expose several configured namespaces through
+one process.
+
+For production deployments:
+
+- pin the provider image version independently from the Kubling version.
+- mount provider configuration and secrets read-only where practical.
+- expose the gRPC listener only to intended Kubling instances.
+- set provider-native timeouts below or consistently with `timeoutMillis`.
+- decide whether provider readiness should affect overall engine health with
+  `contributesToHealth`.
+- validate schema and capabilities during every provider upgrade.
+
+When `contributesToHealth` is `true`, an unhealthy provider makes Kubling's
+aggregate health unhealthy. When it is `false`, provider errors still surface
+to callers, but its health result is excluded from that aggregate decision.
+
+### Queries, streaming and transactions
+
+Query results are streamed as batches so a provider does not need to construct
+the entire result in memory. The request's batch size is a preference; the
+provider selects the actual batching strategy.
+
+Native transactions are optional and scoped to a logical connection. If a
+provider does not advertise them, Kubling never treats the provider as if it
+had committed or rolled back native source state. Kubling's Soft Transactions
+are a separate engine mechanism and should be enabled only after validating
+the provider's mutation and row-identity semantics.
+
+## Build a provider
+
+Implementations are not restricted to Go. Any service that implements the
+published gRPC contract can act as a Kubling provider.
+
+For Go projects, start with the
+[official Go SDK](https://github.com/kubling-community/kubling-providers/tree/main/sdk-go).
+It wraps transport and connection lifecycle details behind regular Go
+interfaces. The
+[In-memory provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/inmemory)
+is the executable reference for the complete contract.
+
+A provider implementation should:
+
+1. define its provider-owned configuration and secret boundary.
+2. expose one coherent logical model through `GetSchema`.
+3. declare conservative, exact capabilities.
+4. implement logical connections and release their resources reliably.
+5. stream typed query batches in projection order.
+6. report precise table, column, mutation and transaction behavior.
+7. pass direct gRPC and real-Kubling compatibility tests.
+
+The repository's
+[contribution guide](https://github.com/kubling-community/kubling-providers/blob/main/CONTRIBUTING.md)
+describes the expected lifecycle, validation and release structure for a new
+provider. The
+[provider testing guide](https://github.com/kubling-community/kubling-providers/tree/main/testing)
+covers direct contract checks and a real Kubling compatibility harness.
+
+## Migrating from built-in integrations
+
+Kubling 26.4 removed the built-in `KUBERNETES`, `REDIS` and `CASSANDRA` data
+source implementations. Existing VDBs must move native configuration to the
+corresponding provider and register it as `PROVIDER_GRPC`. This is not only a
+type rename: ownership, discovered schema and supported operations may differ.
+
+Follow the [26.4 provider migration guide](/providers/migration) before
+upgrading an existing deployment.

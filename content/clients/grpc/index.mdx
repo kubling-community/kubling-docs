@@ -1,0 +1,147 @@
+import { Callout, Steps } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# gRPC clients <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+Kubling's client gRPC transport lets applications open a session, execute SQL
+and manage transactions without depending on JDBC or the PostgreSQL wire
+protocol. It is the recommended client interface for new services, agents and
+multi-language applications.
+
+<Callout type="warning">
+  Client gRPC and Provider gRPC are different interfaces. A client connects to
+  the Kubling Engine to consume a Virtual Database. Kubling connects to a
+  provider to access a physical source. They do not share protobuf services or
+  lifecycle semantics.
+</Callout>
+
+| Interface | Server | Client | Configuration | Default port |
+| --- | --- | --- | --- | ---: |
+| Client gRPC | Kubling Engine | Application or SDK | `transports.grpc` | `50051` |
+| Provider gRPC | External provider | Kubling Engine | VDB data source with `dataSourceType: PROVIDER_GRPC` | `50051` |
+
+The same default port is not a conflict when the Engine and provider run on
+different hosts or containers. Assign distinct ports when both listeners share
+the same network namespace. The Quickstart sample uses `50061` for the
+client transport and `50051` for its provider to make the boundary explicit.
+
+## What the client API provides
+
+The public contract exposes two services:
+
+- `SessionService` authenticates a client, validates a session and logs it out.
+- `QueryService` runs queries and statements, manages transactions and reports
+  server capabilities.
+
+Queries return a server stream of typed result batches. Statements return
+affected-row counts, optional per-command counts and, when requested, generated
+keys. The complete RPC and value model is covered in the
+[protocol reference](/clients/grpc/protocol).
+
+## Enable the transport
+
+Configure the listener in Kubling's main application configuration:
+
+```yaml copy
+transports:
+  grpc:
+    enable: true
+    bindAddress: "0.0.0.0"
+    portNumber: 50051
+    secure: false
+```
+
+`secure: false` is appropriate only for local development or an isolated test
+network. For a production listener, enable TLS, configure its server key store
+and restrict inbound networks. See
+[Communication security](/security/communication#configure-transports).
+
+When Kubling runs in a container, publish the configured port or attach the
+client to the same private container network. Enabling a listener inside the
+container does not expose it automatically on the host.
+
+## Use the Quickstart sample
+
+The [Quickstart sample](/quickstart) disables direct client transports and
+publishes only Studio's HTTP endpoint. This keeps its default surface small.
+You can reuse its deterministic provider-backed VDB for the client examples by
+enabling and publishing the existing `50061` listener.
+
+<Steps>
+
+### Enable client gRPC
+
+In `quickstart/app-config.yaml`, change the existing gRPC transport to:
+
+```yaml copy
+transports:
+  grpc:
+    enable: true
+    bindAddress: "0.0.0.0"
+    portNumber: 50061
+    secure: false
+```
+
+The provider continues listening independently at `provider:50051`.
+
+### Publish the client port
+
+Add the gRPC port to the `kubling` service in `quickstart/compose.yaml`:
+
+```yaml copy
+services:
+  kubling:
+    ports:
+      - "8282:8282"
+      - "50061:50061"
+```
+
+If the client runs as another service on the Compose network, it can instead
+connect to `kubling:50061` without publishing the port.
+
+### Start or recreate the stack
+
+```shell copy
+docker compose up --wait --force-recreate
+```
+
+The client examples use these values:
+
+| Setting | Value |
+| --- | --- |
+| Address | `localhost:50061` |
+| Virtual Database | `ProviderQuickstartVDB` |
+| Username | `quickstart` |
+| Password | `quickstart` |
+
+The username and password are local placeholders. The sample VDB has no
+authentication delegate and does not persist them.
+
+### Connect a client
+
+Continue with the [official Go SDK guide](/clients/grpc/go), or use the
+[protobuf contract](/clients/grpc/protocol) to build a client in another
+supported language.
+
+</Steps>
+
+## Session lifecycle
+
+1. Open a gRPC channel to the Engine listener.
+2. Call `SessionService.Login` with the VDB and credentials.
+3. Keep the returned expiring token private.
+4. Include that token in query, statement and transaction requests.
+5. Call `SessionService.Logout` when the logical session is no longer needed.
+6. Close the network channel.
+
+The token represents Engine session state; it is not merely a channel
+credential. Multiple channels can intentionally share it, including its active
+transaction, so collaborating clients must coordinate queries, commit,
+rollback and logout. Never log or expose the token.
+
+## Next steps
+
+- [Use the official Go SDK](/clients/grpc/go).
+- [Read the protobuf and RPC model](/clients/grpc/protocol).
+- [Compare all client transports](/concepts/transports).
+- [Configure TLS and IP filtering](/security/communication).

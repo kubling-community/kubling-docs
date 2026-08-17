@@ -2,5 +2,6 @@ export default {
   "intro": "Introduction",
   "logs": "",
   "metrics": "",
-  "tracing": ""
+  "tracing": "",
+  "tutorials": "Tutorials"
 }

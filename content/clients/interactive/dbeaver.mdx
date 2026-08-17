@@ -34,10 +34,15 @@ Filter `Driver` by name:
 The connection string has the following components:<br/>
 `jdbc:teiid:[vdb]@mm://[address]:[port]`
 
-Suppose you are running the [`appmodel`](https://github.com/kubling-community/dbvirt-samples/tree/main/appmodel) sample running on `localhost` using default port. 
-In this case, your connection string will be: `jdbc:teiid:app@mm://localhost:35482`
+For a VDB named `MyVDB` running locally on the default native port, the
+connection string is `jdbc:teiid:MyVDB@mm://localhost:35482`.
 
-Since thos sample does not use `RBAC`, you can leave the `Username` and `Password` fields blank.
+Credentials depend on the authentication delegate configured by that VDB. Do
+not assume that username and password can be left blank.
+
+The Quickstart sample cannot be used for this connection test because it
+intentionally disables direct client transports and exposes only Kubling's
+HTTP port for Studio.
 
 At the bottom of the `Connect to a Database` popup, there is a button to test the connection. If everything
 works as expected, you should see a message confirming that the connection was successful.
@@ -49,7 +54,7 @@ In DBeaver, when connecting to a secured native transport, it is mandatory to pa
 
 `jdbc:teiid:[vdb]@mms://[address]:[port];connectionPropsFilePath=/path/to/client-settings.properties`
 
-See an example [here](/Clients/Drivers/native_jdbc#client-networking-properties-file).
+See an example [here](/clients/drivers/native_jdbc#client-networking-properties-file).
 
 ## Why the standard PostgreSQL driver does not work?
 When establishing a new connection, DBeaver fetches metadata from the database. 

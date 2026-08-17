@@ -142,10 +142,10 @@ delete({ deleteOp, affectedRows })
 
 Informational inputs describe **what operation the engine is requesting**:
 
-- [`queryFilter`](/engine/script-context-members#queryfilter)
-- [`insertOp`](/engine/script-context-members#insertoperation)
-- [`updateOp`](/engine/script-context-members#updateoperation)
-- [`deleteOp`](/engine/script-context-members#deleteoperation)
+- [`queryFilter`](/modules/script-context-members#queryfilter)
+- [`insertOp`](/modules/script-context-members#insertoperation)
+- [`updateOp`](/modules/script-context-members#updateoperation)
+- [`deleteOp`](/modules/script-context-members#deleteoperation)
 
 These objects are provided by the engine and are treated as read-only by the handler.
 
@@ -153,8 +153,8 @@ These objects are provided by the engine and are treated as read-only by the han
 
 Exchange objects represent the **communication channel back to the engine**:
 
-- [`resultSet`](/engine/script-context-members#resultset) is used to emit rows for SELECT operations
-- [`affectedRows`](/engine/script-context-members#affectedrows) is used to report affected row counts and generated keys
+- [`resultSet`](/modules/script-context-members#resultset) is used to emit rows for SELECT operations
+- [`affectedRows`](/modules/script-context-members#affectedrows) is used to report affected row counts and generated keys
 
 After handler execution, the engine inspects these objects to determine the outcome of the operation.
 
@@ -194,7 +194,7 @@ If an initialization script is present, it **must report its outcome to the engi
 A failure during initialization prevents the engine from starting.
 
 The engine receives this information through the `initResult` context member:  
-[initResult context member](/Engine/script-context-members#initresult)
+[initResult context member](/modules/script-context-members#initresult)
 
 Example:
 

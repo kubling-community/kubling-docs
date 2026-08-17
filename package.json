@@ -13,8 +13,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
+    "check:links": "node scripts/check-internal-links.mjs",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
-    "check": "npm run typecheck && npm run build"
+    "check": "npm run check:links && npm run typecheck && npm run build"
   },
   "repository": {
     "type": "git",
@@ -36,6 +37,7 @@
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "github-slugger": "2.0.0",
     "postcss": "8.5.26",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3"

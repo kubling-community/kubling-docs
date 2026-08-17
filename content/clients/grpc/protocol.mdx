@@ -1,0 +1,163 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Protocol reference <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+The public client protocol is defined with Protocol Buffers in the
+[`kubling-grpc`](https://github.com/kubling-community/kubling-grpc) repository.
+The `.proto` files are the source of truth for generated clients in any
+language supported by gRPC.
+
+<Callout type="warning">
+  This is the client protocol exposed by the Kubling Engine. Provider
+  implementations use a separate contract from the
+  [`kubling-providers`](https://github.com/kubling-community/kubling-providers)
+  repository.
+</Callout>
+
+## Contract files
+
+| File | Purpose |
+| --- | --- |
+| `proto/kubling/v1/command.proto` | Sessions, SQL execution, streamed queries, transactions and server information. |
+| `proto/kubling/v1/value.proto` | Portable representations of Kubling logical values. |
+
+The package is `kubling.v1`. Pin a released contract or SDK tag when generating
+application code; do not generate production clients from a moving branch.
+
+## Services
+
+### `SessionService`
+
+| RPC | Request | Result |
+| --- | --- | --- |
+| `Login` | VDB name and version, credentials, application name and optional properties. | Session identity, expiration and expiring token. |
+| `Logout` | Expiring token. | Whether the logical session was closed. |
+| `Ping` | Empty request. | Whether the transport is reachable. |
+| `PingSession` | Expiring token and optional session ID. | Whether the session remains valid. |
+
+### `QueryService`
+
+| RPC | Behavior |
+| --- | --- |
+| `Query` | Runs SQL and returns a server stream of `QueryBatch` messages. |
+| `Exec` | Runs a data-changing statement and returns affected rows, update counts and optional generated keys. |
+| `BeginTransaction` | Starts a transaction in the token's logical session. |
+| `CommitTransaction` | Commits the session's active transaction. |
+| `RollbackTransaction` | Rolls back the session's active transaction. |
+| `IsInTransaction` | Reports whether that session currently owns an active transaction. |
+| `GetServerInfo` | Returns the Engine version and advertised optional features. |
+
+The expiring token is an explicit protobuf field in authenticated requests; it
+is not transported as an HTTP authorization header or implicit gRPC metadata.
+
+## Query results
+
+`Query` is server-streaming. Each `QueryBatch` contains:
+
+- column metadata, normally populated in the first batch.
+- zero or more rows whose values follow the positional column order.
+
+The request can suggest `batch_size`, but the Engine may adjust or ignore it.
+Clients must consume the stream until end-of-stream and must not assume that a
+result fits in one batch.
+
+## Consume the result stream directly
+
+The Go SDK includes generated clients alongside its high-level helpers. This
+example uses the authenticated SDK channel but consumes batches incrementally:
+
+```go copy
+import (
+	"context"
+	"errors"
+	"io"
+	"time"
+
+	kublingv1 "github.com/kubling-community/kubling-grpc/sdk-go/kubling/v1"
+)
+
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+stream, err := cli.QueryService().Query(ctx, &kublingv1.QueryRequest{
+	ExpiringToken: cli.Token(),
+	Sql:            "SELECT id, name FROM provider.PROJECT ORDER BY id",
+	BatchSize:      500,
+})
+if err != nil {
+	return err
+}
+
+for {
+	batch, err := stream.Recv()
+	if errors.Is(err, io.EOF) {
+		break
+	}
+	if err != nil {
+		return err
+	}
+
+	// Decode batch.GetColumns() and batch.GetRows() before receiving the next batch.
+	_ = batch
+}
+```
+
+Use a deadline appropriate for the workload and cancel the context when the
+consumer no longer needs the stream.
+
+## Values
+
+`Value` uses a protobuf `oneof`, preserving Kubling's logical type instead of
+coercing every result to text.
+
+| Logical family | Wire representation |
+| --- | --- |
+| Strings, character, JSON and XML | `string` |
+| Boolean | `bool` |
+| Byte, short and integer | `int32` with logical range validation |
+| Long | `int64` |
+| Float and double | protobuf floating-point primitives |
+| Big integer and big decimal | Decimal text to preserve precision |
+| Date, time and timestamp | ISO-formatted text |
+| Binary, BLOB, geometry and geography | `bytes` or a byte wrapper |
+| CLOB | String wrapper |
+| SQL `NULL` | Explicit `NullValue` variant |
+
+Rows are positional, so clients must use the column metadata to associate each
+value with its name and logical data type.
+
+## Parameters and generated keys
+
+Both `QueryRequest` and `ExecRequest` accept positional `Parameter` values.
+Encode each parameter with the same `Value` model used for results and preserve
+SQL placeholder order.
+
+Set `returnGeneratedKeys` on `ExecRequest` when generated keys are required.
+When present, `ExecResponse.generated_keys` is a `QueryBatch` and should be
+decoded using the same column and row rules as query results.
+
+## Errors and compatibility
+
+Transport, authentication and execution failures are returned as standard gRPC
+errors. Clients should inspect the gRPC status code, keep the server message for
+diagnostics and avoid retrying mutations unless application semantics make the
+retry safe.
+
+The contract is currently Preview. Treat protobuf field numbers and released
+package versions as compatibility boundaries, regenerate clients only after
+reviewing the target release, and use `GetServerInfo` when behavior depends on
+an optional Engine feature.
+
+## Generate clients
+
+The protocol repository uses Buf and contains the generation configuration and
+scripts maintained with the contract. From a pinned checkout, run:
+
+```shell copy
+./scripts/generate.sh
+```
+
+Generated code is a transport-level client. Applications remain responsible
+for channel credentials, deadlines, session lifecycle, token protection,
+stream consumption and transaction coordination.

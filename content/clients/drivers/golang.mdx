@@ -1,7 +1,17 @@
+import { Callout } from 'nextra/components'
+
 # Connect from a Go Application
 
-Kubling does not provide a Go driver for native protocol, PostgreSQL protocol must be used instead.
-All the tests we conducted in Go were using [pgx](https://github.com/jackc/pgx) driver
+<Callout type="info">
+  New Go applications should use Kubling's
+  [official gRPC SDK](/clients/grpc/go). It supports Engine sessions, typed
+  results, statements and transactions without PostgreSQL compatibility.
+</Callout>
+
+This page covers the PostgreSQL compatibility option for applications that
+specifically require a SQL driver. Kubling does not provide a Go driver for its
+native protocol; use [pgx](https://github.com/jackc/pgx) to connect through an
+enabled `pgProtocol` listener.
 
 Example:
 ```go
@@ -29,7 +39,7 @@ func main() {
 
 	fmt.Println("Connected to Kubling!")
 
-	rows, err := conn.Query(context.Background(), `SELECT identifier, org, repo from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('dbvirt-samples');`)
+	rows, err := conn.Query(context.Background(), `SELECT identifier, org, repo from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('kubling-samples');`)
 	if err != nil {
 		log.Fatalf("Unable to query table: %v\n", err)
 	}
@@ -41,7 +51,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Unable to scan row: %v\n", err)
 		}
-		fmt.Printf("ID: %d, Org: %s, Repo: %s\n", identifier, org, repo)
+		fmt.Printf("ID: %s, Org: %s, Repo: %s\n", identifier, org, repo)
 	}
 
 }

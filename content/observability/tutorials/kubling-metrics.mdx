@@ -1,0 +1,39 @@
+import { Callout } from 'nextra/components'
+
+# Historical metrics with Superset
+
+Kubling exposes current metric values but does not store their history. A
+historical dashboard therefore needs an external time-series store and a
+collector responsible for sampling those values.
+
+The existing Kubling metrics example demonstrates this architecture:
+
+1. a scheduled Kubling script reads the current instance metrics.
+2. the script writes a sample to TimescaleDB every 30 seconds.
+3. TimescaleDB is exposed to Kubling as a data source.
+4. Superset connects only to Kubling and renders the stored history.
+
+This keeps Kubling as the query boundary used by the dashboard while
+TimescaleDB owns historical retention.
+
+<Callout type="warning">
+  The runnable `kubling-dashboard-examples` fixture has not yet been validated
+  against Kubling 26.4. Treat this page as an architecture example until the
+  sample is rebuilt with pinned images and its startup and dashboard checks
+  pass against the current release.
+</Callout>
+
+## Validation requirements
+
+Before this tutorial is restored as a copy-and-run walkthrough, its sample
+must verify:
+
+- a clean Docker Compose startup with pinned versions.
+- successful Kubling and TimescaleDB health checks.
+- scheduled metric rows being persisted over time.
+- Superset connecting only through Kubling.
+- the preconfigured dashboard loading without manual repair.
+- a complete cleanup command.
+
+See [Metrics](/observability/metrics) for the current metric endpoints and
+export formats.

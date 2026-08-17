@@ -7,8 +7,8 @@ Before proceeding, it is important to recognize that Kubling modules, like any o
 should be tested following the established testing standards: unit tests, integration tests, and functional tests.
 
 - **Unit tests** are conducted locally using pure Scripting code, like JavaScript in the case of a data source of `SCRIPT_DOCUMENT_JS`.
-- **Functional tests** can be executed using containers. This is typically done within a build pipeline that compiles all modules and runs a 
-local full-server container (you can use the free CE version). 
+- **Functional tests** can be executed using containers. This is typically done within a build pipeline that compiles all modules and runs a
+  full Kubling container.
 During these tests, a client performs operations and verifies the results. 
 Remember that the application configuration and properties should point to mock servers or the upstream systems you use for testing.
 
@@ -27,7 +27,7 @@ In fact, it starts embedded servers for the testing process.
 ## Virtual Database and Data Sources initialization
 Integration test does not work like the Kubling engine, that is, the way VDB and Data Sources are initialized differ.
 
-In the engine, the initialization process follows an order given by configuration files, [which was explained here](/Concepts/artifacts#initialization-process), however,
+In the engine, the initialization process follows an order given by configuration files, [which was explained here](/concepts/artifacts#initialization-process), however,
 and in order to make the integration test as light as possible, each individual test is loaded directly into the DQP, without passing through the engine configuration machinery.
 
 Therefore, **the descriptor's Virtual Database configuration files are not loaded** as such, but only their components individually.
@@ -136,7 +136,6 @@ properties:
           - "EMBEDDED_INMEM"
           - "H2"
           - "KUBLING_DBVIRT"
-          - "KUBERNETES"
         translatorConfigFilePath:
           type: "string"
           required: true
@@ -157,7 +156,13 @@ properties:
 ```
 </details>
 
-Let's [use an example](https://github.com/kubling-community/dbvirt-samples/tree/main/appmodel) to break down the configuration:
+<Callout type="info">
+  External gRPC providers use the provider repository's
+  [compatibility testing harness](https://github.com/kubling-community/kubling-providers/tree/main/testing)
+  instead of the legacy embedded-source integration path described here.
+</Callout>
+
+The following self-contained manifest shows how the pieces fit together:
 
 ```yaml
 descriptorModule:
@@ -199,7 +204,7 @@ tests:
 - **`descriptorModule.directory`** points to the root directory of the descriptor module's code.
 - **`mainModule.directory`** points to the root directory of the `SCRIPT_DOCUMENT_JS` module's code.
 - **`properties`** since we are planning to test GitHub delegate, we inject some properties in order to trace them end to end.
-- **`yamlObjects`** this plays an important role which requires some extra explanation, [please see below](test-framework#virtual-database-and-data-sources-loading-mechanism).
+- **`yamlObjects`** this plays an important role which requires some extra explanation, [please see above](#virtual-database-and-data-sources-initialization).
 
 ### Mock Server
 The mock server is a simple yet powerful HTTP server with endpoints that can be easily configured via YAML files. 
@@ -300,7 +305,7 @@ The CLI uses the same scripting context mechanism as the engine, so the way to e
 <summary>Allows to execute SQL commands against the data source.</summary>
 | Function                                             | Description                                                                                                                                                                                     |
 |------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `executeQuery(query: string) : ListProxyObject<Row>` | Executes a `SELECT` clause and returns the list of [rows](test-framework#row) inside a [list](/Engine/script-context-members#listproxyobject).                                                  |
+| `executeQuery(query: string) : ListProxyObject<Row>` | Executes a `SELECT` clause and returns the list of [rows](test-framework#row) inside a [list](/modules/script-context-members#listproxyobject).                                                  |
 | `executeModifying(statement: string) : integer`      | Executes a CUD statement and returns the number of affected rows.                                                                                                                               |
 | `execute(statement: string) : object`                | Determines whether to execute `executeQuery` or `executeModifying` based on the statement type and calls the appropriate function. Returns an object that can be the result of either function. |
 </details>
@@ -345,7 +350,7 @@ The CLI uses the same scripting context mechanism as the engine, so the way to e
 A native `object` whose members represent the fields returned by the query.<br/>
 It has a special member named `__colSize`, which returns the number of columns.
 
-Please note that all columns, regardless of their [types](/Engine/data-types), are converted to a `string` representation.
+Please note that all columns, regardless of their [types](/engine/data-types), are converted to a `string` representation.
 
 The implementation of data types belongs to the core package, so you can see what to expect as a string representation for each type in [this repo](https://github.com/kubling-community/kubling-teiid-os/tree/master/common-core/src/main/java/com/kubling/teiid/core/types).
 
@@ -426,12 +431,12 @@ In case of an error, the `kdv` integration test command will return `-1`.
 <summary>Successful run output example</summary>
 ```console
 04:39:41 - Configuring Mock Server <github>
-04:39:41 - Generating Descriptor Module (/some/path/dbvirt-samples/appmodel/descriptor-mod.zip)
+04:39:41 - Generating Descriptor Module (/workspace/my-sample/descriptor-mod.zip)
 04:39:41 - MockWebServer[8643] starting to accept connections
-04:39:42 - Bundle file generated: /some/path/dbvirt-samples/appmodel/descriptor-mod.zip
+04:39:42 - Bundle file generated: /workspace/my-sample/descriptor-mod.zip
 04:39:42 - Files included: 16 | Uncompressed: 20526 bytes (20 KB) | Compressed size: 9 KB
-04:39:42 - Generating Main Module (/some/path/dbvirt-samples/appmodel/main-mod.zip)
-04:39:42 - Bundle file generated: /some/path/dbvirt-samples/appmodel/main-mod.zip
+04:39:42 - Generating Main Module (/workspace/my-sample/main-mod.zip)
+04:39:42 - Bundle file generated: /workspace/my-sample/main-mod.zip
 04:39:42 - Files included: 23 | Uncompressed: 31591 bytes (30 KB) | Compressed size: 4 KB
 04:39:42 - Starting tests
 04:39:42 - Running GitHub

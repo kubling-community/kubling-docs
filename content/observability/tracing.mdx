@@ -139,7 +139,7 @@ This span represents events that occur within a source (translator) during query
 |----------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------|
 | `db.system`          | string  | Identifies the database system. Useful for filtering when multiple engines emit telemetry.                                                                                   | `"kubling"`                                      |
 | `db.operation`       | string  | Type of operation being executed.                                                                                                                                            | `"SELECT"`, `"INSERT"`, etc.                     |
-| `component`          | string  | Indicates the translator type, which corresponds to the `dataSourceType` as [defined here](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle). | `"KUBERNETES"`, `"MODBUS"`,  `"CASSANDRA"`, etc. |
+| `component`          | string  | Indicates the translator type, which corresponds to the `dataSourceType` as [defined here](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle). | `"PROVIDER_GRPC"`, `"MODBUS"`, `"POSTGRESQL"`, etc. |
 | `kubling.translator` | boolean | A marker attribute that identifies the span as part of a translator (source command). Useful for filtering.                                                                  | `true`                                           |
 | `kubling.session.id` | string  | Internal session identifier.                                                                                                                                                 | `"sess-01FX...8KD"`                              |
 | `kubling.source.id`  | string  | Internal source command identifier. Only included if `includeRequestIdSpanAttribute` is enabled.                                                                             | `"abcd..."`                                      |
@@ -152,7 +152,7 @@ This event is only present when `includeFullCommand` is enabled.
 
 <Callout type="info">
   This event is only meaningful for Database Data Sources (e.g., MySQL, PostgreSQL).  
-  For other sources like Redis, Cassandra, Kubernetes, or REST APIs, there is no SQL translation in the strict sense.  
+  For provider-backed sources or REST APIs, there is no SQL translation in the strict sense.
   For more details, see [this section](/engine/ds/intro).
 </Callout>
 

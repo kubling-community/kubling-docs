@@ -13,9 +13,12 @@ The following diagram is a simplified view of the architecture, in which we high
 
 ## Transport
 
-The transport layer groups all the services to manage client connections. Kubling is designed to decouple the protocol from the connection handler,
-reason why it is possible to configure transports as `nativeProtocol` or `pgProtocol`.<br/>
-The latter refers to PostgreSQL protocol, which allows you to exchange information with Kubling using standard PostgreSQL client.
+The transport layer groups the services that manage client connections.
+Kubling decouples protocol handling from Engine sessions, so an instance can
+expose the `grpc`, `nativeProtocol` and `pgProtocol` transports independently.
+The [transport comparison](/concepts/transports) explains their intended uses;
+new service-to-service clients should normally use
+[gRPC](/clients/grpc).
 
 <Callout type="warning">
   Do not confuse PostgreSQL protocol with PostgreSQL system. Some clients, after opening a connection with a PostgreSQL server, try to fetch metadata
@@ -27,7 +30,7 @@ The latter refers to PostgreSQL protocol, which allows you to exchange informati
 When securing a transport via configuration, the encryption will be done using the certificate you specify. Otherwise, encryption is skipped.
 
 ### Session Manager
-It opens and keeps all the sessions created by remote clients. If your [descriptor module](/Modules/descriptor) 
+It opens and keeps all the sessions created by remote clients. If your [descriptor module](/modules/descriptor)
 specifies an [authentication delegate](/schemas#descriptor-bundle-information-file-bundle-infoyaml), then the manager will invoke it before the sessions
 is created.
 

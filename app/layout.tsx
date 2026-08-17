@@ -36,9 +36,10 @@ const navbar = (
       <Image
         src="/img/logo.svg"
         alt="Kubling"
-        width={140}
-        height={30}
+        width={257}
+        height={90}
         className="max-w-full"
+        style={{ width: '140px', height: 'auto' }}
         priority
       />
     }

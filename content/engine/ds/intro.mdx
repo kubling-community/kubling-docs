@@ -1,32 +1,44 @@
+import { Callout } from 'nextra/components'
+
 # Data Sources
 
-Kubling Data Source Adapters are divided into five major types:
+A data source connects a physical model in a Kubling VDB to data that Kubling
+can query or mutate. The adapter boundary determines where connectivity,
+metadata discovery and source-specific execution take place.
 
-- **Database Data Source:**<br/>
-This adapter allows connections to external databases using built-in connectors and drivers. Kubling queries are automatically 
-translated into the appropriate query language that the target database can process. With this type of data source, you can either:
-    - Automatically import schemas and tables from the remote database, generating virtual schemas based on metadata retrieved from the source (called `passtrough`), or
-    - Manually define `FOREIGN` tables using SQL-like DDL to customize the data model.
+Kubling 26.4 supports the following main categories:
 
-- **Kubernetes Data Source:**<br/>
-A specialized adapter designed to connect with Kubernetes clusters. It leverages a built-in module to interact with the cluster, 
-providing seamless access to Kubernetes-native data and resources.
+- **gRPC Provider:** An external process implements the public provider
+  contract. The provider owns native connectivity, credentials and
+  source-specific execution, while Kubling handles federation and planning.
+  Start with the [Providers overview](/providers).
+- **Database:** Built-in relational database connectors import remote metadata
+  or use explicitly defined foreign tables. See [Database data sources](./db-data-sources).
+- **Script Document:** JavaScript handlers expose semi-structured documents or
+  APIs as tables. See [Script Document](./script-doc).
+- **Embedded and Portable Local:** Local storage is hosted with the engine for
+  lightweight or self-contained models.
+- **Industrial:** Built-in protocol adapters integrate systems such as SNMP and
+  Modbus.
+- **Proxy:** Composite and routing data sources operate over other Kubling data
+  sources instead of connecting directly to a remote origin.
 
-- **Script Document Data Source:**<br/>
-This adapter is used to manage semi-structured documents, such as `JSON` and `YAML` files. 
-Data fetching and operations on these documents are handled through scripts, such as JavaScript, allowing flexible manipulation of external APIs as data sources.
+<Callout type="warning">
+  The built-in `KUBERNETES`, `REDIS` and `CASSANDRA` types were removed in
+  Kubling 26.4 and can no longer be used. Migrate existing VDBs to their
+  official external providers by following the
+  [migration guide](/providers/migration).
+</Callout>
 
-- **Embedded Data Source:**<br/>
-This adapter creates an internal, lightweight database engine that is automatically added as a data source. 
+## Documents
 
-- **Proxy Data Source:**<br/>
-This is the only adapter not backed by a remote data origin. Instead, it functions as a layer on top of other Kubling local data sources, 
-enabling enrichment, composition, and other advanced features.
+Some data sources exchange JSON or other semi-structured objects. Throughout
+the documentation, these values are called documents regardless of whether the
+remote system is a document database, an API or another kind of source.
 
-For more information, please have a look at the [architecture.](/Concepts/architecture)
+Kubling can retain documents as JSON columns, expose selected fields as typed
+relational columns and define synthetic tables over nested structures when the
+data source model supports it.
 
-### Documents
-Some data sources, primarily those that exchange information with an API in `JSON` format, are referred to as `document` data sources troughtout this documentation.<br/>
-The term comes from the original way of naming databases that store semi-structured objects, like Elasticsearch and MongoDB.
-
-Kubling engine has the ability to manipulate documents, and to transform CRUD operations into changes in the documents.
+For the role of data sources inside the engine, see the
+[architecture overview](/concepts/architecture).

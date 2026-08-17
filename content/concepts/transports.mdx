@@ -40,6 +40,10 @@ The gRPC transport is currently available as Preview. It is already the recommen
 but its public contract may still receive compatibility-affecting changes before being declared stable.
 </Callout>
 
+Use the [gRPC client guide](/clients/grpc) to enable the listener, run the
+Quickstart sample through gRPC and choose between the official Go SDK and
+direct protobuf clients.
+
 ### Session
 
 The API is session-oriented, but the Kubling session is not bound to a specific network connection or client process. 
@@ -70,8 +74,8 @@ The transport supports common query execution flows, including simple queries an
 However, compatibility is limited to the protocol features and data representations implemented by Kubling.
 
 <Callout type="warning">
-Kubling is not a PostgreSQL server. Clients that depend on PostgreSQL system catalogs, extensions, server-specific metadata, o
-r undocumented protocol behavior may not work correctly.
+Kubling is not a PostgreSQL server. Clients that depend on PostgreSQL system catalogs, extensions, server-specific metadata,
+or undocumented protocol behavior may not work correctly.
 </Callout>
 
 This transport is maintained as a compatibility option for existing tools. 
@@ -96,6 +100,7 @@ transports:
     enable: true
     bindAddress: "0.0.0.0"
     portNumber: 50051
+    secure: false
 
   nativeProtocol:
     enable: true
@@ -108,7 +113,12 @@ transports:
     portNumber: 35432
 ```
 
-Transport configuration can also enable server-side TLS and define an IP whitelist or blacklist independently for each protocol. 
-See [Communication security](/Security/communication) for certificate and network filtering configuration.
+`50051` is the default client gRPC port. Provider gRPC listeners commonly use
+the same default on a different host or container; they are independent
+interfaces. The [gRPC client overview](/clients/grpc) explains the boundary and
+shows a Quickstart configuration that uses `50061` for the client listener.
 
-Authentication is evaluated when a client requests a session, and the same session and [RBAC](/Security/rbac) model is applied regardless of the selected transport.
+Transport configuration can also enable server-side TLS and define an IP whitelist or blacklist independently for each protocol. 
+See [Communication security](/security/communication) for certificate and network filtering configuration.
+
+Authentication is evaluated when a client requests a session, and the same session and [RBAC](/security/rbac) model is applied regardless of the selected transport.
