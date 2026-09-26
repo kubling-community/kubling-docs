@@ -350,9 +350,10 @@ The CLI uses the same scripting context mechanism as the engine, so the way to e
 A native `object` whose members represent the fields returned by the query.<br/>
 It has a special member named `__colSize`, which returns the number of columns.
 
-Please note that all columns, regardless of their [types](/engine/data-types), are converted to a `string` representation.
-
-The implementation of data types belongs to the core package, so you can see what to expect as a string representation for each type in [this repo](https://github.com/kubling-community/kubling-teiid-os/tree/master/common-core/src/main/java/com/kubling/teiid/core/types).
+All columns, regardless of their [types](/engine/data-types), are converted to
+a `string` using Kubling's documented conversion rules. See
+[Data types and conversions](/engine/data-types#type-conversions) for the
+supported representations.
 
 #### Example
 ```js

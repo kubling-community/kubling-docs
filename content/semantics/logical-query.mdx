@@ -1,0 +1,179 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Logical Query v1 <Tag description={"v26.5+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+Logical Query is the structured query contract used between a capability
+runtime and Kubling. It describes the result to obtain without embedding native
+SQL or provider-specific syntax.
+
+Kubling resolves every reference against the exact VDB and catalog revision
+selected for the task, validates types and functions, compiles the document to
+Kubling SQL, and applies normal authorization and query planning.
+
+<Callout type="info">
+  Logical Query is additive. Applications may continue to execute Kubling SQL
+  through JDBC, PostgreSQL, HTTP or the public gRPC client transport.
+</Callout>
+
+## Document envelope
+
+Version 1 is the supported wire version:
+
+```json copy
+{
+  "format": "kubling-logical-query",
+  "formatVersion": 1,
+  "parameters": [],
+  "query": {
+    "body": {
+      "kind": "select",
+      "projections": [
+        {
+          "expression": {
+            "kind": "literal",
+            "type": "integer",
+            "value": "1"
+          },
+          "alias": "value"
+        }
+      ]
+    }
+  }
+}
+```
+
+Unknown fields, node kinds and document versions are rejected. `nativeSql` and
+mutation roots are not part of the contract.
+
+## Sources and fields
+
+A query may use catalog relations directly:
+
+```json copy
+{
+  "kind": "relation",
+  "schema": "kubernetes",
+  "relation": "pods",
+  "alias": "p"
+}
+```
+
+or reference a compiled semantic entity:
+
+```json copy
+{
+  "kind": "entity",
+  "entityId": "k8s:Deployment",
+  "bindingScope": "cluster-eu",
+  "alias": "d"
+}
+```
+
+Catalog fields use a source alias and field name. Semantic entities use
+`semanticProperty` with a published property ID. `bindingScope` may be omitted
+only when that semantic entity has one unambiguous binding.
+
+## Supported query shape
+
+Logical Query v1 represents:
+
+- projections, aliases and typed parameters
+- catalog relations and semantic entities
+- predicates, expressions and catalog functions
+- explicit joins and semantic relationships
+- grouping, aggregate functions and `HAVING`
+- ordering, offset and limit
+- subqueries, derived and lateral sources
+- common table expressions and set operations
+- window expressions and frames
+
+The JSON Schema is the complete persisted reference:
+[`logical-query.schema.json`](https://github.com/kubling-community/kubling-dbvirt/blob/master/model/src/main/resources/META-INF/kubling/contracts/logical-query/v1/logical-query.schema.json).
+
+## Semantic relationship example
+
+This abbreviated query asks Kubling to traverse the declared ownership
+relationship and count Pods for each Deployment:
+
+```json copy
+{
+  "format": "kubling-logical-query",
+  "formatVersion": 1,
+  "query": {
+    "body": {
+      "kind": "select",
+      "projections": [
+        {
+          "expression": {
+            "kind": "semanticProperty",
+            "source": "d",
+            "propertyId": "k8s:Deployment.name"
+          },
+          "alias": "deploymentName"
+        },
+        {
+          "expression": {
+            "kind": "aggregateFunction",
+            "signature": "count()->long",
+            "arguments": []
+          },
+          "alias": "podCount"
+        }
+      ],
+      "from": {
+        "kind": "entity",
+        "entityId": "k8s:Deployment",
+        "alias": "d"
+      },
+      "joins": [
+        {
+          "type": "left",
+          "source": {
+            "kind": "entity",
+            "entityId": "k8s:Pod",
+            "alias": "p"
+          },
+          "relationship": {
+            "relationshipId": "k8s:DeploymentOwnsPod",
+            "from": "d",
+            "to": "p"
+          }
+        }
+      ],
+      "groupBy": [
+        {
+          "kind": "semanticProperty",
+          "source": "d",
+          "propertyId": "k8s:Deployment.name"
+        }
+      ]
+    }
+  }
+}
+```
+
+Function references use exact catalog signatures. Row count is expressed as
+`count()->long` with no arguments and compiles to `COUNT(*)`. The compatibility
+form `star: true` is also accepted.
+
+## Validation and error codes
+
+Errors include a stable code and a JSON Pointer path to the failing part of the
+document.
+
+| Code | Meaning |
+| --- | --- |
+| `LQ_DOCUMENT_INVALID` | The JSON does not conform to the versioned document contract. |
+| `LQ_VERSION_UNSUPPORTED` | The format or format version is unsupported. |
+| `LQ_LIMIT_EXCEEDED` | A document or structural bound was exceeded. |
+| `LQ_NODE_INVALID` | A node kind or node shape is invalid. |
+| `LQ_REFERENCE_INVALID` | A source, field, entity, property, relationship or alias cannot be resolved unambiguously. |
+| `LQ_TYPE_INVALID` | Declared and resolved types are incompatible. |
+| `LQ_FUNCTION_INVALID` | A function signature is absent or invalid in the selected catalog. |
+| `LQ_OPERATION_UNSUPPORTED` | The requested operation is outside the supported read contract. |
+| `LQ_POLICY_REJECTED` | The selected context does not authorize the requested shape. |
+| `LQ_COMPILATION_FAILED` | A validated document could not be compiled safely. |
+
+Do not retry by translating a rejected document to arbitrary SQL inside the
+runtime. Correct the query or return a bounded failure to the caller.

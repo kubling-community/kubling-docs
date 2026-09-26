@@ -9,7 +9,7 @@ Go to [DBeaver download page](https://dbeaver.io/download/) and get the latest v
 
 ### 2. Download Driver
 You first need to have the `Kubling` JDBC native driver on your local machine.<br/>
-Drivers are [published here](https://github.com/kubling-community/kubling-teiid-os/releases). Download latest version and
+Drivers are [published here](https://github.com/kubling-community/kubling-core/releases). Download latest version and
 place it, ideally, in the same directory you installed DBeaver.
 
 ### 3. Register Driver
@@ -20,7 +20,7 @@ First click on `Libraries` tab and then `Add File`. Then select the recently-dow
 ![DBeaver Libraries tab with the Kubling JDBC driver selected](../../../public/img/dbeaver/driver_loc.png)
 
 Go back to `Settings` tab and give the driver a name, like `Kubling`.<br/> 
-Fill the `Class name` field with `com.kubling.teiid.jdbc.TeiidDriver`.<br/>
+Fill the `Class name` field with `com.kubling.jdbc.KublingDriver`.<br/>
 Leave all other fields blank and press `OK`.
 
 ### 4. Connect to VDB
@@ -32,10 +32,10 @@ Filter `Driver` by name:
 ![Kubling driver selected in the DBeaver connection dialog](../../../public/img/dbeaver/driver_selection.png)
 
 The connection string has the following components:<br/>
-`jdbc:teiid:[vdb]@mm://[address]:[port]`
+`jdbc:kubling:[vdb]@mm://[address]:[port]`
 
 For a VDB named `MyVDB` running locally on the default native port, the
-connection string is `jdbc:teiid:MyVDB@mm://localhost:35482`.
+connection string is `jdbc:kubling:MyVDB@mm://localhost:35482`.
 
 Credentials depend on the authentication delegate configured by that VDB. Do
 not assume that username and password can be left blank.
@@ -52,7 +52,7 @@ You can now explore `SCHEMAS`, `TABLES`, `COLUMNS`, and other VDB objects, and, 
 ## Secure native protocol
 In DBeaver, when connecting to a secured native transport, it is mandatory to pass the `connectionPropsFilePath` in the JDBC URL:
 
-`jdbc:teiid:[vdb]@mms://[address]:[port];connectionPropsFilePath=/path/to/client-settings.properties`
+`jdbc:kubling:[vdb]@mms://[address]:[port];connectionPropsFilePath=/path/to/client-settings.properties`
 
 See an example [here](/clients/drivers/native_jdbc#client-networking-properties-file).
 

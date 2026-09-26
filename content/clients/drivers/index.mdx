@@ -1,0 +1,31 @@
+import { Callout } from 'nextra/components'
+
+# Application drivers
+
+Choose a client by application runtime and API requirements:
+
+| Application | Recommended client | Transport |
+| --- | --- | --- |
+| Java application using JDBC | [Kubling JDBC driver](/clients/drivers/native_jdbc) | Native |
+| Java application using Hibernate | [Kubling Hibernate dialect](/clients/drivers/hibernate) | Native |
+| Go application | [Official Go SDK](/clients/grpc/go) | gRPC |
+| Python application using SQLAlchemy or DB-API | [Kubling SQLAlchemy driver](/clients/drivers/python#sqlalchemy-and-db-api) | gRPC |
+| Python application using the RPC API directly | [Official Python package](/clients/drivers/python#direct-grpc-client) | gRPC |
+| Other non-Java application | Generated client from the [public protobuf contract](/clients/grpc/protocol) | gRPC |
+| Existing PostgreSQL-compatible client or tool | Its existing PostgreSQL driver | PostgreSQL compatibility |
+
+<Callout type="info">
+  Use gRPC for new non-Java applications. The PostgreSQL wire protocol remains
+  available for existing clients and tools that require it, but it is not the
+  recommended application integration.
+</Callout>
+
+Java applications that require JDBC or an ORM should use Kubling's native JDBC
+transport. Java applications that do not require JDBC can also use the
+[official generated gRPC client](/clients/grpc#connect-with-an-official-client).
+
+Applications upgrading their Java or native JDBC integration to 26.5 must
+follow the [naming migration](/naming-migration).
+
+See [Transports](/concepts/transports) for the protocol boundaries and listener
+configuration.

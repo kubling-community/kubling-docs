@@ -1,13 +1,17 @@
 export default {
   index: 'Introduction',
+  'naming-migration': {
+    display: 'hidden'
+  },
   quickstart: 'Quickstart',
-  providers: 'Providers',
   clients: 'Clients',
   concepts: 'Concepts',
-  template: 'Template',
   engine: 'Engine',
-  agent: 'AI Agent',
+  providers: 'Providers',
+  semantics: 'Semantics',
+  agent: 'Agent capabilities',
   modules: 'Modules',
+  template: 'Template',
   security: 'Security',
   observability: 'Observability',
   perf: 'Performance Tracer',

@@ -1,5 +1,29 @@
 # Product changelog
 
+## v26.5
+
+- Introduced Preview [semantic federation](/semantics), allowing each VDB to
+  acquire, validate, compose and activate versioned semantic Modules and
+  optional provider fragments.
+- Added [Logical Query v1](/semantics/logical-query), a structured query
+  contract that Kubling validates against the active VDB catalog and semantic
+  model before compiling it to SQL.
+- Added the Preview [native capability Task API](/agent/intro) for bounded
+  execution through an external agent runtime while preserving the initiating
+  caller and VDB policies. The legacy `/agent/*` integration is deprecated.
+- Extended the Provider gRPC boundary with negotiated
+  [rich values and LOB reads](/providers/values) and
+  [aggregate pushdown](/providers/pushdown). Providers that do not advertise
+  these capabilities retain their previous behavior.
+- Expanded the [gRPC client contract](/clients/grpc/protocol) with
+  session-scoped capability negotiation, generic streamed execution,
+  structured errors, transaction status and LOB operations.
+- Completed the [Kubling naming migration](/naming-migration).
+  Kubling-owned Java namespaces, JDBC identifiers and client property keys now
+  use Kubling names, while error identifiers use `KBL` instead of
+  `TEIID`. Existing Java integrations, native-client settings and monitoring
+  rules must be updated.
+
 ## v26.4
 
 - Introduced the [external gRPC provider mechanism](/providers), which moves
@@ -24,7 +48,8 @@ preventing segmentation faults reported on some ARM64 environments, including Ra
 
 ## v26.2.1
 
-- Changed the HTTP security interceptor to use randomly generated anonymous identities for unauthenticated requests, improving isolation and reducing potential exposure of internal users.
+- Improved isolation for unauthenticated HTTP requests by assigning each
+  request a distinct anonymous identity.
 
 ## v26.2
 
@@ -39,17 +64,21 @@ preventing segmentation faults reported on some ARM64 environments, including Ra
 - Upgraded the JavaScript engine to improve throughput and reduce response time in cold execution contexts.
 
 ## v26.1.4
-- Fixed an issue in the agent client that, in certain scenarios, prevented system tables from being filtered at the instance level before sending model metadata to the upstream implementation.
+- Fixed legacy Agent API context publication so system-table metadata is scoped
+  to the selected Kubling instance.
 
 ## v26.1.3
-- Fixed an error in the Redis translator that occurred when executing queries composed exclusively of expression symbols (literals, expressions, functions, etc.).
+- Fixed Redis data-source queries composed exclusively of literals,
+  expressions or functions.
 
 ## v26.1.2
-- Fixed the `DBEngine` script context member to prevent a core exception from propagating into the script context when the provided `vdbName` does not exist.
+- Fixed scripted database operations so a missing VDB returns a clear error
+  instead of exposing an internal exception.
 
 ## v26.1.1
 - Fixed a bug that prevented correct automatic column expansion in projections, leading to errors during row identity calculation.
-- Fixed a bug where row-lock acquisition results were not properly validated in certain scenarios, allowing execution to continue instead of failing early, and later resulting in less clear error reporting.
+- Fixed Soft Transactions continuing after a row lock could not be acquired, so
+  the original locking failure is now reported immediately.
 
 ## v26.1
 
@@ -63,7 +92,8 @@ preventing segmentation faults reported on some ARM64 environments, including Ra
 - Introduced the `MAIN_HTTP_PORT` environment variable to explicitly control the port used by all HTTP-based engine services.
 
 ## v25.6.1
-- Resolved an out-of-memory issue when querying `POD_CONTAINER` or `POD_CONTAINER_STATUS`. The problem was caused by Kubling attempting to reflectively access a class not included in the final binary image.
+- Fixed an out-of-memory failure when querying `POD_CONTAINER` or
+  `POD_CONTAINER_STATUS` in native deployments.
 - Updated the Kubernetes base DDL.
 
 ## v25.6
@@ -74,9 +104,11 @@ preventing segmentation faults reported on some ARM64 environments, including Ra
 ## v25.5
 - Added JavaScript HTTP endpoints, allowing you to define custom paths and handle them directly within your scripts.
 - Added a new way of defining instrumentation at the application level, with support for OpenTelemetry and DataDog formats, including endpoints for pushing metrics.
-- Added the `SYSREGISTRY` system table, exposing internal information used for traceability across immutable instances.
+- Added the `SYSREGISTRY` system table, exposing instance identity and
+  traceability metadata.
 - Added support for HTTP TLS certificates, affecting all HTTP-based endpoints.
-- Changed the container’s base image to [distroless CC](https://github.com/GoogleContainerTools/distroless/tree/main/cc), due to an error reported in some environments with memory constraints where the garbage collector attempted to call non-existent system functions.
+- Changed the container base image to [distroless CC](https://github.com/GoogleContainerTools/distroless/tree/main/cc)
+  to improve reliability on memory-constrained systems.
 - Portable Local data source now supports flyway migrations.
 - Fixed an issue with the MySQL data source that prevented Kubling from initializing correctly due to an incorrectly constructed connection string.
 
@@ -88,42 +120,44 @@ preventing segmentation faults reported on some ARM64 environments, including Ra
 - Enabled top-level comparison support for the `json` data type, allowing standard operators (e.g. `=`) to be used directly in filters and joins involving JSON values.
 - Added automatic detection of the `jsonb` data type in PostgreSQL with implicit transformation using the `::jsonb` suffix in pushed-down queries to avoid type-related errors.
 - Updated Kubernetes API support for compatibility with the latest version.
-- Removed a limitation that prevented the use of implicit joins (multiple tables in `FROM`) in PostgreSQL and MySQL due to specific query plans generated by the DQP.
+- Enabled implicit joins with multiple tables in `FROM` for PostgreSQL and
+  MySQL queries whose execution plans were previously rejected.
 - Fixed an issue where prepared statement parameters were incorrectly skipped when `LIMIT` was included as a parameterized value.
 
 ## v25.4.1
-- Fixed Cassandra adapter to resolve an issue where, under certain conditions, the total number of visible rows was incorrectly limited to the page size. 
-This was caused by a premature termination of the data stream.
-- Addressed an issue where the console returned an HTTP 500 error when adding new data sources, due to changes in underlying configuration object handling.
+- Fixed Cassandra data-source queries that could return only the first page of
+  visible rows.
+- Fixed an HTTP 500 response in the console when adding a data source.
 
 
 ## v25.4
 - Added support for **SNMP**.
 - Added support for **Modbus**.
-- Introduced class whitelisting to prevent unsafe object deserialization and injection attacks.
+- Hardened native-client deserialization against unsafe object types and
+  injection attacks.
 - Added IP filtering per transport, supporting both CIDR whitelisting and blacklisting.
 - Introduced two new traffic metrics (per transport) to track total bytes transferred.
 - Added PostgreSQL system objects (tables and views) to support standard metadata queries. Now, universal DB tools like DBeaver should be able to retrieve database metadata when using the PG transport.
 
 ## v25.3.6
-- Fixed an issue affecting `COMPOSITE` data source type that depleted connection pool when constructing querying database metadata concurrently from several connections and the same time.
+- Fixed connection-pool exhaustion when metadata was read concurrently from
+  `COMPOSITE` data sources.
 
 ## v25.3.5
-- Updated to new Kubling core version. [See here.](https://github.com/kubling-community/kubling-teiid-os/commit/564a16895f2b8aff11fbc1f56be0fe1b78878077)
+- Updated the Kubling engine libraries. [See the related change.](https://github.com/kubling-community/kubling-core/commit/564a16895f2b8aff11fbc1f56be0fe1b78878077)
 
 ## v25.3.4
-- Fixed an issue where a column defined as `call_func`, when invoking standard SQL functions (introduced in v25.3.2), 
-was not correctly processed when the parameters provided were not part of the query's projected columns. 
-The query engine now automatically expands the projection to include the required fields before passing the query to the translator, 
-ensuring proper execution on the remote data source without affecting the original projection requested in the command.
+- Fixed `call_func` columns using standard SQL functions when their input fields
+  were not part of the requested projection. Kubling now includes the required
+  fields without changing the result columns requested by the client.
 
 ## v25.3.3
-- Fixed an issue affecting all Database datasources where the schema component of the fully qualified name (`NAMEINSOURCE`) was erroneously removed by 
-the translator before being passed to the remote data source, potentially causing query errors in certain scenarios.
+- Fixed Database data-source queries losing the schema portion of
+  `NAMEINSOURCE` before reaching the remote source.
 
 ## v25.3.2
-- Fixed an issue where essential classes for Spatial operations were incorrectly removed during native image generation. 
-Although the necessary dependencies were present, the classes were marked as unreachable and excluded from the final binary.
+- Fixed spatial operations failing because required runtime types were missing
+  from native images.
 - Added support for using SQL functions within the DDL `call_func` directive.
 
 ## v25.3.1

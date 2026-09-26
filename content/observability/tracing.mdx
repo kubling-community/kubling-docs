@@ -106,8 +106,8 @@ This span represents the command received from the client. It includes the follo
 | `db.user`            | string | User principal that initiated the command.                                                 | `"admin"`                         |
 | `db.operation`       | string | Type of operation performed.                                                               | `"SELECT"`, `"INSERT"`, etc.      |
 | `component`          | string | Kubling module responsible for emitting the span.                                          | `"dqp"`                           |
-| `kubling.session.id` | string | Internal session identifier.                                                               | `"sess-01FX...8KD"`               |
-| `kubling.request.id` | string | Internal request identifier. Only present if `includeRequestIdSpanAttribute` is enabled.   | `"abcd..."`                       |
+| `kubling.session.id` | string | Kubling-generated session identifier.                                                       | `"sess-01FX...8KD"`               |
+| `kubling.request.id` | string | Kubling-generated request identifier. Only present if `includeRequestIdSpanAttribute` is enabled. | `"abcd..."` |
 | `db.command`         | string | Full SQL command issued by the client. Only included if `includeFullCommand` is enabled.   | `"SELECT * FROM metrics LIMIT 5"` |
 
 ### `query.plan.complete` event
@@ -141,8 +141,8 @@ This span represents events that occur within a source (translator) during query
 | `db.operation`       | string  | Type of operation being executed.                                                                                                                                            | `"SELECT"`, `"INSERT"`, etc.                     |
 | `component`          | string  | Indicates the translator type, which corresponds to the `dataSourceType` as [defined here](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle). | `"PROVIDER_GRPC"`, `"MODBUS"`, `"POSTGRESQL"`, etc. |
 | `kubling.translator` | boolean | A marker attribute that identifies the span as part of a translator (source command). Useful for filtering.                                                                  | `true`                                           |
-| `kubling.session.id` | string  | Internal session identifier.                                                                                                                                                 | `"sess-01FX...8KD"`                              |
-| `kubling.source.id`  | string  | Internal source command identifier. Only included if `includeRequestIdSpanAttribute` is enabled.                                                                             | `"abcd..."`                                      |
+| `kubling.session.id` | string  | Kubling-generated session identifier.                                                                                                                                         | `"sess-01FX...8KD"`                              |
+| `kubling.source.id`  | string  | Kubling-generated source command identifier. Only included if `includeRequestIdSpanAttribute` is enabled.                                                                     | `"abcd..."`                                      |
 | `db.command`         | string  | Full SQL command issued by the client. Only included if `includeFullCommand` is enabled.                                                                                     | `"SELECT * FROM metrics LIMIT 5"`                |
 
 ### `source.command` event

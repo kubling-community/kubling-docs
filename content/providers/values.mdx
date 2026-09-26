@@ -1,0 +1,117 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Value capabilities <Tag description={"v26.5+"} />
+
+The provider contract makes logical value support explicit and directional. A
+provider declares which Kubling types it accepts in requests and which it can
+return in responses.
+
+## Directional type support
+
+Each `SupportedValueType` contains:
+
+| Field | Meaning |
+| --- | --- |
+| `type` | One Kubling logical `ValueType`. |
+| `input` | The provider can decode that type in filters, parameters or mutations. |
+| `output` | The provider can emit that type in query results or generated values. |
+
+Do not advertise a direction that has not been tested. Reading an ARRAY does
+not prove that the provider can accept ARRAY values in a filter or mutation.
+
+## Negotiated representation features
+
+Rich representations require both the corresponding logical type direction and
+a named feature:
+
+| Feature | Provider behavior |
+| --- | --- |
+| `array_values_v1` | Typed homogeneous arrays, including bounded nested arrays. |
+| `spatial_values_v1` | Geometry and geography values with explicit WKB and optional CRS/SRID metadata. |
+| `lob_read_v1` | Session-scoped provider LOB references plus bounded `ReadLob` and `ReleaseLob` operations. |
+
+`lob_read_v1` is output-only in the provider integration. The provider contract
+does not advertise `lob_write_v1`. That separate feature belongs to the public
+Kubling client protocol and must not be inferred here.
+
+<Callout type="warning">
+  A feature name alone is insufficient. ARRAY also requires directional ARRAY
+  type support, spatial representations require the matching geometry or
+  geography direction, and LOB reads require the matching BLOB or CLOB output
+  type.
+</Callout>
+
+## Limits
+
+Providers advertise:
+
+- `max_array_dimensions` with array support
+- `max_lob_chunk_bytes` with LOB reads
+- `max_lob_bytes` with LOB reads
+- `lob_reference_retention_seconds` with LOB reads
+
+Kubling applies the smaller effective limit between its local data-source
+configuration and the provider declaration:
+
+```yaml copy
+dataSources:
+  - name: inventory
+    dataSourceType: PROVIDER_GRPC
+    configObject:
+      address: inventory-provider
+      port: 50051
+      maxArrayDimensions: 8
+      maxLobChunkBytes: 262144
+      maxLobBytes: 67108864
+```
+
+| Kubling setting | Default |
+| --- | ---: |
+| `maxArrayDimensions` | 8 |
+| `maxLobChunkBytes` | 256 KiB |
+| `maxLobBytes` | 64 MiB |
+
+An oversized or structurally invalid value fails explicitly. Kubling does not
+truncate an array, LOB or spatial value to make it fit.
+
+## Arrays
+
+An array carries an element type even when it is empty. A null array, an empty
+array and an array containing null are different values. Non-null elements must
+match the declared element descriptor, and nested depth must stay within the
+negotiated limit.
+
+Providers should preserve typed arrays rather than serialize them into JSON or
+comma-separated strings.
+
+## Spatial values
+
+Geometry and geography remain distinct logical types. The wire value contains
+plain WKB plus optional SRID or CRS information. Missing CRS metadata means
+unknown, not EPSG:4326, and negotiation does not imply coordinate conversion or
+reprojection.
+
+## LOB reads
+
+A provider may return an immutable BLOB or UTF-8 CLOB reference instead of
+placing the complete value in a tuple batch. Kubling reads it in bounded chunks
+and releases it through the same logical connection.
+
+References are opaque and have a declared retention period. They are not bearer
+credentials. Providers must continue honoring a valid issued reference until
+expiry, explicit release, connection closure or provider loss.
+
+## Legacy providers
+
+An older provider with empty `values` and `features` declarations retains the
+legacy scalar compatibility set. Kubling does not infer ARRAY, spatial-with-CRS
+or LOB-reference support from a provider's ability to return bytes or strings.
+
+This keeps capability negotiation additive while preventing silent value loss.
+
+## Provider support
+
+Supported value types and representations vary by provider and release. Use
+the [Provider catalog](/providers/catalog) to reach each provider's
+documentation and compatibility notes.

@@ -71,7 +71,8 @@ httpResponse.text(result.inspect);
 In this minimal example:
 
 - The script logs the HTTP method and request body.
-- It uses the internal `DBEngine` client to run a SQL query against the `MinimalVDB`.
+- It uses the `DBEngine` script context member to run a SQL query against
+  `MinimalVDB`.
 - The result is returned as plain text in the response body.
 
 Endpoints are always exposed at the root level. However, Kubling **requires** versioning for every endpoint.  
@@ -96,7 +97,11 @@ When authentication is enabled, the incoming HTTP request is associated with an 
 As a result, RBAC-aware script context members can operate using the authenticated user associated with the request. This is particularly relevant for [`DBEngine`](/modules/script-context-members#dbengine), which can execute queries and updates using the request-scoped security context.
 
 <Callout type="warning">
-If `requiresAuthentication` is enabled but no authentication delegation is configured, Kubling associates the request with an internal privileged session.
+If `requiresAuthentication` is enabled but no authentication delegation is
+configured, Kubling executes the endpoint with its deployment-level privileged
+identity.
 
-In this scenario, operations executed through [`DBEngine`](/modules/script-context-members#dbengine) using impersonated execution semantics behave equivalently to privileged execution.
+In this scenario, [`DBEngine`](/modules/script-context-members#dbengine)
+operations are privileged. Configure an authentication delegate before
+exposing the endpoint outside a trusted environment.
 </Callout>

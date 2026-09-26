@@ -7,8 +7,8 @@ The official Go SDK provides a small, idiomatic layer over Kubling's public
 gRPC contract. It handles channel creation, login and token propagation, and
 adds typed row accessors plus helpers for statements and transactions.
 
-This guide targets `sdk-go/v0.1.1`, requires Go 1.25 or newer and uses the
-provider-backed VDB from the [Quickstart setup](/clients/grpc#use-the-quickstart-sample).
+This guide requires Go 1.25 or newer and uses the provider-backed VDB from the
+[Quickstart setup](/clients/grpc#use-the-quickstart-sample).
 
 <Callout type="info">
   Pin an SDK version in applications and upgrade deliberately. Both the client
@@ -30,8 +30,11 @@ go mod init example.com/kubling-grpc-client
 ### Add the released SDK
 
 ```shell copy
-go get github.com/kubling-community/kubling-grpc/sdk-go@v0.1.1
+go get github.com/kubling-community/kubling-grpc/sdk-go@latest
 ```
+
+`go get` records the resolved release in `go.mod`. Review and commit that exact
+version so application builds remain reproducible.
 
 ### Create the client
 
@@ -207,11 +210,21 @@ state and must agree on who may commit, roll back or log out.
 Prefer one independently authenticated session per application workflow unless
 cross-channel coordination is explicitly required.
 
-## Current SDK boundaries
+## Current SDK boundaries <Tag description={"v26.5+"} />
 
-The gRPC wire contract streams query batches, but `result.Query` currently
-collects all batches before returning a `Result`. For incremental processing,
-use the generated `QueryService` client as shown in the
+The generated API is available through `cli.QueryService()`, including
+`GetServerInfo`, `Execute` and `GetTransactionStatus`. Use it when an
+application needs the generic event stream, explicit capability negotiation,
+transaction IDs, arrays, spatial metadata or LOB references.
+
+The high-level `result.Query`, `exec.Exec` and transaction helpers remain
+adapters over the legacy `Query` and `Exec` RPCs. `result.Query` collects all
+batches before returning a `Result`. These helpers do not probe SQL by retrying
+it through another RPC, and applications must not implement that fallback
+themselves because it can execute a mutation twice.
+
+For incremental or capability-specific processing, consume the generated
+service as described in the
 [protocol reference](/clients/grpc/protocol#consume-the-result-stream-directly).
 
 The high-level helpers also do not currently expose positional parameters,

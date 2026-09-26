@@ -52,18 +52,11 @@ provider owns their mapping to native clusters, databases, keyspaces, APIs or
 other source concepts. The VDB can enrich that physical catalog and define
 virtual models above it without moving native connection details into Kubling.
 
-## How a request flows
+## Logical connections
 
-1. Kubling connects to the configured provider endpoint and requests its
-   capabilities and schema.
-2. The provider returns either structured relational metadata or Kubling DDL.
-3. Kubling incorporates that model into the VDB and plans incoming queries.
-4. For each source operation, Kubling acquires a logical provider connection
-   and sends only expressions supported by the provider contract.
-5. The provider translates the request, executes it natively and streams query
-   results back in typed batches. Mutations return their operation result.
-6. Kubling completes any remaining processing and closes the logical
-   connection when it is no longer required.
+Kubling discovers the provider schema and capabilities before planning source
+operations. Query and mutation requests use a logical provider connection, and
+unsupported work remains in the federation engine.
 
 The provider's `connection_id` is opaque. It scopes subsequent query,
 mutation and native transaction calls, but it does not expose source connection
@@ -108,12 +101,13 @@ the connection.
 
 ## Provider contract
 
-The public `ProviderService` is intentionally provider-neutral. It covers six
-areas:
+The public `ProviderService` is intentionally provider-neutral. It covers
+seven areas:
 
 | Area | RPCs and behavior |
 | --- | --- |
 | Discovery | `GetCapabilities` and `GetSchema` describe exact behavior and the complete logical model. |
+| Semantics | `GetSemanticFragment` optionally returns one versioned source-local semantic artifact without opening a logical connection. |
 | Connections | `OpenConnection` and `CloseConnection` manage opaque logical connections. |
 | Health | `Health` reports readiness plus optional non-sensitive diagnostic information. |
 | Queries | `Query` receives a logical entity, projections, filter, ordering and pagination, then streams tuple batches. |
@@ -156,10 +150,26 @@ advertises only behavior it can evaluate with Kubling's logical semantics:
 - insert, update, delete and generated-value support.
 - native local transaction support.
 
+#### Extended capability contracts <Tag description={"v26.5+"} />
+
+The provider boundary also supports:
+
+- an optional source-local semantic fragment.
+- directional logical value support plus negotiated array, spatial and LOB
+  representations.
+- individual aggregate functions plus optional `DISTINCT`, `GROUP BY` and
+  `HAVING` support.
+
 Kubling uses this information while planning. Supported work can be pushed to
 the provider; unsupported expressions remain in the engine. A provider may
 still reject an operation that is invalid for a specific table or native
 model, so metadata should also describe table and column mutability precisely.
+
+These optional capabilities have dedicated references:
+
+- [Semantic fragments](/providers/semantics)
+- [Value capabilities and LOB reads](/providers/values)
+- [Aggregate pushdown](/providers/pushdown)
 
 ## Register a provider in Kubling
 
@@ -175,6 +185,9 @@ dataSources:
       address: "inventory-provider"
       port: 50051
       timeoutMillis: 30000
+      maxArrayDimensions: 8
+      maxLobChunkBytes: 262144
+      maxLobBytes: 67108864
       securityConfig:
         mode: "PLAINTEXT"
       contributesToHealth: true
@@ -198,6 +211,9 @@ constant columns, define aggregators or place virtual models above it.
 | `address` | `localhost` | Hostname or IP address of the provider endpoint. |
 | `port` | `50051` | Provider gRPC port. |
 | `timeoutMillis` | `30000` | Maximum duration of an individual provider RPC. |
+| `maxArrayDimensions` | `8` | Maximum ARRAY nesting depth accepted by Kubling from this provider. |
+| `maxLobChunkBytes` | `262144` | Maximum bytes Kubling accepts in one provider LOB chunk. |
+| `maxLobBytes` | `67108864` | Maximum bytes Kubling accepts for one provider LOB value. |
 | `securityConfig.mode` | `PLAINTEXT` | Transport mode: `PLAINTEXT`, `TLS` or `MTLS`. |
 | `securityConfig.serverName` | provider address | Expected DNS name in the provider certificate. |
 | `securityConfig.trustedCaCertificatesFilePath` | system trust store | PEM CA bundle used to validate the provider certificate. |

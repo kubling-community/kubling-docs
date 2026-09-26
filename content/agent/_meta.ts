@@ -1,7 +1,11 @@
 export default {
   intro: 'Introduction',
-  'semantic-schema': 'Semantic Schema',
+  capabilities: 'Investigation',
+  'task-api': 'Task API',
   configuration: 'Configuration',
-  capabilities: 'Capabilities',
-  'kubling-agent-platform': 'Kubling Agent Platform'
+  security: 'Security boundary',
+  'semantic-schema': {
+    display: 'hidden'
+  },
+  'kubling-agent-platform': 'Legacy Agent API'
 }

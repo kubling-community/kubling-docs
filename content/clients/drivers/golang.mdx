@@ -1,59 +1,21 @@
 import { Callout } from 'nextra/components'
 
-# Connect from a Go Application
+# Go
 
-<Callout type="info">
-  New Go applications should use Kubling's
-  [official gRPC SDK](/clients/grpc/go). It supports Engine sessions, typed
-  results, statements and transactions without PostgreSQL compatibility.
-</Callout>
+New Go applications should use Kubling's
+[official gRPC SDK](/clients/grpc/go). It manages Engine sessions and exposes
+typed query results, statements and transactions without depending on
+PostgreSQL compatibility.
 
-This page covers the PostgreSQL compatibility option for applications that
-specifically require a SQL driver. Kubling does not provide a Go driver for its
-native protocol; use [pgx](https://github.com/jackc/pgx) to connect through an
-enabled `pgProtocol` listener.
-
-Example:
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"log"
-
-	"github.com/jackc/pgx/v4"
-)
-
-func main() {
-
-	// Connection string
-	connStr := "postgres://sa:sa@localhost:35432/MyVDB"
-
-	// Connect to the PostgreSQL database
-	conn, err := pgx.Connect(context.Background(), connStr)
-	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
-	}
-	defer conn.Close(context.Background())
-
-	fmt.Println("Connected to Kubling!")
-
-	rows, err := conn.Query(context.Background(), `SELECT identifier, org, repo from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('kubling-samples');`)
-	if err != nil {
-		log.Fatalf("Unable to query table: %v\n", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var identifier, org, repo string
-		err = rows.Scan(&identifier, &org, &repo)
-		if err != nil {
-			log.Fatalf("Unable to scan row: %v\n", err)
-		}
-		fmt.Printf("ID: %s, Org: %s, Repo: %s\n", identifier, org, repo)
-	}
-
-}
-
+```shell copy
+go get github.com/kubling-community/kubling-grpc/sdk-go@latest
 ```
+
+The [Go SDK guide](/clients/grpc/go) covers connection setup, queries,
+statements, generated keys, transactions and TLS.
+
+<Callout type="warning">
+  An existing application can still use a PostgreSQL-compatible Go driver
+  against an enabled `pgProtocol` listener. That transport is a compatibility
+  surface and is not recommended for new Kubling applications.
+</Callout>

@@ -1,4 +1,5 @@
 import { Callout, Steps } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # Explore with Kubling Studio
 
@@ -46,11 +47,50 @@ exercise both read and write paths against the In-memory provider.
 
 </Steps>
 
+## Semantics preview <Tag description={"v26.5+"} />
+
+When the selected VDB has an active semantic package, the Semantics workspace
+lets you inspect the compiled result rather than reconstruct it from source
+files. It includes:
+
+- package and activation overview
+- entities, properties and identities
+- relationships and executable bindings
+- an interactive relationship graph
+- diagnostics and the normalized JSON document
+
+The workspace is read-only. Provider fragments, authored modules and VDB
+composition remain version-controlled deployment artifacts.
+
+`catalogOnly` means that the VDB is active without a compiled semantic package.
+An invalid state exposes diagnostics rather than presenting a partial graph as
+usable. See [Semantics](/semantics) for bootstrap, composition and failure
+policy.
+
+## Investigations preview <Tag description={"v26.5+"} />
+
+Studio contains an Investigations workspace for the `investigation` capability,
+but it remains disabled. Kubling does not yet expose a read-only runtime-readiness
+endpoint that Studio can use to distinguish an available task runtime from a
+configured but unreachable one.
+
+The authenticated [Task API](/agent/task-api) is the executable interface. It
+runs synchronously and returns a terminal snapshot. Closing the browser or
+aborting the HTTP request is not a public task-cancellation operation.
+
+<Callout type="info">
+  Investigation history in Studio is browser-local presentation state, not a
+  durable task store. The UI can be enabled after the readiness contract is
+  available without changing the public Task API.
+</Callout>
+
 ## Other Studio surfaces
 
 | Surface | What it shows |
 | --- | --- |
 | Catalog | VDBs, schemas, tables, columns and provider-reported DDL. |
+| Semantics | Compiled entities, relationships, bindings, graph and diagnostics. |
+| Investigations | Preview workspace, currently disabled pending a safe runtime-readiness signal. |
 | Activity | Live engine, worker-pool, request and session information. |
 | Schedules | Configured scheduled JavaScript tasks and their source. |
 | Functions | Built-in and module-provided SQL and template functions. |
@@ -66,5 +106,7 @@ descriptors.
 - [Choose a provider](/providers/catalog) for a real source.
 - [Register a provider](/providers#register-a-provider-in-kubling)
   in a VDB.
+- [Compose a semantic model](/semantics/modeling) for a federated VDB.
+- [Configure investigation tasks](/agent/configuration).
 - Review [HTTP security](/security/http) before exposing Studio outside a
   trusted local environment.

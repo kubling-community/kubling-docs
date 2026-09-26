@@ -1,4 +1,4 @@
-import { Callout, Steps } from 'nextra/components'
+import { Callout, Steps, Tabs } from 'nextra/components'
 import Tag from '../../../component/Tag'
 
 # gRPC clients <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
@@ -7,6 +7,12 @@ Kubling's client gRPC transport lets applications open a session, execute SQL
 and manage transactions without depending on JDBC or the PostgreSQL wire
 protocol. It is the recommended client interface for new services, agents and
 multi-language applications.
+
+<Callout type="info">
+  Use a released protocol tag or SDK version for production clients instead of
+  generating them from a moving branch. After login, use `GetServerInfo` to
+  negotiate the capabilities available to that session.
+</Callout>
 
 <Callout type="warning">
   Client gRPC and Provider gRPC are different interfaces. A client connects to
@@ -25,17 +31,18 @@ different hosts or containers. Assign distinct ports when both listeners share
 the same network namespace. The Quickstart sample uses `50061` for the
 client transport and `50051` for its provider to make the boundary explicit.
 
-## What the client API provides
+## What the client API provides <Tag description={"v26.5+"} />
 
-The public contract exposes two services:
+The public contract exposes three services:
 
 - `SessionService` authenticates a client, validates a session and logs it out.
-- `QueryService` runs queries and statements, manages transactions and reports
-  server capabilities.
+- `QueryService` executes SQL, streams typed result events, manages
+  transactions and reports session-bound capabilities.
+- `LobService` reads, writes and releases negotiated large-object references.
 
-Queries return a server stream of typed result batches. Statements return
-affected-row counts, optional per-command counts and, when requested, generated
-keys. The complete RPC and value model is covered in the
+`Execute` reports the actual result shape without replaying SQL through a
+second RPC. Query results, update counts and generated keys share one ordered
+event stream. The complete RPC, value and lifecycle model is covered in the
 [protocol reference](/clients/grpc/protocol).
 
 ## Enable the transport
@@ -125,23 +132,126 @@ supported language.
 
 </Steps>
 
-## Session lifecycle
+## Connect with an official client <Tag description={"v26.5+"} />
 
-1. Open a gRPC channel to the Engine listener.
-2. Call `SessionService.Login` with the VDB and credentials.
-3. Keep the returned expiring token private.
-4. Include that token in query, statement and transaction requests.
-5. Call `SessionService.Logout` when the logical session is no longer needed.
-6. Close the network channel.
+The official Go SDK wraps channel creation and login. The Java and Python
+packages provide generated messages, service stubs and shared feature
+constants, leaving channel policy to the application.
 
-The token represents Engine session state; it is not merely a channel
-credential. Multiple channels can intentionally share it, including its active
-transaction, so collaborating clients must coordinate queries, commit,
-rollback and logout. Never log or expose the token.
+Each example authenticates against the Quickstart VDB and obtains the effective
+capabilities for that session:
+
+<Tabs items={['Go', 'Java', 'Python']} storageKey="grpc-client-language">
+
+<Tabs.Tab>
+
+```go copy
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+cli, err := client.NewClient(client.Options{
+    Address:  "localhost:50061",
+    Username: "quickstart",
+    Password: "quickstart",
+    VDBName:  "ProviderQuickstartVDB",
+})
+if err != nil {
+    log.Fatal(err)
+}
+defer cli.Close()
+defer cli.Logout()
+
+info, err := cli.QueryService().GetServerInfo(
+    ctx,
+    &kublingv1.GetServerInfoRequest{
+        ExpiringToken: cli.Token(),
+    },
+)
+if err != nil {
+    log.Fatal(err)
+}
+if info.GetCapabilities() == nil {
+    log.Fatal("authenticated capabilities are unavailable")
+}
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```java copy
+var channel = ManagedChannelBuilder
+    .forAddress("localhost", 50061)
+    .usePlaintext()
+    .build();
+
+var sessions = SessionServiceGrpc.newBlockingStub(channel);
+var login = sessions.login(LoginRequest.newBuilder()
+    .setVdbName("ProviderQuickstartVDB")
+    .setUsername("quickstart")
+    .setPassword("quickstart")
+    .build());
+
+var query = QueryServiceGrpc.newBlockingStub(channel);
+var info = query.getServerInfo(GetServerInfoRequest.newBuilder()
+    .setExpiringToken(login.getExpiringToken())
+    .build());
+
+if (!info.hasCapabilities()) {
+    throw new IllegalStateException("authenticated capabilities are unavailable");
+}
+
+sessions.logout(LogoutRequest.newBuilder()
+    .setExpiringToken(login.getExpiringToken())
+    .build());
+channel.shutdown();
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```python copy
+import grpc
+
+from kubling.v1 import command_pb2, command_pb2_grpc
+
+with grpc.insecure_channel("localhost:50061") as channel:
+    sessions = command_pb2_grpc.SessionServiceStub(channel)
+    login = sessions.Login(command_pb2.LoginRequest(
+        vdb_name="ProviderQuickstartVDB",
+        username="quickstart",
+        password="quickstart",
+    ))
+
+    query = command_pb2_grpc.QueryServiceStub(channel)
+    info = query.GetServerInfo(command_pb2.GetServerInfoRequest(
+        expiring_token=login.expiring_token,
+    ))
+
+    if not info.HasField("capabilities"):
+        raise RuntimeError("authenticated capabilities are unavailable")
+
+    sessions.Logout(command_pb2.LogoutRequest(
+        expiring_token=login.expiring_token,
+    ))
+```
+
+</Tabs.Tab>
+
+</Tabs>
+
+The capability snapshot is scoped to the authenticated session, selected VDB
+and serving node. Keep the expiring token private, use the returned
+`capability_id` for negotiated requests, log out when the session is finished
+and always close the channel. The plaintext channels above are only for the
+local Quickstart.
 
 ## Next steps
 
 - [Use the official Go SDK](/clients/grpc/go).
+- [Use the official Java SDK](https://github.com/kubling-community/kubling-grpc/tree/main/sdk-java).
+- [Use the official Python SDK](https://github.com/kubling-community/kubling-grpc/tree/main/sdk-python).
 - [Read the protobuf and RPC model](/clients/grpc/protocol).
 - [Compare all client transports](/concepts/transports).
 - [Configure TLS and IP filtering](/security/communication).

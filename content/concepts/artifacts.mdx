@@ -1,6 +1,27 @@
 import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # Artifacts
+
+## Distribution names <Tag description={"v26.5+"} />
+
+The executable Maven artifact and JAR use the public service name:
+
+| Distribution | Name |
+| --- | --- |
+| Maven coordinates | `com.kubling:kubling-service` |
+| Executable output | `kubling-service` |
+| Published container and Helm release | `kubling-dbvirt-service` |
+
+Update automation that resolves the Maven artifact or expects the old
+executable JAR name. Existing container image references and Helm deployments
+keep `kubling-dbvirt-service` and do not need a naming-only migration.
+
+<Callout type="info">
+  Do not infer Java package names from the retained container and Helm name.
+  Starting with 26.5, Kubling-owned Java namespaces use `com.kubling.*`. See
+  the [26.5 naming migration](/naming-migration).
+</Callout>
 
 ## Initialization process
 
@@ -45,7 +66,7 @@ A module file that contains an [information file](/schemas#sql-function-module-b
 A module file that contains an [information file](/schemas#template-function-module-bundle-information-file-bundle-function-infoyaml) and script functions to be added to the Engine's **Template function catalog**.<br/>
 [See how to create it.](/modules/functions/template)
 
-## Dependecy
+## Dependency
 
 As a complement to the initialization sequence diagram, the following diagram shows the artifacts dependency, that is, what artifact contains the Path/URL to resolve the next artifact.
 

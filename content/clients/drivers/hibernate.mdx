@@ -1,28 +1,29 @@
 # Hibernate
 
-## Usage
-In your project, add Apache Maven dependencies for the Hibernate ORM core and Kubling JDBC Driver and Dialect.
+The Kubling Hibernate dialect connects Java applications through the native
+JDBC driver. Add these dependencies alongside Hibernate ORM:
 
-```xml
+```xml copy
 <dependency>
     <groupId>com.kubling</groupId>
     <artifactId>kubling-client</artifactId>
-    <version>25.3.2</version>
+    <version>26.2</version>
 </dependency>
 <dependency>
     <groupId>com.kubling</groupId>
     <artifactId>kubling-hibernate-dialect</artifactId>
-    <version>25.3.2</version>
+    <version>26.2</version>
 </dependency>
 ```
 
-### Set up Hibernate properties
+## Configure Hibernate
+
 Configure `hibernate.properties` to use the Kubling Dialect and Kubling JDBC Driver.
 
-```properties
+```properties copy
 hibernate.dialect=com.kubling.hibernate.dialect.KublingDialect
-hibernate.connection.driver_class=com.kubling.teiid.jdbc.TeiidDriver
-hibernate.connection.url=jdbc:teiid:MinimalVDB@mm://localhost:35482
+hibernate.connection.driver_class=com.kubling.jdbc.KublingDriver
+hibernate.connection.url=jdbc:kubling:MinimalVDB@mm://localhost:35482
 hibernate.connection.username=sa
 hibernate.connection.pool_size=5
 hibernate.show_sql=true
@@ -31,8 +32,8 @@ hibernate.hbm2ddl.auto=update
 ```
 
 In case you want to specify client networking properties, add the property to the `url` as follows:
-```properties
-hibernate.connection.url=jdbc:teiid:MinimalVDB@mms://localhost:35482;connectionPropsFilePath=/path/to/client-settings.properties
+```properties copy
+hibernate.connection.url=jdbc:kubling:MinimalVDB@mms://localhost:35482;connectionPropsFilePath=/path/to/client-settings.properties
 ```
 
 The configured VDB must be available and its native transport must be enabled

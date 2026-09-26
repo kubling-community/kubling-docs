@@ -12,7 +12,8 @@ In addition, logs can be routed to the **console**, **OpenTelemetry**, or **both
 There are three independent log handlers:
 - **Core**: Handles most printable system messages (after filtering).
 - **Script**: Captures log streams from script contexts, such as messages from the `logger` object.
-- **Agentic**: Captures log streams from the Agentic logic, especially interactions with upstream capability implementations.
+- **Agentic**: Captures task-runtime exchanges and capability execution,
+  including Logical Query processing.
 
 ## Configuration
 
@@ -95,6 +96,34 @@ instrumentation:
       enabled: true
       level: "WARN"
 ```
+
+## Capability task diagnostics <Tag description={"v26.5+"} />
+
+The `agentic` handler records task-runtime exchanges and capability execution.
+At `DEBUG`, a validated Logical Query logs the compiled Kubling SQL together
+with structured task, action, instance and VDB identifiers.
+
+<Callout type="warning">
+  Compiled SQL and correlation identifiers can expose operational structure or
+  sensitive filter values. Restrict access to agentic logs, apply the same
+  retention policy used for query audit data and enable `DEBUG` only while it
+  is needed.
+</Callout>
+
+Task logs are diagnostic evidence, not a durable task-history API. Use the
+[Task API response](/agent/task-api#terminal-response) and the bounded metrics
+for programmatic outcomes and usage.
+
+## Error identifiers <Tag description={"v26.5+"} />
+
+Kubling errors use `KBL` followed by five digits. The previous
+`TEIID` prefix is no longer emitted. Update log filters, alert rules,
+dashboards, parsers and test fixtures that depend on the old format.
+
+For retained errors, the numeric suffix is preserved. Not every historical
+error still exists, so validate explicit mappings and allowlists instead of
+blindly rewriting them. See the [26.5 naming
+migration](/naming-migration#error-identifier-migration).
 
 ## Contexts
 All log entries include a context, which indicates the module emitting the entry. In the log line, this context appears enclosed in square brackets, like this:

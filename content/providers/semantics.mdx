@@ -1,0 +1,95 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Provider semantic fragments <Tag description={"v26.5+"} />
+
+A provider may publish one optional, versioned fragment containing semantics
+for its own source model. VDB authors remain responsible for organizational
+alignment and cross-source composition.
+
+<Callout type="info">
+  Semantic support is optional. A provider that returns no fragment remains a
+  valid catalog provider.
+</Callout>
+
+## `GetSemanticFragment`
+
+`ProviderService.GetSemanticFragment` is connection-agnostic. Kubling calls it
+during semantic bootstrap without opening a logical provider connection.
+
+When a fragment is available, the response contains:
+
+| Field | Contract |
+| --- | --- |
+| `document` | Exact UTF-8 bytes of one `kubling-semantic` fragment, up to 1 MiB in the official SDK. |
+| `media_type` | `application/yaml` or `application/json`. |
+| `version` | Non-empty fragment release version. |
+| `digest` | SHA-256 digest of the exact document bytes. |
+
+An empty response means that the provider has no fragment. Invalid content,
+unsupported media types or a digest mismatch fail acquisition visibly.
+
+The provider should return the same bytes for the lifetime of one released
+binary. Kubling acquires and locks the artifact during bootstrap and does not
+poll for changes afterward.
+
+## Responsibility boundary
+
+Provider fragments should contain only source-local knowledge:
+
+- entities and properties that belong to the source domain
+- stable identities expressed through those properties
+- relationships the source can justify and bind exactly
+- bindings using relation and field names from the provider's own logical model
+
+Do not embed a Kubling VDB schema name in the fragment. Kubling qualifies the
+provider-local relation for the data source's logical schema during acquisition.
+
+After acquisition, Kubling normalizes the artifact into provider-neutral
+semantic definitions. Provider identity is retained as provenance, not as an
+execution dependency. Logical Query resolves the compiled model against normal
+Kubling relations.
+
+<Callout type="warning">
+  Physical primary and foreign keys do not create semantic identities or
+  relationships automatically. They can validate a declared binding, but the
+  semantic meaning must remain explicit.
+</Callout>
+
+## Activate a provider-only model
+
+Add `semanticModel` to the VDB data source's containing VDB. No authored
+composition path is required when provider contributions are the complete
+model:
+
+```yaml copy
+name: Operations
+version: "1"
+
+semanticModel:
+  activationFailurePolicy: failStartup
+```
+
+During bootstrap, Kubling obtains the provider schema and optional fragment,
+qualifies its local bindings for the VDB, validates the assembled model against
+the deployed catalog and compiles one immutable VDB-scoped package.
+
+Use an authored [composition and alignment](/semantics/modeling) when the VDB
+needs to connect provider semantics with another source or organizational
+concept.
+
+## Authoring checklist
+
+Before shipping a fragment:
+
+1. keep its namespace and semantic IDs stable
+2. bind only to relations and fields the provider always exposes for that model
+3. declare relationships and join conditions explicitly
+4. use a new fragment version for meaningful model changes
+5. return exact bytes, media type, version and digest
+6. test retrieval without a source connection
+7. validate the fragment through a real Kubling semantic bootstrap
+
+The published provider protocol and SDK remain the wire-contract source of
+truth. Fragment availability and content belong to each provider release; use
+the [Provider catalog](/providers/catalog) to reach its documentation.

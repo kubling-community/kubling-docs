@@ -1,0 +1,202 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Modeling semantics <Tag description={"v26.5+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+Semantic documents use `format: kubling-semantic` and carry their own
+`schemaVersion`. A model is composed from three kinds of document: fragments,
+alignments and a composition.
+
+## Fragments describe one domain
+
+A fragment defines the source vocabulary before any organization-wide
+abstraction is added. Entities bind to logical Kubling relations and their
+properties bind to fields in those relations.
+
+```yaml copy
+format: kubling-semantic
+schemaVersion: 1
+kind: fragment
+
+metadata:
+  name: kubernetes-runtime
+  namespace: k8s
+  version: 1.0.0
+
+spec:
+  entities:
+    - id: Deployment
+      name: Deployment
+      description: A Kubernetes Deployment.
+      binding:
+        relation: kube.DEPLOYMENT
+      properties:
+        - id: namespace
+          name: Namespace
+          type: string
+          binding:
+            field: namespace
+        - id: name
+          name: Deployment name
+          type: string
+          binding:
+            field: name
+      identities:
+        - id: deploymentIdentity
+          properties:
+            - namespace
+            - name
+```
+
+Semantic IDs are namespace-qualified when documents are composed, for example
+`k8s:Deployment`. Keep those IDs stable across compatible releases. A catalog
+column rename can be handled as a binding change without inventing a new domain
+concept.
+
+### Relationships are explicit
+
+Relationships describe meaning and include the joins required to execute that
+meaning:
+
+```yaml copy
+relationships:
+  - id: DeploymentOwnsPod
+    name: Deployment owns pod
+    from: Deployment
+    to: Pod
+    cardinality: oneToMany
+    joins:
+      - left: Deployment.namespace
+        right: Pod.namespace
+      - left: Deployment.name
+        right: Pod.deploymentName
+```
+
+<Callout type="warning">
+  A catalog foreign key is relational evidence, not a semantic declaration.
+  Kubling validates declared semantic joins against the catalog, but it does
+  not turn physical PK/FK metadata into semantic relationships automatically.
+</Callout>
+
+## Alignments connect domains
+
+An alignment can state that independently owned entities represent a shared
+organizational concept and can declare cross-domain relationships:
+
+```yaml copy
+format: kubling-semantic
+schemaVersion: 1
+kind: alignment
+
+metadata:
+  name: operations-alignment
+  namespace: org
+  version: 1.0.0
+
+spec:
+  concepts:
+    - id: Service
+      representations:
+        - k8s:Deployment
+        - runtime:RuntimeConfig
+      identityBridges:
+        - left: k8s:Deployment.serviceId
+          right: runtime:RuntimeConfig.serviceId
+      authority: k8s:Deployment
+
+  relationships:
+    - id: DeploymentDeployedFromCommit
+      name: Deployment deployed from commit
+      from: k8s:Deployment
+      to: delivery:Commit
+      cardinality: manyToOne
+      joins:
+        - left: k8s:Deployment.deployedRevision
+          right: delivery:Commit.sha
+```
+
+The VDB owner decides when two representations participate in the same concept.
+Similar names, compatible types and observed joins are not enough.
+
+## Compositions select the executable model
+
+The composition targets one exact VDB name and version, imports its inputs,
+applies overlays and publishes an explicit export surface:
+
+```yaml copy
+format: kubling-semantic
+schemaVersion: 1
+kind: composition
+
+metadata:
+  name: operations
+  namespace: org
+  version: 1.0.0
+
+spec:
+  target:
+    vdb: Operations
+    version: "1"
+
+  imports:
+    - id: k8s
+      from:
+        bundle: fragments/kubernetes.yaml
+      version: 1.0.0
+      required: true
+    - id: delivery
+      from:
+        bundle: fragments/delivery.yaml
+      version: 1.0.0
+      required: true
+
+  overlays:
+    - alignments/operations.yaml
+
+  exports:
+    - id: operations
+      include:
+        - k8s:Deployment
+        - delivery:Commit
+        - org:DeploymentDeployedFromCommit
+```
+
+Every imported version and target is checked during resolution. Unknown,
+ambiguous or incompatible definitions fail visibly instead of being silently
+merged.
+
+## Binding scopes and repeated domains
+
+One semantic definition can be deployed more than once. For example, two
+Kubernetes clusters can share the definition of `k8s:Deployment` while each
+cluster retains a separate binding scope and separate logical relations.
+
+Schema version 2 compositions add `bindingProjections` and `querySurfaces` for
+that case. A projection maps an imported entity or relationship from its source
+scope to a target scope, and may override relation or field bindings. Logical
+Query must select a scope when more than one binding is valid.
+
+Kubling does not interpret repeated scopes as an instruction to fan out a query
+automatically. The selected query surface remains explicit.
+
+## Provider and authored fragments
+
+A provider may contribute one optional source-local fragment. Authored
+fragments and alignments remain the mechanism for customer or organizational
+meaning. Both are normalized before validation, so execution does not depend on
+the fragment's acquisition channel after bootstrap.
+
+See [Provider semantic fragments](/providers/semantics) for the provider
+contract and current official support.
+
+## Catalog-only and partial models
+
+- A VDB without `semanticModel` remains catalog-only.
+- A VDB with semantic activation and no available fragments also remains
+  catalog-only.
+- A model may cover only the relations needed by one workflow.
+- Unmodeled catalog relations remain queryable through SQL and catalog-based
+  Logical Query sources.
+
+Direct SQL remains supported. Adding a semantic package does not replace the
+VDB catalog or require every application to adopt Logical Query.

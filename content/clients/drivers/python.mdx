@@ -1,39 +1,62 @@
-# Connect from a Python Application
+import { Callout } from 'nextra/components'
 
-Since Kubling does not provide a Python driver for native protocol, PostgreSQL protocol must be used instead.
+# Python
 
-## pg8000
+New Python applications should connect to Kubling through the client gRPC
+transport. Choose the package according to the API your application needs.
 
-For Python, we recommend the lightweight, pure-Python [pg8000](https://github.com/tlocke/pg8000/tree/main) driver.
+## SQLAlchemy and DB-API
 
-Example:
-```python
-import pg8000
+Use `kubling-sqlalchemy` for SQLAlchemy or synchronous Python DB-API
+applications. The driver communicates with Kubling through gRPC and does not
+depend on PostgreSQL compatibility.
 
-# Establish a connection
-conn = pg8000.connect(
-    host="localhost",
-    port=35432,
-    database="MyVDB",
-    user="sa",
-    password="sa",
-    ssl_context=True
+```shell copy
+python -m pip install kubling-sqlalchemy
+```
+
+```python copy
+from sqlalchemy import create_engine, text
+
+engine = create_engine(
+    "kubling+grpc://sa:sa@localhost:50051/MyVDB"
+    "?vdb_version=1&insecure=true"
 )
 
-cur = conn.cursor()
-
-cur.execute("SELECT * from github.GITHUB_CODE_REPO_COLLABORATOR where repo in ('kubling-samples');")
-allRows = cur.fetchall()
-
-for allCols in allRows:
-    for col in allCols:
-        print(col)
-
-cur.close()
-conn.close()
+with engine.connect() as connection:
+    rows = connection.execute(text("SELECT * FROM inventory.products"))
+    for row in rows:
+        print(row)
 ```
-## SQLAlchemy
 
-For more robust Python applications, we recommend using the Kubling [SQLAlchemy dialect](https://pypi.org/project/kubling-sqlalchemy).
+`insecure=true` is appropriate only for a local plaintext listener. TLS is the
+default. The
+[Kubling SQLAlchemy repository](https://github.com/kubling-community/kubling-sqlalchemy)
+documents connection options, direct DB-API usage, type handling and catalog
+reflection.
 
-For additional information about the dialect, please visit [this repository](https://github.com/kubling-community/kubling-sqlalchemy).
+## Direct gRPC client
+
+Use `kubling-grpc` when the application should work directly with generated
+messages and service stubs:
+
+```shell copy
+python -m pip install kubling-grpc
+```
+
+```python copy
+import grpc
+
+from kubling.v1 import command_pb2, command_pb2_grpc
+```
+
+The [gRPC client guide](/clients/grpc#connect-with-an-official-client) shows the
+complete login, capability-discovery and logout sequence. The Python package
+provides generated bindings rather than a DB-API abstraction.
+
+<Callout type="warning">
+  Existing Python applications can still use a PostgreSQL driver against an
+  enabled `pgProtocol` listener. Keep that path only when PostgreSQL wire
+  compatibility is an application requirement; do not select it for a new
+  Kubling integration.
+</Callout>

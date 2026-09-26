@@ -1,0 +1,183 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Modules and configuration <Tag description={"v26.5+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+A semantic Module is an immutable Kubling artifact containing a manifest and
+the semantic documents a VDB may load. Modules make model releases independent
+from the descriptor bundle while preserving exact identity and content
+verification.
+
+Build and validate Modules with the [Kubling CLI](/cli/overview#-genmod).
+Applications and deployment pipelines should not construct Module artifacts
+directly or depend on their internal distribution format.
+
+## Module source layout
+
+The source directory must contain `kubling-semantic-module.yaml` at its root.
+Every document that can be loaded must appear in the manifest inventory.
+
+```text
+kubling-semantic-module.yaml
+semantic/
+  operations.composition.yaml
+  fragments/
+    kubernetes.yaml
+    delivery.yaml
+  alignments/
+    operations.yaml
+```
+
+Example manifest:
+
+```yaml copy
+format: kubling-semantic-module
+schemaVersion: 1
+metadata:
+  name: organizational-core
+  version: 1.4.0
+spec:
+  documents:
+    - semantic/operations.composition.yaml
+    - semantic/fragments/kubernetes.yaml
+    - semantic/fragments/delivery.yaml
+    - semantic/alignments/operations.yaml
+```
+
+The module manifest version and the compiled semantic package version are
+independent contracts. Do not use one as a proxy for compatibility with the
+other.
+
+Build the Module from its source directory:
+
+```shell copy
+mkdir -p dist
+kdv bundle genmod ./organizational-core \
+  --output ./dist/organizational-core-1.4.0
+```
+
+The output filename is a deployment concern. Module identity comes from the
+manifest, and repositories address it by name and version.
+
+## Declare modules in the descriptor bundle
+
+`semanticModules` belongs in `bundle-info.yaml`, next to the descriptor bundle's
+other module references:
+
+```yaml copy
+virtualDatabases:
+  - vdb/OperationsVDB.yaml
+
+semanticModules:
+  - name: organizational-core
+    uri: kbl://organizational-core/1.4.0
+    digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
+
+The `digest` is required and must contain exactly 64 hexadecimal characters
+after `sha256:`. Kubling rejects the Module before loading when the resolved
+bytes do not match it.
+
+Supported locations are:
+
+- a local path, normalized to a `file` URI
+- `file:`
+- `http:` or `https:`
+- `kbl://module/version`
+
+For a `kbl` URI, the URI module name and version must match the configured name
+and the manifest identity.
+
+<Callout type="warning">
+  Prefer immutable locations plus a reviewed digest. A mutable HTTP URL with a
+  different Module will fail safely, but it still creates an avoidable
+  deployment dependency.
+</Callout>
+
+## Select a model in the VDB
+
+The VDB descriptor selects the module and composition:
+
+```yaml copy
+name: Operations
+version: "1"
+
+semanticModel:
+  module: organizational-core
+  composition: semantic/operations.composition.yaml
+  activationFailurePolicy: failStartup
+```
+
+`composition` is relative to the selected module root. When `module` is
+omitted, it is relative to the VDB descriptor directory in the descriptor
+bundle.
+
+A provider-only semantic model does not require an authored composition. Use an
+empty `semanticModel` object with an optional failure-policy override:
+
+```yaml copy
+semanticModel:
+  activationFailurePolicy: failStartup
+```
+
+Kubling then assembles the accepted provider fragments for that VDB. If none
+are available, the VDB is catalog-only.
+
+## Choose the activation policy
+
+The application-level default is `isolate`:
+
+```yaml copy
+semantic:
+  activationFailurePolicy: isolate
+```
+
+A VDB may override it through `semanticModel.activationFailurePolicy`.
+
+| Policy | Behavior |
+| --- | --- |
+| `isolate` | Keep the data runtime available, mark the semantic model unavailable and expose diagnostics. |
+| `failStartup` | Fail application startup when that VDB's configured semantic model cannot be activated. |
+
+Use `failStartup` when a deployment is not useful unless its semantic contract
+is active. Use `isolate` when SQL and catalog workloads should stay available
+while the model is repaired.
+
+## Resolution limits
+
+Kubling applies fixed acquisition limits before a module can influence the
+runtime:
+
+| Limit | Value |
+| --- | ---: |
+| Modules per engine instance | 64 |
+| Module artifact size | 16 MiB |
+| Total Module artifact size per instance | 64 MiB |
+| Resolved content per Module | 32 MiB |
+| Total resolved Module content per instance | 128 MiB |
+| Files per Module | 256 |
+| Bytes per file | 1 MiB |
+| Connection timeout | 10 seconds |
+| Read timeout | 30 seconds |
+| Complete fetch timeout | 60 seconds |
+
+Absolute, parent-traversal, URI-shaped and backslash-based Module paths are
+rejected. Duplicate paths and documents missing from the manifest inventory
+are rejected as well.
+
+## Deployment lifecycle
+
+Semantic Modules are resolved once during bootstrap. Kubling verifies the
+Module, reads the selected composition, acquires provider fragments, validates
+all bindings and compiles the VDB package. There is no hot reload.
+
+To publish a new model:
+
+1. build a new Module with the Kubling CLI
+2. publish it under a new immutable version
+3. calculate and review its SHA-256 digest
+4. update `bundle-info.yaml` and any VDB composition reference
+5. deploy and restart the Kubling instance
+6. verify the active package and digest through the semantic admin API
+
+Continue with [operations and diagnostics](/semantics/operations).

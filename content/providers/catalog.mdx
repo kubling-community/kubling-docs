@@ -5,7 +5,8 @@ import ProviderCatalog from '../../component/providers/ProviderCatalog'
 # Provider catalog <Tag description={"v26.4+"} />
 
 Find provider implementations that connect Kubling to external systems. Search
-by product or capability, or narrow the catalog by category and provider type.
+by product or release, or narrow the catalog by category, provider type and
+advertised capability.
 
 <Callout type="info">
   Every provider currently listed is developed and released by the Kubling
@@ -14,6 +15,11 @@ by product or capability, or narrow the catalog by category and provider type.
   compatibility testing. Provider APIs and releases are pre-1.0, so pin an
   exact image version and review compatibility notes before upgrading.
 </Callout>
+
+The capability badges describe optional provider-side support. A missing badge
+means that Kubling keeps that work in the engine or that the provider does not
+publish that optional artifact. It does not mean the provider cannot execute
+ordinary catalog, query or mutation operations.
 
 For versioning, compatibility and contribution guidance, see the
 [Provider overview](/providers#releases-and-compatibility).

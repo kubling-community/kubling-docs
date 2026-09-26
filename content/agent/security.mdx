@@ -1,0 +1,91 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Security boundary <Tag description={"v26.5+"} />
+
+The agent boundary preserves Kubling's existing identity and authorization
+model. Runtime connection credentials authenticate the Kubling-to-runtime
+channel; they never grant VDB or source access.
+
+## Two different credentials
+
+| Credential | Authenticates | Does not grant |
+| --- | --- | --- |
+| Caller's HTTP credential | The user or workload invoking `/api/v1/capabilities/**`. | Direct access to the external runtime. |
+| `kublingAgent.connection.headers` | Kubling to the configured runtime. | VDB permissions or source access. |
+
+Runtime transport credentials prove which engine may call the runtime. They are
+never substituted for the initiating caller when Kubling executes a requested
+action.
+
+## Caller-preserving execution
+
+For every capability request, Kubling captures the authenticated caller and
+builds a catalog, function and semantic view filtered for that identity. Every
+runtime-requested Logical Query is validated, compiled and executed as the same
+caller. VDB policies remain authoritative at execution time, and the runtime
+receives only the bounded observation.
+
+The filtered planning context reduces accidental disclosure. Engine-side
+authorization remains authoritative even if a runtime constructs an invalid or
+hostile request.
+
+<Callout type="warning">
+  Semantic descriptions and model prompts are not security controls. Enforce
+  access through Kubling authentication, roles, VDB policies and network
+  boundaries.
+</Callout>
+
+## Invocation patterns
+
+The same caller-preserving contract supports two common integration patterns:
+
+| Pattern | Identity and authorization behavior |
+| --- | --- |
+| Human through a conversational platform | The platform invokes Kubling with a user identity delegated through the organization's authentication or SSO integration. Kubling limits runtime context and query execution to that user's permissions. |
+| Agent-to-Kubling | Another agent invokes Kubling with a workload identity or delegated identity managed through IAM. Kubling limits the returned conclusions to what that identity may access. |
+
+Credential delegation and token exchange are integration-specific. The chat
+platform, identity provider or calling agent must supply an identity accepted
+by Kubling's configured HTTP authentication. Kubling does not give the external
+runtime that credential.
+
+## Deployments without application authentication
+
+When application authentication is deliberately disabled, capabilities follow
+the same deployment-wide identity behavior as Kubling's other interfaces. There
+is no per-user boundary for the capability to preserve.
+
+Do not expose such a deployment to an untrusted network. Enabling a runtime does
+not compensate for disabled application authentication.
+
+## Data shared with the runtime
+
+The runtime receives:
+
+- an immutable registered context for the selected engine and VDB
+- only catalog, function and semantic entries visible to the effective caller
+- the goal and any caller-supplied external context
+- bounded, typed observations from accepted query actions
+- task usage and protocol metadata
+
+It does not receive native source credentials or a reusable database session.
+Treat goals, external context, observations and conclusions as potentially
+sensitive operational data when selecting the runtime deployment boundary.
+
+## Production checklist
+
+- Use TLS for caller-to-Kubling and Kubling-to-runtime traffic outside a trusted
+  local boundary.
+- Store runtime headers and tokens outside version-controlled descriptors.
+- Restrict runtime ingress to the intended Kubling instances.
+- Set task and observation budgets per deployment.
+- Review VDB roles and policies with a real caller before enabling capabilities.
+- Keep agentic logs at the minimum useful level and protect their exporter.
+- Monitor terminal outcomes, rejected queries and observation volume.
+- Verify that disconnect and timeout behavior matches your incident workflow.
+- Never interpret a missing terminal response as proof that an operation was
+  cancelled.
+
+See [HTTP security](/security/http), [communication security](/security/communication)
+and [RBAC](/security/rbac) for the underlying controls.

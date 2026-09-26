@@ -1,0 +1,68 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Aggregate pushdown <Tag description={"v26.5+"} />
+
+Aggregate pushdown controls whether a provider or Kubling evaluates an
+aggregate operation. It changes where the work is performed, not whether
+Kubling can execute the SQL query.
+
+## Why it matters
+
+| With pushdown | Without pushdown |
+| --- | --- |
+| The provider evaluates supported aggregation and returns the reduced result. | The provider returns the rows required to evaluate the aggregation in Kubling. |
+| Fewer rows usually cross the provider boundary. | More rows may cross the provider boundary. |
+| Source-native indexes, partitions or aggregation facilities may be used. | Kubling uses its own memory and execution resources for the operation. |
+| Performance depends mainly on the source-side plan. | Performance depends more heavily on transferred cardinality and engine capacity. |
+
+<Callout type="info">
+  Missing aggregate pushdown does not mean that aggregation is unsupported.
+  Kubling can retain the operation in the federated plan and produce the same
+  logical result.
+</Callout>
+
+## When Kubling can push down
+
+Kubling delegates an aggregate only when the provider explicitly advertises
+the complete operation it can preserve. Function support, grouping, `DISTINCT`
+and `HAVING` are independent capabilities; support for one does not imply
+support for the others.
+
+An aggregate also remains in Kubling when the data source uses its MVCC
+overlay, because uncommitted or simulated local state must participate in the
+result.
+
+<Callout type="warning">
+  Capability declaration is a correctness promise, not a preference. Never
+  advertise an aggregate or query shape whose null, type, filter, grouping or
+  overflow semantics differ from Kubling's contract.
+</Callout>
+
+Unsupported or unrepresentable expressions stay in the engine. Kubling does
+not infer aggregate support from other provider capabilities.
+
+## Example
+
+For a provider that advertises grouping, `COUNT_STAR` and `HAVING`:
+
+```sql copy
+SELECT status, COUNT(*) AS task_count
+FROM provider.TASK
+GROUP BY status
+HAVING COUNT(*) > 1
+```
+
+With pushdown, the provider can return one row per `status` after applying the
+group and `HAVING` condition. Without it, Kubling requests the necessary source
+rows and performs that work in the federated engine. The result is equivalent,
+but the amount of transferred data and engine work can be substantially
+different.
+
+## Provider-specific support
+
+The exact function and query-shape matrix belongs to each provider because it
+can change independently from Kubling. Use the
+[Provider catalog](/providers/catalog) to reach the provider's
+documentation and release notes. The catalog's aggregate-pushdown badge is a
+discovery aid, not a per-function compatibility matrix.

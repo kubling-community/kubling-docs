@@ -1,0 +1,89 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Operations and diagnostics <Tag description={"v26.5+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+Kubling tracks semantic activation state for every active VDB name and version.
+That state records whether the VDB is catalog-only, whether its model failed
+and the exact package activated during startup.
+
+## Activation states
+
+| State | Meaning |
+| --- | --- |
+| `catalogOnly` | No semantic package is active. The VDB remains available through its normal catalog. |
+| `invalid` | Acquisition, resolution or catalog validation failed. Diagnostics describe the rejected model. |
+| `compileFailed` | Resolution and validation completed, but package compilation failed. |
+| `active` | The immutable semantic package is available to consumers. |
+
+An unavailable model is never published partially. The configured activation
+policy determines whether the failure is isolated or prevents startup.
+
+## Read-only admin API
+
+The semantic API is under the authenticated admin path:
+
+| Method and path | Result |
+| --- | --- |
+| `GET /api/v1/admin/semantic/vdbs` | Summary for every active VDB name and version. |
+| `GET /api/v1/admin/semantic/vdbs/{vdb}/versions/{version}` | State, counts, diagnostics and compilation failure for one VDB. |
+| `GET /api/v1/admin/semantic/vdbs/{vdb}/versions/{version}/package` | Compiled package JSON when available. |
+
+For example, with a deployment that accepts a bearer token:
+
+```shell copy
+curl --fail-with-body \
+  --header "Authorization: Bearer $KUBLING_TOKEN" \
+  http://localhost:8282/api/v1/admin/semantic/vdbs
+```
+
+The summary includes `name`, `version`, `generation`, `state`,
+`activationFailurePolicy`, `packageAvailable`, `packageDigest`, and diagnostic,
+error and warning counts.
+
+The detail adds structured diagnostics with a stable code, severity, document,
+location, catalog target, message and remediation. A compilation failure has
+its own code and message.
+
+The package endpoint returns:
+
+- `200` with the compiled package for an active model
+- `409` with the VDB detail when the VDB exists but no package is available
+- `404` when that VDB name and version are not active
+
+<Callout type="warning">
+  These endpoints follow Kubling's configured HTTP authentication. Do not
+  expose admin or Studio routes outside the intended trust boundary.
+</Callout>
+
+## Health behavior
+
+Semantic state appears in `/observe/health` with availability and VDB counts.
+
+| `semanticAvailability` | Condition |
+| --- | --- |
+| `initializing` | Semantic services are not ready yet. |
+| `notConfigured` | No VDB has a semantic model. |
+| `catalogOnly` | Every VDB is catalog-only. |
+| `available` | At least one semantic package is active and no failure is isolated. |
+| `degraded` | At least one failure was isolated by policy. Overall health remains `UP`. |
+| `unavailable` | A startup-blocking semantic failure exists. Overall health is `DOWN`. |
+
+The health details also include generation, active, catalog-only, invalid,
+compile-failed, isolated-failure and startup-blocking counts.
+
+## Diagnose a failed activation
+
+1. Read the VDB detail endpoint and start with the first error diagnostic.
+2. For module failures, verify the URI, SHA-256 digest, manifest identity and
+   document inventory.
+3. For provider acquisition failures, verify provider reachability and the
+   fragment's media type, version and digest.
+4. For binding failures, compare every relation, field and logical type with
+   the deployed VDB catalog.
+5. For ambiguous definitions, inspect namespaces, imports and binding scopes.
+6. After changing an artifact or provider release, restart Kubling. Semantic
+   inputs are immutable for the lifetime of the process.
+
+Studio's [Semantics workspace](/quickstart/studio#semantics-preview) presents
+the same state, diagnostics and compiled package interactively.

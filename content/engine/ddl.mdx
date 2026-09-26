@@ -1,4 +1,5 @@
 import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
 # DDL
 
@@ -21,6 +22,76 @@ This capability simplifies working with deeply nested data structures, making it
   [See more about template parser.](/template/parser)
 </Callout>
 
+## Relational metadata <Tag description={"v26.5+"} />
+
+Kubling DDL can preserve named, composite primary keys, unique keys, ordinary
+indexes, foreign keys and views. This metadata is available to generic SQL
+clients and to the engine after the VDB is deployed.
+
+```sql copy
+CREATE FOREIGN TABLE PARENT (
+    tenant_id string NOT NULL,
+    parent_id integer NOT NULL,
+    code string(32) NOT NULL,
+    amount bigdecimal(12,3) DEFAULT 0.000,
+    CONSTRAINT PK_PARENT PRIMARY KEY (tenant_id, parent_id),
+    CONSTRAINT UK_PARENT_CODE UNIQUE (tenant_id, code),
+    CONSTRAINT IX_PARENT_AMOUNT INDEX (amount, parent_id)
+);
+
+CREATE FOREIGN TABLE CHILD (
+    child_id integer NOT NULL,
+    tenant_ref string NOT NULL,
+    parent_ref integer NOT NULL,
+    CONSTRAINT PK_CHILD PRIMARY KEY (child_id),
+    CONSTRAINT FK_CHILD_PARENT FOREIGN KEY (tenant_ref, parent_ref)
+        REFERENCES PARENT (tenant_id, parent_id)
+);
+
+CREATE VIEW PARENT_VIEW AS
+    SELECT tenant_id, parent_id, code, amount
+    FROM PARENT;
+```
+
+The local and referenced sides of a composite foreign key are paired by
+position. If the referenced column list is omitted, Kubling uses the target
+table's primary key.
+
+### Catalog reflection
+
+Query metadata through the same authenticated SQL transport used for data:
+
+| Catalog | Information |
+| --- | --- |
+| `SYS.Tables` | Tables and views in each schema. |
+| `SYS.Columns` | Column order, logical type, nullability, default and annotation. |
+| `SYS.KeyColumns` | Primary, unique, foreign and index columns with names and positions. |
+| `SYS.ReferenceKeyColumns` | Referenced and referencing column pairs for foreign keys. |
+| `SYSADMIN.Views` | View definitions. |
+
+For example:
+
+```sql copy
+SELECT TableName, Name, KeyName, KeyType, Position
+FROM SYS.KeyColumns
+WHERE SchemaName = 'operations'
+ORDER BY TableName, KeyName, Position;
+```
+
+<Callout type="warning">
+  Keys and foreign keys are relational catalog metadata. Kubling does not infer
+  semantic identities or relationships from them. Declare those concepts in
+  the [Semantic model](/semantics/modeling).
+</Callout>
+
+### Limits
+
+- Function-based indexes such as `INDEX (UPPER(name))` are not supported.
+- Foreign keys cannot reference a table in another Kubling schema.
+- Automatically generated constraint names are scoped to their table.
+- A foreign key without referenced columns requires a compatible primary key
+  on the target table.
+
 ## Define a `TABLE`
 
 ```sql
@@ -40,11 +111,11 @@ CREATE TABLE {table-name} (
     [AUTO_INCREMENT] [NOT NULL] [PRIMARY KEY] [UNIQUE] [INDEX] [DEFAULT {expr}]
 
 <constraint> ::=
-    CONSTRAINT {constraint-name} (
-        PRIMARY KEY <columns> |
-        FOREIGN KEY (<columns>) REFERENCES tbl (<columns>)
-        UNIQUE <columns> |
-        INDEX <columns>
+    [CONSTRAINT {constraint-name}] PRIMARY KEY <columns> |
+    [CONSTRAINT {constraint-name}] FOREIGN KEY <columns>
+        REFERENCES {table-name} [<columns>] |
+    [CONSTRAINT {constraint-name}] UNIQUE <columns> |
+    [CONSTRAINT {constraint-name}] INDEX <columns>
 
 <columns> ::=
     ( {column-name} [,{column-name}]* )
@@ -88,7 +159,7 @@ Internally, each listed `OPTION` but `tags` is referred as `DIRECTIVE` since, as
 
 | Directive                  | Type    | Options                                                                     | Description                                                                                                                                                                                 |
 |----------------------------|---------|-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ANNOTATION`               | String  | Any                                                                         | A short natural language description that provides semantic meaning for the object. This is used to build the Semantic Schema and helps LLMs understand the role and purpose of the object. |
+| `ANNOTATION`               | String  | Any                                                                         | A short human-readable description exposed with the catalog object. |
 | `updatable`                | Boolean | True/False                                                                  | Indicates whether the QP allows `INSERT`, `UPDATE` and `DELETE` operations on this `TABLE`                                                                                                  |
 | `tags`                     | String  | Any                                                                         | Defines tags for the `TABLE`, which can be used to get `TABLE`s based on tags criteria.                                                                                                     |
 | `cache`                    | String  | {`cache 'option'`}<br/>Options:<br/> `enabled`, `disabled`, `schemaDefault` | Defines the cache behavior for this `TABLE` when caching is enabled at the data source level.                                                                                               |
@@ -102,7 +173,7 @@ Internally, each listed `OPTION` but `tags` is referred as `DIRECTIVE` since, as
 
 | Directive           | Type                  | Options                                                              | Description                                                                                                                                                                                              |
 |---------------------|-----------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ANNOTATION`        | String                | Any                                                                  | A short natural language description that provides semantic meaning for the object. This is used to build the Semantic Schema and helps LLMs understand the role and purpose of the object.              |
+| `ANNOTATION`        | String                | Any                                                                  | A short human-readable description exposed with the catalog column. |
 | `val_constant`      | String                | Any                                                                  | Defines a constant field value.                                                                                                                                                                          |
 | `val_variable`      | String                | Any                                                                  | The value of the field is get from the properties. [More information.](/engine/properties)                                                                                                               |
 | `val_pk`            | String                | [field+field+...]                                                    | Creates a calculated `PK` based on a field set.<br/>Since the value is not stored anywhere, when filtering using this field, the QP replaces the `WHERE` section by the original list of field's values. |
@@ -123,6 +194,13 @@ Internally, each listed `OPTION` but `tags` is referred as `DIRECTIVE` since, as
 | `RADIX`             | Integer               | —                                                                    | The numeric base for numeric types (e.g., 10 for decimal, 2 for binary).                                                                                                                                 |
 | `NULL_VALUE_COUNT`  | Long                  | —                                                                    | Estimated or known number of `NULL` values in the column. Useful for cost-based optimization.                                                                                                            |
 | `DISTINCT_VALUES`   | Long                  | —                                                                    | Estimated or known number of distinct values in the column. Useful for indexing or optimization.                                                                                                         |
+
+<Callout type="info">
+  `ANNOTATION` and the legacy `relationship_*` options remain useful catalog
+  hints, but they are not the authoritative semantic graph. Use a versioned
+  [semantic fragment or module](/semantics) for identities, relationships and
+  executable bindings.
+</Callout>
 
 <Callout type='info'>
   Specific directives are listed in each [data source documentation](/engine/ds/intro).

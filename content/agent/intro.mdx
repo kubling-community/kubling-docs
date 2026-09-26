@@ -1,41 +1,61 @@
+import { Callout } from 'nextra/components'
 import Tag from '../../component/Tag'
 
-# Kubling as an Agent <Tag description={"v25.2+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+# Agent capabilities <Tag description={"v26.5+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
 
-As we move toward an AI-driven, agentic economy, we at Kubling believe that one of the most foundational elements will be **data access**.
+Kubling is not an AI agent. It exposes bounded capabilities that applications,
+orchestrators and external agent runtimes can invoke over federated data. The
+runtime plans each task; Kubling owns the caller identity, visible context,
+query validation, execution policies and limits.
 
-Agents—like any other user—require access to data, whether operational or analytical. However, due to the non-deterministic nature of most LLM-based solutions, enabling agents to query and mutate data remains a sensitive issue for many organizations.
+<Callout type="warning">
+  Agent capabilities are Preview. The runtime capability documented here is
+  `investigation`. Pin compatible components and validate the complete
+  deployment before production use.
+</Callout>
 
-We also believe that no single AI agent solution should dominate the landscape. Instead, we advocate for a **cooperative and composable** approach to designing robust agentic systems.
+## Responsibility boundary
 
-## Supporting Other Agents
+The runtime does not receive source credentials, an unrestricted engine
+session or authority to bypass VDB policies. Responsibilities are divided as
+follows:
 
-Kubling’s agentic capabilities are designed primarily to support **other agents**, rather than direct interaction with end users.
+| Kubling owns | The runtime owns |
+| --- | --- |
+| Authentication and the initiating caller. | Task planning and reasoning. |
+| Caller-visible catalog, functions and semantics. | Selecting the next supported action. |
+| Logical Query validation and SQL compilation. | Interpreting bounded observations. |
+| Authorization, federation and physical execution. | Producing conclusions and other artifacts. |
+| Task, observation and execution limits. | Reporting usage and an explicit stop reason. |
 
-For example, imagine a scenario where a master agent interfaces with end users and delegates specific tasks to specialized agents. If a user asks for “the list of Kubernetes deployments failing in cluster X,” the master agent doesn't need to handle that query directly. Instead, it can rely on an upstream agent—such as a Kubling instance—specialized in operational data, to provide the answer.
+## Runtime integration
 
-## Open Protocol & Contract
+The authenticated Task API selects one VDB and creates a bounded task from a
+caller-filtered context snapshot. The runtime may request Logical Query
+actions; Kubling validates and executes accepted actions as the initiating
+caller and returns bounded observations. The request completes with a terminal
+task snapshot.
 
-The Kubling engine does not contain built-in logic to act as an agent itself. Instead, it relies on upstream services that provide the specific functionalities it requires.
+The runtime may be local to one Kubling instance or shared by several instances.
+`instanceIdentifier` and the VDB target prevent their registered contexts from
+being mixed.
 
-These services are fully configurable—each capability supported by the Kubling engine corresponds to a counterpart system responsible for implementing that functionality.
+## Documentation map
 
-The only requirement for these upstream services is adherence to a shared protocol for exchanging information with Kubling instances, which is detailed in this section.
+| Surface | Purpose |
+| --- | --- |
+| [Investigation](/agent/capabilities) | Goal-driven, multi-step analysis over one authorized VDB context. |
+| [Task API](/agent/task-api) | Authenticated fire-and-resolve HTTP API and versioned task snapshots. |
+| [Logical Query v1](/semantics/logical-query) | Structured, bounded query actions compiled by Kubling. |
+| [Configuration](/agent/configuration) | Runtime connection, context publication, budgets and timeouts. |
+| [Security boundary](/agent/security) | Caller propagation, runtime credentials and production controls. |
 
-![Kubling instance delegating capabilities to an external agent implementation](../../public/img/agentic-base.svg)
+The [legacy `/agent/*` API](/agent/kubling-agent-platform) is deprecated. New
+integrations should use the native capability Task API.
 
-### Why Is Having an Open Protocol Crucial?
+## Deployment status
 
-There are several key reasons why we designed Kubling around an open protocol:
-
-1. Some capabilities—such as `investigation`—require iterative loops, where the Kubling instance needs to share intermediate query results. Since Kubling may handle sensitive data, many organizations prefer to implement their own solutions to ensure no third-party services gain access to private information.
-
-2. The fields of LLMs and agents are evolving rapidly, with new tools and frameworks emerging every day. An open protocol empowers users to choose how they want to implement or integrate these evolving technologies, without being locked into a specific vendor or architecture.
-
-## Kubling Agent Platform (Our Implementation)
-
-Implementing services that handle specific capabilities can require a significant investment of time and resources. To help you get started quickly—and to provide a reference implementation—we’ve built our own service: the **Kubling Agent Platform**.
-
-You can use it out of the box or as inspiration for building your own solution.
-
-For more details, refer to the dedicated entry in this section.
+This documentation defines Kubling's integration contract. Packaging, image
+names and model-provider configuration for the separate agent runtime are
+released by that component and are not frozen here yet. Do not infer runtime
+compatibility from the presence of the Task API alone.

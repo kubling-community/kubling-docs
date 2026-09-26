@@ -129,6 +129,28 @@ By default, data sources' adapters contribute to overall health. However, that o
 You can configure this behavior using the `contributesToHealth` property in each data source.  
 For more information, please see the [configuration schemas](/schemas).
 
+### Semantic health <Tag description={"v26.5+"} />
+
+The health response includes a semantic contributor with an aggregate view of
+semantic state across active VDBs:
+
+| Detail | Meaning |
+| --- | --- |
+| `semanticAvailability` | `initializing`, `notConfigured`, `catalogOnly`, `available`, `degraded` or `unavailable`. |
+| `generation` | Current semantic-state generation. |
+| `vdbCount` | VDB versions represented in semantic state. |
+| `activeVdbCount` | VDB versions with an active compiled package. |
+| `catalogOnlyVdbCount` | Active catalog-only VDB versions. |
+| `invalidVdbCount` | VDB versions isolated after semantic validation failed. |
+| `compileFailedVdbCount` | VDB versions isolated after compilation failed. |
+| `isolatedFailureCount` | Failures accepted by the `isolate` policy. |
+| `startupBlockingFailureCount` | Failures selected to block startup. |
+
+An isolated semantic failure reports `degraded` but does not make the whole
+engine `DOWN`. A startup-blocking semantic failure reports `unavailable` and
+does contribute `DOWN`. Use the
+[semantic admin endpoints](/semantics/operations) for per-VDB diagnostics.
+
 ---
 # Metrics
 
@@ -149,7 +171,9 @@ Importantly, the underlying metrics remain unchanged; only the presentation is a
 This documentation focuses on the default format because it is easier to read and provides a clear view of the metrics’ structure. 
 Despite the formatting changes, the metrics' core data and meaning remain consistent across all formats.
 
-Current support formats are Prometheus and Azure Monitor.
+Metrics are available through the base endpoint and Prometheus, and can be
+exported through OpenTelemetry, DataDog or the deprecated Azure Monitor
+integration.
 
 ## Metrics endpoint
 Metrics list can be fetch from `GET` `http[s]://[address]:8282/observe/metrics`<br/>
@@ -361,6 +385,28 @@ Provides the number of current active JavaScript Auth* context threads. Same mea
 
 ### `kubling.js.auth.executions` <Tag description={"Counter"} />
 Provides the number of total JavaScript Auth* context threads claimed during current execution. Same measurement as `kubling.js.executions`.
+
+## Capability task metrics <Tag description={"v26.5+"} />
+
+These counters describe work performed through the capability Task API:
+
+| Metric | Tags | Meaning |
+| --- | --- | --- |
+| `kubling.capability.task.model.calls` | — | Model calls reported by the task runtime. |
+| `kubling.capability.task.tokens` | `direction=input\|output` | Input and output tokens reported by the runtime. |
+| `kubling.capability.task.actions.requested` | — | Query actions requested by the runtime. |
+| `kubling.capability.task.runtime.exchanges` | — | Continuation exchanges attempted with the runtime. |
+| `kubling.capability.task.queries` | `outcome=executed\|rejected` | Queries accepted for execution or rejected before execution. |
+| `kubling.capability.task.observation.rows` | — | Rows returned from Kubling to the runtime. |
+| `kubling.capability.task.observation.bytes` | — | Canonical result bytes returned to the runtime. |
+| `kubling.capability.task.outcomes` | `state`, `reason` | Terminal task outcomes and stop reasons. |
+
+The metrics intentionally omit task IDs, caller IDs and VDB names from tags to
+avoid unbounded cardinality. Runtime-reported usage is recorded as positive
+deltas between snapshots, so cumulative values are not counted repeatedly.
+
+Metrics are engine-side observations. They do not prove that a disconnected
+HTTP caller received the final task snapshot.
 
 ## Cache related metrics <Tag description={"v24.5.3+"} />
 

@@ -263,14 +263,38 @@ Allows scripts to execute queries and update operations directly against the Eng
 
 Operations are executed within the current authentication context unless a privileged variant is explicitly used.
 
-| Function                                                                            | Description                                                                                                                                                       |
-|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `executeQuery(vdbName : string, query : string) : QueryResultProxyObject`           | Executes a `SELECT` statement using the credentials present in the current authentication context. Returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
-| `executeUpdate(vdbName : string, query : string) : integer`                         | Executes an update statement (`INSERT`, `UPDATE`, `DELETE`, `UPSERT`) using the credentials present in the current authentication context. Returns the affected rows. |
-| `executeTransaction(vdbName : string, commands : string[]) : integer`               | Executes multiple update statements as a single transaction using the credentials present in the current authentication context. Returns the total affected rows. |
-| `executeQueryPrivileged(vdbName : string, query : string) : QueryResultProxyObject` | Executes a `SELECT` statement using an internal privileged session. Returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
-| `executeUpdatePrivileged(vdbName : string, query : string) : integer`               | Executes an update statement (`INSERT`, `UPDATE`, `DELETE`, `UPSERT`) using an internal privileged session. Returns the affected rows. |
-| `executeTransactionPrivileged(vdbName : string, commands : string[]) : integer`     | Executes multiple update statements as a single transaction using an internal privileged session. Returns the total affected rows. |
+| Function | Description |
+| --- | --- |
+| `executeQuery(vdbName : string, query : string) : QueryResultProxyObject` | Executes a `SELECT` statement and returns a [`QueryResultProxyObject`](#queryresultproxyobject). |
+| `execute(vdbName : string, query : string) : boolean` | Executes arbitrary SQL and reports whether it produced a result. |
+| `executeUpdate(vdbName : string, query : string) : integer` | Executes an update statement and returns affected rows. |
+| `executeUpdateWithParams(vdbName : string, command : SqlCommand) : integer` | Executes one parameterized update and returns affected rows. |
+| `executeTransaction(vdbName : string, commands : string[]) : integer` | Executes update statements as one transaction and returns total affected rows. |
+| `executeTransactionWithParams(vdbName : string, commands : SqlCommand[]) : integer` | Executes parameterized updates as one transaction and returns total affected rows. |
+| `explain(vdbName : string, query : string) : string` | Returns the engine execution plan for a query. |
+| `getTableNamesByTags(vdbName : string, schemaName : string, tags : string[]) : string[]` | Returns tables in one schema that match every supplied tag. |
+
+All methods above use the current authentication context and preserve its
+authorization result. They never elevate privileges automatically.
+
+The following explicit variants run with Kubling's deployment-level privileged
+identity:
+
+| Function | Description |
+| --- | --- |
+| `executeQueryPrivileged(vdbName : string, query : string) : QueryResultProxyObject` | Privileged form of `executeQuery`. |
+| `executePrivileged(vdbName : string, query : string) : boolean` | Privileged form of `execute`. |
+| `executeUpdatePrivileged(vdbName : string, query : string) : integer` | Privileged form of `executeUpdate`. |
+| `executeUpdateWithParamsPrivileged(vdbName : string, command : SqlCommand) : integer` | Privileged parameterized update. |
+| `executeTransactionPrivileged(vdbName : string, commands : string[]) : integer` | Privileged transaction over SQL strings. |
+| `executeTransactionWithParamsPrivileged(vdbName : string, commands : SqlCommand[]) : integer` | Privileged transaction over parameterized commands. |
+| `explainPrivileged(vdbName : string, query : string) : string` | Privileged form of `explain`. |
+
+<Callout type="warning">
+  Privileged methods bypass the caller's identity by design. Treat any bundle
+  that invokes them as trusted executable configuration: review it, restrict
+  who can publish it and keep its effects observable.
+</Callout>
 
 ### resultSetScript
 
@@ -360,9 +384,23 @@ An `object` that indicates to the Engine the result of the initialization.
 | `error()`                 | Marks the initialization process as erroneous.                       |
 | `error(message : string)` | Marks the initialization process as erroneous with a custom message. |
 
-### scheduledScript
+### scheduledScript <Tag description={"v26.5+"} />
 
-Only common members.
+Scheduled scripts receive the common members and `DBEngine`. This applies to
+scripts launched from a trusted descriptor or script bundle, where no
+interactive caller may be present.
+
+Use a normal `DBEngine` method when the schedule has an authenticated execution
+context. If that context is absent, the method fails authorization rather than
+elevating itself. Use a `*Privileged` method only when the scheduled operation
+is intentionally owned by the deployment.
+
+<Callout type="warning">
+  A scheduled script cannot select a separate configurable service identity.
+  Privileged calls run with Kubling's deployment-level identity. Until a
+  dedicated identity is available, descriptor-bundle review and deployment
+  controls are the security boundary.
+</Callout>
 
 ## Template function
 
