@@ -384,7 +384,8 @@ CREATE FOREIGN TABLE faulty (
 Here, the Modbus adapter will correctly decode a 16-bit integer, but fail to convert that integer into a `geometry` object, because that transformation is not supported.
 
 <Callout>
-For a full list of supported data type conversions, refer to the [DataTypeManager source code](https://github.com/kubling-community/kubling-teiid-os/blob/master/common-core/src/main/java/com/kubling/teiid/core/types/DataTypeManager.java).
+For the supported engine types and conversion rules, see
+[Data types and conversions](/engine/data-types#type-conversions).
 </Callout>
 
 ## Soft Transactions and Modbus Semantics

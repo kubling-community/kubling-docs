@@ -1,0 +1,93 @@
+import { Callout } from 'nextra/components'
+import Tag from '../component/Tag'
+
+# Kubling 26.5 naming migration <Tag description={"v26.5+"} />
+
+Kubling 26.5 completes the naming update across its public Java API, JDBC
+configuration and error identifiers. Applications, extensions and operational
+tooling that use the previous names must be updated.
+
+<Callout type="warning">
+  Treat the Java and native-client boundary as a breaking upgrade. Recompile
+  Java integrations and use the current Kubling JDBC driver with the upgraded
+  Engine. Do not assume that a driver or extension compiled against the
+  previous namespaces remains compatible.
+</Callout>
+
+## Name changes
+
+| Surface | Before 26.5 | 26.5 and later |
+| --- | --- | --- |
+| Java package prefix | `org.teiid.*` or transitional `com.kubling.teiid.*` | `com.kubling.*` |
+| JDBC driver | `org.teiid.jdbc.TeiidDriver` or `com.kubling.teiid.jdbc.TeiidDriver` | `com.kubling.jdbc.KublingDriver` |
+| JDBC URL prefix | `jdbc:teiid:` | `jdbc:kubling:` |
+| TLS client properties | `org.teiid.ssl.*` | `com.kubling.ssl.*` |
+| Socket client properties | `org.teiid.sockets.*` | `com.kubling.sockets.*` |
+| Default client settings resource | `/teiid-client-settings.properties` | `/kubling-client-settings.properties` |
+| Kubling error identifiers | `TEIID` followed by five digits | `KBL` followed by five digits |
+| JVM client source repository | `kubling-teiid-os` | `kubling-core` |
+
+The package change applies to classes shipped by Kubling. Third-party
+dependencies continue to use their own namespaces.
+
+## Java API migration
+
+The rename includes public types, not only package prefixes. Representative
+changes include:
+
+| Previous type | Current type |
+| --- | --- |
+| `TeiidDriver` | `KublingDriver` |
+| `TeiidDataSource` | `KublingDataSource` |
+| `TeiidConnection` | `KublingConnection` |
+| `TeiidSQLException` | `KublingSQLException` |
+| `TeiidURL` | `KublingURL` |
+
+Update dependencies first, then replace imports and type names and recompile.
+Compiler errors are the authoritative inventory for an individual integration
+because the exact classes used depend on that application or extension.
+
+For JDBC connection and client settings examples, see the
+[Java JDBC driver](/clients/drivers/native_jdbc).
+
+## Error identifier migration
+
+Kubling errors now use the `KBLnnnnn` format. For retained errors, the
+numeric suffix is preserved, so an identifier such as `TEIID10080` becomes
+`KBL10080`.
+
+Not every historical error still exists. Do not generate an unconditional
+mapping for archived identifiers. Update and verify:
+
+- log filters and searches
+- alert and dashboard rules
+- parsers that recognize `TEIID[0-9]{5}`
+- application error handling and allowlists
+- test fixtures and assertions
+
+New rules should recognize `KBL[0-9]{5}`. Historical logs remain historical
+data and do not need to be rewritten.
+
+The gRPC `KublingError.code` field can carry a Kubling `KBL` identifier.
+Domain-specific code families, such as `LQ_*`, retain their own namespaces.
+
+## Upgrade checklist
+
+1. Update Kubling Java dependencies to the release used by the Engine.
+2. Replace old imports, class names and JDBC URLs, then recompile.
+3. Rename the TLS and socket keys in native-client property files.
+4. Rename the default classpath settings resource if the application supplies
+   one.
+5. Update monitoring, parsing and tests that expect `TEIID` error identifiers.
+6. Test the upgraded client and Engine together before production rollout.
+
+## Names that remain
+
+The rename does not change every protocol or distribution identifier:
+
+- `mm` and `mms` remain the native JDBC transport markers.
+- the published container and Helm release retain
+  `kubling-dbvirt-service`.
+- the public gRPC protobuf package remains `kubling.v1`.
+
+See [Artifacts](/concepts/artifacts) for the current distribution names.

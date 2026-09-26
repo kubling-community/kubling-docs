@@ -1,6 +1,7 @@
 export default {
-  "native_jdbc": "JDBC Native Driver",
+  "index": "Overview",
+  "native_jdbc": "Java JDBC",
   "hibernate": "Hibernate",
   "python": "Python",
-  "golang": "Go (PostgreSQL)"
+  "golang": "Go"
 }

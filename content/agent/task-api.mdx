@@ -1,0 +1,176 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Task API <Tag description={"v26.5+"} />
+
+The capability Task API is an authenticated, synchronous fire-and-resolve
+interface. One request creates a bounded task, lets Kubling and the runtime
+exchange bounded actions and observations, and returns the final snapshot.
+
+## Endpoints
+
+| Method and path | Selection behavior |
+| --- | --- |
+| `POST /api/v1/capabilities/{capability}/vdbs/{vdb}/versions/{version}/tasks` | Selects one exact active VDB version. |
+| `POST /api/v1/capabilities/{capability}/vdbs/{vdb}/tasks` | Works only when exactly one active version has that VDB name. |
+
+Use the versioned route in automation. The versionless route returns `409` when
+the name is ambiguous.
+
+Both routes use Kubling's normal HTTP authentication path. The response content
+type is `application/json` and successful and error responses include
+`Cache-Control: no-store`.
+
+## Request
+
+```json copy
+{
+  "goal": "Find why the checkout workloads are unhealthy",
+  "externalContextId": "incident-4821",
+  "externalContext": {
+    "region": "eu",
+    "severity": "high"
+  },
+  "artifactIds": [
+    "runbook-checkout"
+  ]
+}
+```
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `goal` | Yes | Non-empty objective for the selected capability. |
+| `externalContextId` | No | Caller-owned correlation identifier. |
+| `externalContext` | No | Arbitrary JSON passed to the runtime as `application/json` content. |
+| `artifactIds` | No | References understood by the compatible runtime deployment. |
+
+Caller and role fields in the body are not trusted. Kubling derives identity
+only from the authenticated HTTP request. It sends the runtime an authorized
+catalog, function and semantic context derived for that caller, without sending
+the caller's credential or identity. Kubling retains the effective caller and
+uses it when executing every accepted query action.
+
+Example invocation for a deployment configured with bearer authentication:
+
+```shell copy
+curl --fail-with-body \
+  --request POST \
+  --header "Authorization: Bearer $KUBLING_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{"goal":"Find why the checkout workloads are unhealthy"}' \
+  http://localhost:8282/api/v1/capabilities/investigation/vdbs/Operations/versions/1/tasks
+```
+
+## Terminal response
+
+```json copy
+{
+  "format": "kubling-task-snapshot",
+  "formatVersion": 1,
+  "task": {
+    "taskId": "task-1",
+    "target": {
+      "instanceId": "engine-a",
+      "vdbName": "Operations",
+      "vdbVersion": "1"
+    }
+  },
+  "capability": "investigation",
+  "state": "completed",
+  "artifacts": [
+    {
+      "id": "conclusion-1",
+      "kind": "conclusion",
+      "content": {
+        "contentType": "text/plain; charset=utf-8",
+        "data": "cm9vdCBjYXVzZQ=="
+      }
+    }
+  ],
+  "usage": {
+    "inputTokens": 1200,
+    "outputTokens": 240,
+    "modelCalls": 2,
+    "kublingActions": 1,
+    "observationRows": 1,
+    "observationBytes": 128
+  },
+  "stop": {
+    "reason": "goal_satisfied",
+    "detail": "Goal satisfied by cited observations"
+  }
+}
+```
+
+Artifact `content.data` is Base64-encoded. Decode it according to its explicit
+`contentType` rather than assuming every artifact is text.
+
+Task states are `working`, `input_required`, `completed`, `cancelled`,
+`budget_exceeded` and `failed`. The public synchronous endpoint normally returns
+a terminal state. Intermediate states are part of the versioned runtime
+protocol and may appear in diagnostics or future transports.
+
+<Callout type="warning">
+  Kubling does not expose public task polling or cancellation endpoints.
+  Closing the HTTP connection does not prove that the task was cancelled.
+</Callout>
+
+## Error response
+
+Errors use a stable versioned envelope:
+
+```json copy
+{
+  "format": "kubling-task-error",
+  "formatVersion": 1,
+  "code": "context_unavailable",
+  "message": "No active Kubling context is available for capability tasks",
+  "retryable": true
+}
+```
+
+| HTTP status | Conditions |
+| ---: | --- |
+| `400` | Invalid request, goal, capability or VDB input. |
+| `401` | No effective authenticated caller. |
+| `404` | The selected VDB name or version is not active. |
+| `409` | The versionless route matches more than one active VDB version. |
+| `413` | The runtime request exceeds the configured transport limit. |
+| `502` | A non-retryable runtime or orchestration failure. |
+| `503` | Runtime disabled, context unavailable or a retryable runtime failure. |
+
+Use the envelope's `retryable` field together with application semantics.
+Never retry a task solely because its HTTP status is `503`.
+
+## Runtime integration contract
+
+Applications using the Task API do not call these endpoints. They are required
+only when implementing a compatible agent runtime. Kubling uses these HTTP
+operations beneath the configured runtime `baseURL`:
+
+| Operation | Path |
+| --- | --- |
+| Start | `PUT /instances/{instance}/vdbs/{vdb}/versions/{version}/tasks/{taskId}` |
+| Advance | `POST /instances/{instance}/vdbs/{vdb}/versions/{version}/tasks/{taskId}/advances` |
+| Read | `GET /instances/{instance}/vdbs/{vdb}/versions/{version}/tasks/{taskId}` |
+| Cancel | `DELETE /instances/{instance}/vdbs/{vdb}/versions/{version}/tasks/{taskId}` |
+
+This boundary exchanges `kubling-task-start`, `kubling-task-advance` and
+`kubling-task-snapshot` documents at `formatVersion: 1`. It is a Kubling-native
+contract and is not presented as A2A-compatible.
+
+### Authorized context
+
+Every `kubling-task-start` document includes an `authorizedContext` derived for
+the authenticated caller. It identifies the exact VDB and catalog revisions
+and describes the catalog relations, functions and semantic surface available
+for planning. Access can be complete, restricted to an explicit selection or
+unavailable.
+
+The runtime must constrain its proposed actions to this context. The field is
+not a credential and does not contain the caller's identity. Kubling retains
+the authenticated caller and applies authorization again when executing every
+accepted query action.
+
+See the [security boundary](/agent/security) for identity delegation and
+runtime-credential guidance.

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import type { ReactNode } from 'react'
-import { Head } from 'nextra/components'
+import { Banner, Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
 import '../styles/styles.css'
@@ -49,6 +49,18 @@ const navbar = (
 
 const footer = <Footer>Kubling Documentation</Footer>
 
+const banner = (
+  <Banner dismissible={false}>
+    <a
+      href="/naming-migration"
+      className="underline underline-offset-4 hover:no-underline"
+    >
+      Kubling 26.5 changes namespaces, JDBC identifiers and error codes.
+      Review the migration guide →
+    </a>
+  </Banner>
+)
+
 export default async function RootLayout({
   children
 }: Readonly<{ children: ReactNode }>) {
@@ -57,6 +69,7 @@ export default async function RootLayout({
       <Head />
       <body>
         <Layout
+          banner={banner}
           navbar={navbar}
           pageMap={await getPageMap()}
           docsRepositoryBase="https://github.com/kubling-community/kubling-docs/tree/main"

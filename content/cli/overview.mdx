@@ -25,22 +25,23 @@ image in pipelines and containerized workflows.
 ## Commands
 
 ### &bull; `bundle`
-It aggregates various utilities for working with bundle files, like Modules.
+Utilities for building and publishing Kubling Modules.
 
 #### Subcommands
 #### &rarr; `genmod`
-Generates a JavaScript Module file.
+Builds a Kubling Module from a source directory.
 
-| <div style={{width: "170px"}}>Name</div> | Type         | Description                                                               | Default Value |
-|------------------------------------------|--------------|---------------------------------------------------------------------------|---------------|
-| Directory Path                           | Parameter(0) | Path to the root of the directory containing Module's code.               |               |
-| `-o`, `--output`                         | Option       | Full file name of the generated bundle zip file.                          |               |
-| `-p`, `--parse`                          | Option       | When enabled, all JavaScript files are parsed before bundle is generated. | `false`       |
+| <div style={{width: "170px"}}>Name</div> | Type         | Description                                                                      | Default Value |
+|------------------------------------------|--------------|----------------------------------------------------------------------------------|---------------|
+| Directory Path                           | Parameter(0) | Path to the Module source directory.                                             |               |
+| `-o`, `--output`                         | Option       | Path of the generated Module.                                                    |               |
+| `-p`, `--parse`                          | Option       | When enabled, JavaScript sources in the Module are parsed during the build.      | `false`       |
 
 Sample usage:
 ```sh
+mkdir -p ./dist
 kdv bundle genmod ./javascript/module \
-  --output ./javascript-module-bundle.zip \
+  --output ./dist/javascript-module \
   --parse
 ```
 
@@ -150,6 +151,6 @@ docker run --rm \
   --volume "$PWD:/workspace" \
   kubling/kubling-cli:latest \
   bundle genmod /workspace/javascript/module \
-  --output /workspace/javascript-module-bundle.zip \
+  --output /workspace/javascript-module \
   --parse
 ```

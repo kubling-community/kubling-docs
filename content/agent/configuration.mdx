@@ -1,89 +1,159 @@
 import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
-# Configuration
+# Configuration <Tag description={"v26.5+"} />
 
-You can enable agentic capabilities in a Kubling instance through the [main application configuration](/schemas#main-application-configuration).
+Kubling has one runtime connection shared by context synchronization and task
+execution. The two lifecycles remain independently configurable.
 
-For example:
-```yaml
+This example shows the complete Kubling-side configuration and its defaults:
+
+```yaml copy
 kublingAgent:
   enabled: true
-  instanceIdentifier: "k8s"
-  api:
-    keepAlive:
-      activated: true
-```
+  instanceIdentifier: engine-a
 
-By default, if no other values are provided, the [**Kubling Agent Platform**](kubling-agent-platform) will be used as the implementation.
+  connection:
+    baseURL: http://127.0.0.1:8080/api/v1
+    headers:
+      Authorization: "Bearer {{KUBLING_AGENT_TOKEN}}"
 
-## Instance Identifier
-The `instanceIdentifier` allows the implementation service to recognize and associate metadata with this specific Kubling instance.
-
-Each time an instance starts with agentic capabilities enabled, it contacts the service to exchange model metadata. If the specified identifier is already registered, the model metadata will not be reprocessed.
-
-This means you can run multiple instances using the same identifier, which is useful for scaling or redundancy.
-
-<Callout type="warning">
-  Keep in mind that transforming instance model metadata (semantic schemas) into LLM-consumable information, can take several minutes depending on the size of your VDB, and it will also consume tokens.
-</Callout>
-
-## Keep-Alive Endpoint
-
-This is a feature implemented specifically for the **Kubling Agent Platform**, but it may also be useful in custom implementations.
-
-When an instance's model metadata is registered for the first time and associated with an instance identifier, the **Kubling Agent Platform** stores it in a sandbox that expires after 1 hour.
-
-This is especially helpful in development environments where volatile or short-lived metadata is expected.
-
-The Keep-Alive Endpoint allows an instance to request expiration extensions from the **Kubling Agent Platform**. Each time the endpoint is called, an additional hour is granted to the instance’s metadata sandbox.
-
-<Callout type="info">
-  You can move your instance's model metadata out of the sandbox by making it permanent. Please see the `Kubling Agent Platform` entry in this section for more information.
-</Callout>
-
-## Implementing the Service
-
-If you're planning to build your own implementation, you'll need to configure your Kubling instance to interact with it instead of using the default **Kubling Agent Platform**.
-
-Each agentic capability has its own associated API endpoint. These `api endpoint` configurations define how Kubling should call your implementation for each supported capability.
-
-By customizing these endpoints, you gain full control over how requests are routed and handled within your custom service.
-
-API Endpoint Schema:
-```yaml
-type: "object"
-id: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
-properties:
-  httpMethod:
-    type: "string"
-    description: "HTTP method to be used for the request. Supported methods: GET,\
-      \ POST, PUT, PATCH, HEAD, CONNECT, DELETE, OPTIONS, TRACE."
-  path:
-    type: "string"
-    description: "Relative endpoint path that, when combined with the base URL, forms\
-      \ the final request URL. If a full URL is provided, the base URL will be ignored."
-  headers:
-    type: "object"
-    description: "Custom headers to be included in this specific request. Any value\
-      \ enclosed in '{{' and '}}' will be dynamically replaced by the corresponding\
-      \ environment variable."
-    additionalProperties:
-      type: "string"
-```
-
-Example:
-```yaml
-kublingAgent:
-  enabled: true
-  instanceIdentifier: "k8s"
-  api:
-    baseURL: "http://localhost:3080/agent/api/v1"
-    statementGenerator:
-      httpMethod: 'POST'
-      path: '/gen/statement'
-      headers:
-        instance: "instance_1"
-        token: {{ MY_TOKEN }}
+  contextSynchronization:
+    userAgent: kubling-context-publisher
+    publish:
+      httpMethod: POST
+      path: /context/registrations
+    deactivate:
+      httpMethod: POST
+      path: /context/registrations/deactivate
     keepAlive:
       activated: false
+      endpoint:
+        httpMethod: POST
+        path: /context/registrations/keepalive
+      cron: "0 0/45 * * * *"
+    retry:
+      activated: true
+      initialDelayMillis: 5000
+      maxDelayMillis: 60000
+      multiplier: 2.0
+      jitterRatio: 0.2
+
+  taskRuntime:
+    enabled: true
+    transport: HTTP
+    maxExchanges: 32
+    invocation:
+      maxInputTokens: 20000
+      maxOutputTokens: 4000
+      maxModelCalls: 8
+      maxKublingActions: 8
+      maxObservationRows: 1000
+      maxObservationColumns: 64
+      maxObservationBytes: 1048576
+      timeoutMillis: 300000
+    http:
+      connectTimeoutMillis: 10000
+      writeTimeoutMillis: 30000
+      readTimeoutMillis: 60000
+      maxRequestBytes: 8388608
+      maxResponseBytes: 8388608
 ```
+
+<Callout type="warning">
+  Set both `kublingAgent.enabled` and `taskRuntime.enabled` for native
+  capability execution. The first enables context publication. The second
+  enables the task exchange. A task cannot run without an active published
+  context.
+</Callout>
+
+## Instance and connection
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `enabled` | `false` | Enables context synchronization. |
+| `instanceIdentifier` | generated at bootstrap | Stable engine identity used to isolate registrations in a shared runtime. |
+| `connection.baseURL` | `http://127.0.0.1:8080/api/v1` | Runtime base URL including its versioned API prefix. |
+| `connection.headers` | Bearer header using `KUBLING_AGENT_TOKEN` | Headers sent on every runtime request. |
+
+Header values support environment placeholders written as
+`{{ VARIABLE_NAME }}`. Store secrets in the deployment environment or secret
+manager instead of committing them to the application configuration.
+
+Use a stable explicit `instanceIdentifier` for durable deployments. A generated
+identifier is convenient for local exploration, but a new identity creates a
+new runtime registration after restart.
+
+## Context synchronization
+
+Kubling publishes one immutable snapshot containing:
+
+- the engine instance identity
+- each active VDB name and version
+- caller-independent catalog and function revisions
+- compiled semantic package identity and exported surfaces
+
+The snapshot is registered during startup and pinned by digests and revision
+identifiers. Task execution remains unavailable until a usable registration is
+active.
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `publish` | `POST /context/registrations` | Publishes a complete snapshot. |
+| `deactivate` | `POST /context/registrations/deactivate` | Deactivates this publisher session. |
+| `keepAlive.activated` | `false` | Enables periodic registration renewal. |
+| `keepAlive.cron` | every 45 minutes | Spring-compatible keep-alive schedule. |
+| `retry.activated` | `true` | Retries transient initial publication failures. |
+| `retry.initialDelayMillis` | `5000` | First retry delay. |
+| `retry.maxDelayMillis` | `60000` | Maximum retry delay. |
+| `retry.multiplier` | `2.0` | Exponential backoff multiplier. |
+| `retry.jitterRatio` | `0.2` | Random jitter applied to retry delays. |
+
+Permanent validation or authentication failures are not made correct by retry.
+Inspect the failure before increasing retry duration.
+
+## Task limits
+
+`taskRuntime.maxExchanges` bounds the number of start and continuation exchanges
+for one task. All `invocation` limits are positive, server-owned hard ceilings.
+
+| Setting | Default |
+| --- | ---: |
+| `maxInputTokens` | 20,000 |
+| `maxOutputTokens` | 4,000 |
+| `maxModelCalls` | 8 |
+| `maxKublingActions` | 8 |
+| `maxObservationRows` | 1,000 |
+| `maxObservationColumns` | 64 |
+| `maxObservationBytes` | 1 MiB |
+| `timeoutMillis` | 300,000 |
+
+Choose limits from the sensitivity and cost of the VDB, not from the largest
+request a model can accept. Observation limits also constrain the evidence that
+leaves Kubling for the runtime.
+
+## HTTP transport limits
+
+Task execution currently uses HTTP.
+
+| Setting | Default |
+| --- | ---: |
+| `connectTimeoutMillis` | 10,000 |
+| `writeTimeoutMillis` | 30,000 |
+| `readTimeoutMillis` | 60,000 |
+| `maxRequestBytes` | 8 MiB |
+| `maxResponseBytes` | 8 MiB |
+
+The task deadline is independent from an individual HTTP read timeout. Configure
+the runtime and any reverse proxy so they do not silently cut a request before
+Kubling can return a bounded task outcome.
+
+## Runtime distribution
+
+This page documents the Kubling side of the contract. The final runtime
+image, release version and supported model-provider configuration must be taken
+from the matching `kubling-agent-runtime` release. They are intentionally not
+invented from an untagged development checkout.
+
+If you are migrating `kublingAgent.api` configuration, read the
+[legacy API migration](/agent/kubling-agent-platform).

@@ -7,8 +7,15 @@ export const providerCategories = [
 
 export const providerKinds = ['Integration', 'Reference'] as const
 
+export const providerCapabilities = [
+  'Semantic fragment',
+  'Rich values',
+  'Aggregate pushdown'
+] as const
+
 export type ProviderCategory = (typeof providerCategories)[number]
 export type ProviderKind = (typeof providerKinds)[number]
+export type ProviderCapability = (typeof providerCapabilities)[number]
 export type ProviderStatus = 'Official' | 'Community'
 
 export type ProviderCatalogEntry = {
@@ -18,6 +25,8 @@ export type ProviderCatalogEntry = {
   kind: ProviderKind
   status: ProviderStatus
   publisher: string
+  release: string
+  capabilities: ProviderCapability[]
   sourceUrl: string
   imageName: string
   imageUrl: string
@@ -33,6 +42,8 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
+    release: '0.1.0',
+    capabilities: ['Aggregate pushdown'],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/cassandra',
     imageName: 'kubling/cassandra-provider',
@@ -47,6 +58,8 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Reference',
     status: 'Official',
     publisher: 'Kubling',
+    release: '0.1.0',
+    capabilities: ['Rich values', 'Aggregate pushdown'],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/inmemory',
     imageName: 'kubling/inmemory-provider',
@@ -61,6 +74,8 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
+    release: '0.2.0',
+    capabilities: ['Semantic fragment'],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/kubernetes',
     imageName: 'kubling/kubernetes-provider',
@@ -75,6 +90,8 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
+    release: '0.0.1',
+    capabilities: [],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/openapi',
     imageName: 'kubling/openapi-provider',
@@ -89,6 +106,8 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
+    release: '0.0.2',
+    capabilities: [],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/redis',
     imageName: 'kubling/redis-provider',

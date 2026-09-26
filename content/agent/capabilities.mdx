@@ -1,78 +1,88 @@
-# Capabilities
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
-Capabilities define what a Kubling instance can offer within a multi-agent setup. While Kubling is not an AI agent itself, it is designed to **participate in agent-based environments**, exposing a set of well-defined services that other agents—or even human users—can call.
+# Investigation <Tag description={"v26.5+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
 
-This makes it possible to delegate specific tasks, like querying, reasoning, or investigating, to Kubling from a master agent or orchestration layer.
+`investigation` is the first supported native capability. It accepts a goal for
+one VDB and lets a replaceable runtime request bounded read actions until it can
+return a conclusion or explain why it stopped.
 
-Capabilities will continue to expand as new versions are released.
+Use it for questions where the next query depends on previous evidence, such as:
 
----
+- why a workload is unhealthy across cluster, delivery and configuration data
+- which operational change is correlated with an incident
+- whether the available evidence is sufficient to explain a state transition
+- which records should be inspected next before a human takes action
 
-## Available Capabilities
+## What an investigation can do
 
-### 1. Natural Language to SQL (No Execution)
+The runtime receives only the caller-authorized catalog, functions and semantic
+surface for the selected VDB version. It can request read-only Logical Query
+actions. Kubling validates and compiles each request, executes it under the
+initiating caller, and returns a typed observation bounded by rows, columns,
+bytes and deadline.
 
-**Description:**  
-Converts a natural language query into a Kubling-compatible SQL query without executing it.
+The task can return artifacts such as a plain-text `conclusion`. Every terminal
+snapshot also reports cumulative usage and a stop reason.
 
-**Method:** `GET`  
-**Endpoint:**  
-`http[s]://[kubling_host:kubling_port]/agent/query`
+<Callout type="info">
+  A semantic package improves domain-aware planning, but it is not mandatory.
+  An investigation can use catalog relations when a VDB is `catalogOnly`.
+</Callout>
 
-**Request Format:**
-- **Content-Type:** `text/plain`
-- **Body:** Natural language query
+## Bounded loop
 
-**Response Format:**
-- **Content-Type:** `application/sql`
-- **Body:** Generated SQL query
+Each task is constrained by Kubling-enforced limits for:
 
----
+- runtime exchanges
+- input and output tokens
+- model calls
+- Kubling query actions
+- rows, columns and bytes returned as observations
+- wall-clock duration
 
-### 2. Execute Natural Language Query
+The runtime cannot raise those limits in a response. A requested action whose
+shape exceeds the remaining budget is rejected by Kubling.
 
-**Description:**  
-Translates a natural language query into SQL, executes it, and returns the results.
+Possible terminal outcomes are:
 
-**Method:** `POST`  
-**Endpoint:**  
-`http[s]://[kubling_host:kubling_port]/agent/results`
+| State | Typical stop reasons |
+| --- | --- |
+| `completed` | `goal_satisfied` |
+| `budget_exceeded` | `budget_exhausted` or `deadline_exceeded` |
+| `cancelled` | `cancelled` |
+| `failed` | `insufficient_evidence`, `policy_blocked`, `no_progress` or `internal_error` |
 
-**Request Format:**
-- **Content-Type:** `text/plain`
-- **Body:** Natural language query
-- **Parameters:**  
-  `dataFormatResponse`: Expected output format.  
-  Valid options are:
-  - `JSON`
-  - `YAML`
-  - `CSV`
-  - `ASCII_TABLE`
-  - `MARKDOWN_TABLE`
+`input_required` is an intermediate runtime state used for a query action or a
+clarification. It is resolved inside the Kubling-to-runtime exchange before the
+public fire-and-resolve request completes.
 
-**Response Format:**
-- **Content-Type:** `text/plain;application/json`
-- **Body:** Query result in the specified format
+## Evidence, not hidden access
 
----
+Kubling returns only observations produced by accepted actions. The runtime does
+not receive source credentials, an unrestricted engine session or access to
+relations hidden from the caller.
 
-### 3. Investigation
+Logical Query fingerprints, catalog revisions and semantic revisions keep the
+exchange tied to the registered context. If the required context is unavailable
+or inconsistent, the task fails instead of executing against a guessed model.
 
-**Description:**  
-Handles complex, open-ended questions about your data. This capability performs deeper reasoning to extract insights and investigate root causes across data points.
+## Invoke it
 
-**Method:** `POST`  
-**Endpoint:**  
-`http[s]://[kubling_host:kubling_port]/agent/investigation`
+Send a task to:
 
-**Request Format:**
-- **Content-Type:** `text/plain`
-- **Body:** Natural language prompt  
-- **Example:**  
-  `"I would need you to investigate why some containers have status 'ImagePullBackOff' in kube1, that is, why they can't be pulled."`
+```text
+POST /api/v1/capabilities/investigation/vdbs/{vdb}/versions/{version}/tasks
+```
 
-**Response Format:**
-- **Content-Type:** `text/plain`
-- **Body:** The conclusion of the investigation in natural language  
-- **Example:**  
-  `"The 'ImagePullBackOff' status for containers is caused by issues with pulling the specified images from their respective registries. The error message 'Back-off pulling image' indicates that the Kubernetes system is unable to retrieve the container images from the specified registry URLs. This could be due to several reasons such as network issues, incorrect image names or tags, lack of permissions, or the images not being available in the registry. The affected images include those from 'xyz.kubling.com' and other registries, as seen in the provided data."`
+See the [Task API](/agent/task-api) for request and response examples.
+
+## Studio status
+
+Studio includes an Investigations workspace that renders goals, artifacts,
+usage and terminal task states. It remains disabled because Kubling does not
+expose a read-only runtime-readiness endpoint. Use the HTTP Task API for
+executable validation until that readiness contract ships.
+
+Stopping or navigating away from a Studio request would only disconnect the
+browser. The public ingress does not expose task cancellation.

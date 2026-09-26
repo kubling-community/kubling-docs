@@ -1,45 +1,57 @@
-# JDBC Native Driver
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
 
-The Kubling [native protocol](/concepts/architecture#transport) is based on Red Hat's Teiid project, which is why you still see "teiid" in the connection string.
-We chose Teiid because it is a mature, rock-solid project that has proven its reliability. 
-Additionally, the wiring layer, among others, is written in Java, making Teiid's transport implementation particularly suitable for our use case.
+# Java JDBC driver
 
-Both the Kubling native [protocol and its drivers](https://github.com/kubling-community/kubling-teiid-os/tree/master) are open-source and simple, 
-meaning you can easily fork the project and write your own implementation if needed.
+The Kubling JDBC driver is the recommended client for Java applications that
+require JDBC. It connects through the Engine's `nativeProtocol` transport and
+supports standard JDBC connections, statements, result sets, metadata and
+transactions.
 
-## Get the Driver
-Drivers are regularly [published here](https://github.com/kubling-community/kubling-teiid-os/releases).
+<Callout type="info">
+  New non-Java applications should use the [gRPC client
+  interface](/clients/grpc). The PostgreSQL wire protocol is a compatibility
+  option for existing clients and tools.
+</Callout>
 
-However, you can also add it via Maven dependency:
-```xml
+The driver is open source in the
+[Kubling Core repository](https://github.com/kubling-community/kubling-core)
+and published with the other
+[Kubling Core releases](https://github.com/kubling-community/kubling-core/releases).
+
+## Install the driver
+
+```xml copy
 <dependency>
     <groupId>com.kubling</groupId>
     <artifactId>kubling-client</artifactId>
-    <version>25.3.2</version>
+    <version>26.2</version>
 </dependency>
 ```
 
-## Connection
-The main driver class is `com.kubling.teiid.jdbc.TeiidDriver`.
+## Connect
+
+The driver class is `com.kubling.jdbc.KublingDriver`. The dependency registers
+it with `DriverManager` automatically.
 
 Connection URL:
 ```
-jdbc:teiid:<vdb-name>[@mm[s]://<host>:<port>][;prop-name=prop-value]*
+jdbc:kubling:<vdb-name>[@mm[s]://<host>:<port>][;prop-name=prop-value]*
 ```
 
-- `<vdb-name>`: Name of the VDB you are connecting to. 
-Optionally VDB name can also contain version information inside it. For example: `myvdb.2`, 
-this is equivalent to supplying the `version=2` connection property defined below.
-However, use of vdb name in this format and the `version` property at the same time is not allowed.
+- `<vdb-name>` is the VDB to connect to. It can include the version, for
+  example `myvdb.2`, or the version can be supplied with the `version`
+  property. Do not use both forms in the same URL.
 
-- `mm`: defines the JDBC protocol, `mms` indicates a secure channel.
+- `mm` selects the native protocol and `mms` selects its TLS variant.
 
-- `<host>`: Address of the Kubling instance. If you are using IPv6 binding address as the host name, place it in square brackets. ex:[::1]
+- `<host>` is the Kubling address. Place an IPv6 address in square brackets,
+  for example `[::1]`.
 
-- `<port>`: Port on which the Kubling instance is listening for incoming **native** connections.
+- `<port>` is the configured native transport port.
 
-- `[prop-name=prop-value]`: Additionally you can supply any number of `property:value` pairs separated by semi-colon [`;`]. 
-Property values should be URL encoded if they contain reserved characters, e.g. `’?’`, `'='`, `';'`, etc.
+- Additional properties use `name=value` pairs separated by semicolons.
+  URL-encode values that contain reserved characters.
 
 ## Connection Properties
 
@@ -53,7 +65,7 @@ Property values should be URL encoded if they contain reserved characters, e.g. 
 | `version`                   | `integer` | VDB version                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `resultSetCacheMode`        | `boolean` | `ResultSet` caching is turned on/off. Default `false`.                                                                                                                                                                                                                                                                                                                                                                                             |
 | `queryTimeout`              | `integer` | Query timeout in seconds. Must be >= `0`, while `0` indicates no timeout. Can be overridden by `Statement.setQueryTimeout`. Default `0`.                                                                                                                                                                                                                                                                                                           |
-| `encryptRequest`            | `boolean` | Only applies to non-SSL socket connections.  When `true`, the request message as well as its payload will be encrypted using the connection `cryptor`.  Default `false`.                                                                                                                                                                                                                                                                           |
+| `encryptRequests`           | `boolean` | Only applies to non-SSL socket connections. When `true`, request messages and their payloads are encrypted using the connection cryptor. Default `false`.                                                                                                                                                                                                                                                                                            |
 | `disableResultSetFetchSize` | `boolean` | In some situations, the client may choose undesirable fetch sizes for processing results. Set to `true` to disable honoring `ResultSet.setFetchSize`. Default `false`.                                                                                                                                                                                                                                                                             |
 | `loginTimeout`              | `integer` | The login timeout in seconds. Must be >= `0`, while `0` indicates no specific timeout, but other timeouts may apply. If a connection cannot be created in approximately the `timeout` number of seconds, connection attempt will fail and the session closed by Kubling. A default value `0` does not mean that the login will wait indefinitely, instead it is up the Session Manager to close the sessions when in login (authentication) phase. |
 | `reportAsViews`             | `boolean` | Indicates whether `DatabaseMetaData` must report views as `VIEW` table type. If `false` then views will be reported as `TABLE`. Default `true`.                                                                                                                                                                                                                                                                                                    |
@@ -62,21 +74,33 @@ Property values should be URL encoded if they contain reserved characters, e.g. 
 ## Create a Connection
 ```java copy
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.Properties;
 
-...
-
-TeiidDriver td = new TeiidDriver();
-final var props = new Properties();
+var props = new Properties();
 props.setProperty("user", "sa");
 props.setProperty("password", "mypass");
-Connection connection =
-        td.connect("jdbc:teiid:EmptyVDB@mm://localhost:35482", props);
-connection.setAutoCommit(true);
-...
+
+try (Connection connection = DriverManager.getConnection(
+        "jdbc:kubling:EmptyVDB@mm://localhost:35482",
+        props)) {
+    connection.setAutoCommit(true);
+    // Execute JDBC operations.
+}
 ```
 
-### Client Networking Properties File
+### Client networking properties file <Tag description={"v26.5+"} />
+
+The driver loads `/kubling-client-settings.properties` from the classpath by
+default. Set `connectionPropsFilePath` in the JDBC URL when the settings are
+stored in an external file.
+
+<Callout type="warning">
+  Kubling 26.5 no longer reads the previous `org.teiid.ssl.*` and
+  `org.teiid.sockets.*` keys. Rename them to the `com.kubling.*` forms shown
+  below. See the complete [26.5 naming
+  migration](/naming-migration).
+</Callout>
 
 ```properties copy
 ########################################
@@ -87,14 +111,14 @@ connection.setAutoCommit(true);
 # The key store type.  default = PKCS12
 #
 
-org.teiid.ssl.keyStoreType=PKCS12
+com.kubling.ssl.keyStoreType=PKCS12
 
 #
 # The key store algorithm, defaults to
 # the system property "ssl.TrustManagerFactory.algorithm"
 #
 
-#org.teiid.ssl.algorithm=
+#com.kubling.ssl.algorithm=
 
 #
 # Path to the key store.
@@ -102,65 +126,67 @@ org.teiid.ssl.keyStoreType=PKCS12
 # This property is required only if performing mTLS authentication that requires a specific private key.
 #
 
-org.teiid.ssl.keyStore=/sample/path/client.p12
+com.kubling.ssl.keyStore=/sample/path/client.p12
 
 #
 # The key store password
 #
 
-org.teiid.ssl.keyStorePassword=mypass
+com.kubling.ssl.keyStorePassword=mypass
 
 #
 # The key alias(not required, if given named certificate is used)
 #
 
-#org.teiid.ssl.keyAlias=
+#com.kubling.ssl.keyAlias=
 
 #
 # The key password(not required, used if the key password is different than the keystore password)
 #
 
-#org.teiid.ssl.keyPassword=
+#com.kubling.ssl.keyPassword=
 
 #
-# Path to the client certificate, required when org.teiid.ssl.trustAll is set to false
+# Path to the trust store, required when com.kubling.ssl.trustAll is set to false
 #
 
-org.teiid.ssl.trustStore=/sample/path/client-truststore.ks
+com.kubling.ssl.trustStore=/sample/path/client-truststore.ks
 
 #
 # The trust store password. It is always required when certificates were generated using kdv
 #
 
-org.teiid.ssl.trustStorePassword=mypass
+com.kubling.ssl.trustStorePassword=mypass
 
 #
 # The cipher protocol. 
 # Earlier versions (TLS 1.0, 1.1, and 1.2) are considered vulnerable, so try to avoid them as much as possible.
 #
 
-org.teiid.ssl.protocol=TLSv1.3
+com.kubling.ssl.protocol=TLSv1.3
 
 #
 # Indicates whether to allow anonymous SSL (the TLS_DH_anon_WITH_AES_128_CBC_SHA cipher suite)
 # THIS CIPHER SUITE IS INSECURE! See https://ciphersuite.info/cs/TLS_DH_anon_WITH_AES_128_CBC_SHA/
 #
 
-org.teiid.ssl.allowAnon=false
+com.kubling.ssl.allowAnon=false
 
 #
-# Indicates whether to trust all server certificates, in which case org.teiid.ssl.trustStore must point to a valid certificate.
+# Indicates whether to trust all server certificates. When false,
+# com.kubling.ssl.trustStore must point to a valid trust store.
 # default = false
 #
 
-org.teiid.ssl.trustAll=false
+com.kubling.ssl.trustAll=false
 
 #
-# Indicates whether the client must check expired server certificates (skipped when org.teiid.ssl.trustAll is set to true)
+# Indicates whether the client must check expired server certificates
+# (skipped when com.kubling.ssl.trustAll is set to true)
 # default = false
 #
 
-org.teiid.ssl.checkExpired=false
+com.kubling.ssl.checkExpired=false
 
 ########################################
 # Misc Socket Configuration
@@ -179,41 +205,41 @@ org.teiid.ssl.checkExpired=false
 # errors.
 #
 
-org.teiid.sockets.soTimeout=1000
+com.kubling.sockets.soTimeout=1000
 
 #
 # Set the max time to live (in milliseconds) for non-execution
 # synchronous calls.
 #
 
-org.teiid.sockets.synchronousttl=240000
+com.kubling.sockets.synchronousttl=240000
 
 #
 # Set the socket receive buffer size (in bytes)
 # 0 indicates that the default socket setting will be used.
 #
 
-org.teiid.sockets.receiveBufferSize=0
+com.kubling.sockets.receiveBufferSize=0
 
 #
 # Set the socket send buffer size (in bytes)
 # 0 indicates that the default socket setting will be used.
 #
 
-org.teiid.sockets.sendBufferSize=0
+com.kubling.sockets.sendBufferSize=0
 
 #
 # Set to true to enable Nagle's algorithm to conserve bandwidth
 # by minimizing the number of segments that are sent.
 #
 
-org.teiid.sockets.conserveBandwidth=false
+com.kubling.sockets.conserveBandwidth=false
 
 #
 # Maximum number of bytes per server message.
 # May need to be increased when using custom types and/or large batch sizes.
 #
 
-org.teiid.sockets.maxObjectSize=33554432
+com.kubling.sockets.maxObjectSize=33554432
 
 ```

@@ -1,9 +1,9 @@
 import { Callout } from 'nextra/components'
 
-# Configuration processed during initialization
-
 All configuration files are parsed as templates.
 For more information about the template parser, [see its reference](/template/parser).
+
+# Configuration processed during initialization
 
 <Callout type="warning">
   User Defined Template functions are not available during Engine initialization, therefore **cannot be used** in the following templates:
@@ -15,8 +15,6 @@ For more information about the template parser, [see its reference](/template/pa
   * Template Function Module bundle information file (bundle-function-info.yaml)
 </Callout>
 
----
-
 # General
 
 ## Main application configuration
@@ -24,17 +22,17 @@ For more information about the template parser, [see its reference](/template/pa
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:config:app:Application"
+id: "schema:kubling:service:config:app:Application"
 properties:
   instanceName:
     type: "string"
   transports:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:Transports"
+    id: "schema:kubling:service:config:app:Transports"
     properties:
       pgProtocol:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:Transport"
+        id: "schema:kubling:service:config:app:Transport"
         properties:
           bindAddress:
             type: "string"
@@ -48,7 +46,7 @@ properties:
               \ SSL configuration)."
           sslConfig:
             type: "object"
-            id: "schema:kubling:dbvirt:config:app:SSLConfig"
+            id: "schema:kubling:service:config:app:SSLConfig"
             properties:
               storeType:
                 type: "string"
@@ -68,7 +66,7 @@ properties:
             type: "boolean"
           ipFilter:
             type: "object"
-            id: "schema:kubling:dbvirt:config:app:IPFilter"
+            id: "schema:kubling:service:config:app:IPFilter"
             properties:
               type:
                 type: "string"
@@ -83,29 +81,29 @@ properties:
                   type: "string"
       nativeProtocol:
         type: "object"
-        $ref: "schema:kubling:dbvirt:config:app:Transport"
+        $ref: "schema:kubling:service:config:app:Transport"
       grpc:
         type: "object"
-        $ref: "schema:kubling:dbvirt:config:app:Transport"
+        $ref: "schema:kubling:service:config:app:Transport"
   management:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:Management"
+    id: "schema:kubling:service:config:app:Management"
     properties:
       enableRestartEndpoint:
         type: "boolean"
   vdb:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:VirtualDatabase"
+    id: "schema:kubling:service:config:app:VirtualDatabase"
     properties:
       descriptorBundle:
         type: "string"
   http:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:HttpApplicationProperties"
+    id: "schema:kubling:service:config:app:HttpApplicationProperties"
     properties:
       tls:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:HttpTlsProperties"
+        id: "schema:kubling:service:config:app:HttpTlsProperties"
         properties:
           storeType:
             type: "string"
@@ -136,7 +134,7 @@ properties:
           type: "string"
   console:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:Console"
+    id: "schema:kubling:service:config:app:Console"
     properties:
       moduleRepoBaseURI:
         type: "string"
@@ -144,7 +142,7 @@ properties:
           \ resolving URI with 'kbl' scheme."
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:EngineCacheProperties"
+    id: "schema:kubling:service:config:app:EngineCacheProperties"
     properties:
       sessionScoped:
         type: "boolean"
@@ -168,7 +166,7 @@ properties:
           \ when set to true. Default is false."
   buffer:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:BufferConfig"
+    id: "schema:kubling:service:config:app:BufferConfig"
     properties:
       useDisk:
         type: "boolean"
@@ -185,7 +183,7 @@ properties:
           \ path."
       rocksBackedBuffer:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:RocksBackedBufferConfig"
+        id: "schema:kubling:service:config:app:RocksBackedBufferConfig"
         properties:
           enabled:
             type: "boolean"
@@ -236,7 +234,7 @@ properties:
     description: "Properties file location."
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:SoftTransactionProperties"
+    id: "schema:kubling:service:config:app:SoftTransactionProperties"
     properties:
       enabled:
         type: "boolean"
@@ -259,7 +257,7 @@ properties:
           \ expired and will not be executed on startup."
   kublingAgent:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:KublingAgent"
+    id: "schema:kubling:service:config:app:KublingAgent"
     properties:
       instanceIdentifier:
         type: "string"
@@ -267,7 +265,7 @@ properties:
         type: "boolean"
       api:
         type: "object"
-        id: "schema:kubling:dbvirt:model:agent:KublingAgentUpstreamAPI"
+        id: "schema:kubling:model:agent:KublingAgentUpstreamAPI"
         properties:
           baseURL:
             type: "string"
@@ -277,7 +275,7 @@ properties:
             description: "User agent."
           registerInstance:
             type: "object"
-            id: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            id: "schema:kubling:model:agent:AgentAPIEndpoint"
             description: "API endpoint for registering an instance."
             properties:
               httpMethod:
@@ -298,29 +296,29 @@ properties:
                   type: "string"
           unregisterInstance:
             type: "object"
-            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
             description: "API endpoint for unregistering an instance."
           statementGenerator:
             type: "object"
-            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
             description: "API endpoint for generating a general SQL statement."
           executableStatementGenerator:
             type: "object"
-            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
             description: "API endpoint for generating an executable Kubling SQL statement."
           investigation:
             type: "object"
-            $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+            $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
             description: "API endpoint for conducting an automated investigation."
           keepAlive:
             type: "object"
-            id: "schema:kubling:dbvirt:model:agent:KeepAliveEndpoint"
+            id: "schema:kubling:model:agent:KeepAliveEndpoint"
             properties:
               activated:
                 type: "boolean"
               statementGenerator:
                 type: "object"
-                $ref: "schema:kubling:dbvirt:model:agent:AgentAPIEndpoint"
+                $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
                 description: "API endpoint for sending a keep alive message."
               cron:
                 type: "string"
@@ -332,13 +330,122 @@ properties:
               \ environment variable."
             additionalProperties:
               type: "string"
+      connection:
+        type: "object"
+        id: "schema:kubling:service:config:app:AgentConnectionProperties"
+        properties:
+          baseURL:
+            type: "string"
+            description: "Base URL of the Kubling agent runtime, including its versioned\
+              \ API prefix."
+          headers:
+            type: "object"
+            description: "Headers included in every agent runtime request. Values\
+              \ may use environment placeholders."
+            additionalProperties:
+              type: "string"
+      contextSynchronization:
+        type: "object"
+        id: "schema:kubling:model:agent:context:KublingContextSynchronization"
+        properties:
+          userAgent:
+            type: "string"
+            description: "User agent used for context synchronization requests."
+          publish:
+            type: "object"
+            $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
+            description: "API endpoint for publishing a complete context snapshot."
+          deactivate:
+            type: "object"
+            $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
+            description: "API endpoint for deactivating this publisher session."
+          keepAlive:
+            type: "object"
+            id: "schema:kubling:model:agent:context:KublingContextSynchronization:KeepAlive"
+            properties:
+              activated:
+                type: "boolean"
+              endpoint:
+                type: "object"
+                $ref: "schema:kubling:model:agent:AgentAPIEndpoint"
+                description: "API endpoint for renewing the active context registration."
+              cron:
+                type: "string"
+                description: "Spring-compatible CRON expression."
+          retry:
+            type: "object"
+            id: "schema:kubling:model:agent:context:KublingContextSynchronization:Retry"
+            properties:
+              activated:
+                type: "boolean"
+              initialDelayMillis:
+                type: "integer"
+              maxDelayMillis:
+                type: "integer"
+              multiplier:
+                type: "number"
+              jitterRatio:
+                type: "number"
+      taskRuntime:
+        type: "object"
+        id: "schema:kubling:service:config:app:TaskRuntimeProperties"
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables delegation through the native Kubling task protocol."
+          transport:
+            type: "string"
+            description: "Transport used to communicate with the task runtime."
+            enum:
+            - "HTTP"
+          maxExchanges:
+            type: "integer"
+            description: "Maximum number of runtime exchanges allowed while advancing\
+              \ one task."
+          invocation:
+            type: "object"
+            id: "schema:kubling:service:config:app:TaskRuntimeProperties:Invocation"
+            description: "Server-owned limits applied to inbound capability tasks."
+            properties:
+              maxInputTokens:
+                type: "integer"
+              maxOutputTokens:
+                type: "integer"
+              maxModelCalls:
+                type: "integer"
+              maxKublingActions:
+                type: "integer"
+              maxObservationRows:
+                type: "integer"
+              maxObservationColumns:
+                type: "integer"
+              maxObservationBytes:
+                type: "integer"
+              timeoutMillis:
+                type: "integer"
+                description: "Maximum wall-clock duration of an inbound capability\
+                  \ task."
+          http:
+            type: "object"
+            id: "schema:kubling:service:config:app:TaskRuntimeProperties:Http"
+            properties:
+              connectTimeoutMillis:
+                type: "integer"
+              writeTimeoutMillis:
+                type: "integer"
+              readTimeoutMillis:
+                type: "integer"
+              maxRequestBytes:
+                type: "integer"
+              maxResponseBytes:
+                type: "integer"
   instrumentation:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:InstrumentationProperties"
+    id: "schema:kubling:service:config:app:InstrumentationProperties"
     properties:
       metrics:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:instrumentation:MetricsProperties"
+        id: "schema:kubling:service:config:app:instrumentation:MetricsProperties"
         properties:
           metricsCommonTags:
             type: "object"
@@ -348,7 +455,7 @@ properties:
               type: "string"
           azureMonitor:
             type: "object"
-            id: "schema:kubling:dbvirt:config:app:instrumentation:AzureMonitorProperties"
+            id: "schema:kubling:service:config:app:instrumentation:AzureMonitorProperties"
             properties:
               enabled:
                 type: "boolean"
@@ -356,7 +463,7 @@ properties:
                 type: "string"
           openTelemetry:
             type: "object"
-            id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryConfig"
+            id: "schema:kubling:service:config:app:instrumentation:OpenTelemetryConfig"
             properties:
               enabled:
                 type: "boolean"
@@ -397,7 +504,7 @@ properties:
                 - "CUMULATIVE"
           dataDog:
             type: "object"
-            id: "schema:kubling:dbvirt:config:app:instrumentation:DatadogConfig"
+            id: "schema:kubling:service:config:app:instrumentation:DatadogConfig"
             properties:
               enabled:
                 type: "boolean"
@@ -411,7 +518,7 @@ properties:
                 type: "string"
       tracing:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:instrumentation:TracingProperties"
+        id: "schema:kubling:service:config:app:instrumentation:TracingProperties"
         properties:
           scheduleDelayInSeconds:
             type: "integer"
@@ -454,7 +561,7 @@ properties:
               \ by randomly selecting a fraction of events. Default: 1.0 (always sample)."
       logs:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:instrumentation:LogsProperties"
+        id: "schema:kubling:service:config:app:instrumentation:LogsProperties"
         properties:
           scheduleDelayInSeconds:
             type: "integer"
@@ -484,7 +591,7 @@ properties:
               type: "string"
           core:
             type: "object"
-            id: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+            id: "schema:kubling:service:config:app:instrumentation:CommonLogsProperties"
             properties:
               enabled:
                 type: "boolean"
@@ -499,13 +606,13 @@ properties:
                 type: "boolean"
           script:
             type: "object"
-            $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+            $ref: "schema:kubling:service:config:app:instrumentation:CommonLogsProperties"
           agentic:
             type: "object"
-            $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+            $ref: "schema:kubling:service:config:app:instrumentation:CommonLogsProperties"
       openTelemetryCommonAttributes:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryCommonAttributesProperties"
+        id: "schema:kubling:service:config:app:instrumentation:OpenTelemetryCommonAttributesProperties"
         properties:
           serviceName:
             type: "string"
@@ -530,7 +637,7 @@ properties:
               \ Example: 'prod' or 'qa'."
   performanceTracer:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:perftracer:PerformanceTracerProperties"
+    id: "schema:kubling:service:config:app:perftracer:PerformanceTracerProperties"
     properties:
       enabled:
         type: "boolean"
@@ -538,7 +645,7 @@ properties:
         type: "boolean"
       jsonFile:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:perftracer:PerformanceTracerJsonFileProperties"
+        id: "schema:kubling:service:config:app:perftracer:PerformanceTracerJsonFileProperties"
         properties:
           enabled:
             type: "boolean"
@@ -565,7 +672,7 @@ properties:
               \ per-query JSON files and enabling near real-time inspection.\n"
       database:
         type: "object"
-        id: "schema:kubling:dbvirt:config:app:perftracer:PerformanceTracerDatabaseProperties"
+        id: "schema:kubling:service:config:app:perftracer:PerformanceTracerDatabaseProperties"
         properties:
           enabled:
             type: "boolean"
@@ -599,7 +706,7 @@ properties:
             description: "Path to directory where to store the database."
           weights:
             type: "object"
-            id: "schema:kubling:dbvirt:config:app:perftracer:PerformanceTracerWeightsProperties"
+            id: "schema:kubling:service:config:app:perftracer:PerformanceTracerWeightsProperties"
             properties:
               latency:
                 type: "number"
@@ -633,7 +740,7 @@ properties:
               \ tracing or long-running scenarios.\n"
   scriptingEngine:
     type: "object"
-    id: "schema:kubling:dbvirt:config:app:ScriptingEngineProperties"
+    id: "schema:kubling:service:config:app:ScriptingEngineProperties"
     properties:
       vectorLevel:
         type: "string"
@@ -648,6 +755,17 @@ properties:
         - "BASIC"
         - "ADVANCED"
         - "EXTREME"
+  semantic:
+    type: "object"
+    id: "schema:kubling:service:config:app:SemanticProperties"
+    properties:
+      activationFailurePolicy:
+        type: "string"
+        description: "Default application startup behavior when a VDB semantic package\
+          \ cannot be activated."
+        enum:
+        - "isolate"
+        - "failStartup"
 ```
 
 
@@ -660,7 +778,7 @@ properties:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:BundleInfo"
+id: "schema:kubling:model:vdb:BundleInfo"
 properties:
   virtualDatabases:
     type: "array"
@@ -670,7 +788,7 @@ properties:
       type: "string"
   authentication:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:Authentication"
+    id: "schema:kubling:model:vdb:Authentication"
     properties:
       scriptFilePath:
         type: "string"
@@ -678,7 +796,7 @@ properties:
           \ location inside the module."
       module:
         type: "object"
-        id: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+        id: "schema:kubling:connectors:translation:scripting:base:model:Module"
         properties:
           name:
             type: "string"
@@ -689,7 +807,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:vdb:DescriptorScheduledScript"
+      id: "schema:kubling:model:vdb:DescriptorScheduledScript"
       properties:
         cron:
           type: "string"
@@ -700,7 +818,7 @@ properties:
             \ inside the module."
         module:
           type: "object"
-          $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+          $ref: "schema:kubling:connectors:translation:scripting:base:model:Module"
   initScriptFilePath:
     type: "string"
     description: "Bundle-level initialization Script. It runs after all Data Sources\
@@ -717,15 +835,30 @@ properties:
     type: "array"
     items:
       type: "object"
-      $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+      $ref: "schema:kubling:connectors:translation:scripting:base:model:Module"
   sqlFunctionModules:
     type: "array"
     items:
       type: "object"
-      $ref: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+      $ref: "schema:kubling:connectors:translation:scripting:base:model:Module"
+  semanticModules:
+    type: "array"
+    items:
+      type: "object"
+      id: "schema:kubling:model:vdb:SemanticModuleReference"
+      properties:
+        name:
+          type: "string"
+          description: "Instance-local name used by VDB semantic-model references."
+        uri:
+          type: "string"
+          description: "URI of the semantic module ZIP."
+        digest:
+          type: "string"
+          description: "Expected content digest, formatted as 'sha256:<hex>'."
   endpointScripts:
     type: "object"
-    id: "schema:kubling:dbvirt:model:endpoint:script:EndpointScripts"
+    id: "schema:kubling:model:endpoint:script:EndpointScripts"
     properties:
       maxContexts:
         type: "integer"
@@ -742,7 +875,7 @@ properties:
         type: "array"
         items:
           type: "object"
-          id: "schema:kubling:dbvirt:model:endpoint:script:EndpointScript"
+          id: "schema:kubling:model:endpoint:script:EndpointScript"
           properties:
             endpointVersion:
               type: "string"
@@ -788,11 +921,11 @@ actionTemplatesFunctionModule:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptingBundleInfo"
+id: "schema:kubling:connectors:translation:scripting:base:model:ScriptingBundleInfo"
 properties:
   initScript:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
+    id: "schema:kubling:connectors:translation:scripting:base:model:ScriptMetadata"
     properties:
       submodule:
         type: "string"
@@ -803,16 +936,16 @@ properties:
           \ info within the module."
   resultSetScript:
     type: "object"
-    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:connectors:translation:scripting:base:model:ScriptMetadata"
   insertScript:
     type: "object"
-    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:connectors:translation:scripting:base:model:ScriptMetadata"
   updateScript:
     type: "object"
-    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:connectors:translation:scripting:base:model:ScriptMetadata"
   deleteScript:
     type: "object"
-    $ref: "schema:kubling:dbvirt:translation:scripting:base:model:ScriptMetadata"
+    $ref: "schema:kubling:connectors:translation:scripting:base:model:ScriptMetadata"
   handlersAutoDiscoveryPath:
     type: "string"
     description: "Directory path used for automatic discovery of table handler scripts.\
@@ -822,7 +955,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:translation:scripting:base:model:ScheduledScript"
+      id: "schema:kubling:connectors:translation:scripting:base:model:ScheduledScript"
       properties:
         cron:
           type: "string"
@@ -839,7 +972,7 @@ properties:
     description: "List of variables used by the module."
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:translation:scripting:base:model:BundleContextVariable"
+      id: "schema:kubling:connectors:translation:scripting:base:model:BundleContextVariable"
       properties:
         name:
           type: "string"
@@ -897,7 +1030,7 @@ contextVariables:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:VirtualDatabase"
+id: "schema:kubling:model:vdb:VirtualDatabase"
 properties:
   name:
     type: "string"
@@ -908,12 +1041,34 @@ properties:
     description: "VDB version."
   description:
     type: "string"
+  semanticModel:
+    type: "object"
+    id: "schema:kubling:model:vdb:SemanticModelReference"
+    description: "Optional semantic model configuration. If absent, the VDB remains\
+      \ catalog-only."
+    properties:
+      module:
+        type: "string"
+        description: "Optional instance-local semantic module name. When omitted,\
+          \ the descriptor bundle is used."
+      composition:
+        type: "string"
+        description: "Path to the semantic composition document, relative to the selected\
+          \ semantic module root or, when no module is selected, to the VDB descriptor\
+          \ location in the descriptor bundle."
+      activationFailurePolicy:
+        type: "string"
+        description: "Optional application startup behavior when this VDB's semantic\
+          \ package cannot be activated."
+        enum:
+        - "isolate"
+        - "failStartup"
   dataSources:
     type: "array"
     description: "List of VDB Data Sources."
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:vdb:DataSource"
+      id: "schema:kubling:model:vdb:DataSource"
       properties:
         name:
           type: "string"
@@ -967,7 +1122,7 @@ properties:
             \ is located inside the module, path must start with 'module:'."
         schema:
           type: "object"
-          id: "schema:kubling:dbvirt:model:vdb:DataSourceSchema"
+          id: "schema:kubling:model:vdb:DataSourceSchema"
           description: "Schema configuration."
           properties:
             name:
@@ -1002,7 +1157,7 @@ properties:
                 \ dynamically."
               items:
                 type: "object"
-                id: "schema:kubling:dbvirt:translation:model:ColumnDefinition"
+                id: "schema:kubling:connectors:translation:model:ColumnDefinition"
                 properties:
                   tableNamePattern:
                     type: "string"
@@ -1036,7 +1191,7 @@ properties:
     description: "List of schema aggregators."
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:vdb:AggregatorSchemaModel"
+      id: "schema:kubling:model:vdb:AggregatorSchemaModel"
       properties:
         name:
           type: "string"
@@ -1051,7 +1206,7 @@ properties:
           description: "List of tables of the schemas to be aggregated."
           items:
             type: "object"
-            id: "schema:kubling:dbvirt:model:vdb:AggregatorSchemaTable"
+            id: "schema:kubling:model:vdb:AggregatorSchemaTable"
             properties:
               name:
                 type: "string"
@@ -1068,7 +1223,7 @@ properties:
     description: "List of RBAC data roles."
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:vdb:rbac:RBACDataRole"
+      id: "schema:kubling:model:vdb:rbac:RBACDataRole"
       properties:
         name:
           type: "string"
@@ -1091,7 +1246,7 @@ properties:
           description: "List of granted/denied permissions."
           items:
             type: "object"
-            id: "schema:kubling:dbvirt:model:vdb:rbac:RBACPermission"
+            id: "schema:kubling:model:vdb:rbac:RBACPermission"
             properties:
               resource:
                 type: "string"
@@ -1133,7 +1288,7 @@ properties:
             type: "string"
   superuserRole:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:rbac:RBACSuperuserRole"
+    id: "schema:kubling:model:vdb:rbac:RBACSuperuserRole"
     description: "Defines an optional RBAC superuser role. When the authentication\
       \ delegate returns an external role that matches any of the configured roleNameMappings,\
       \ the session is granted a data policy with full privileges on all VDB and System\
@@ -1163,7 +1318,7 @@ properties:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:sql:function:SQLFunctionBundleInfo"
+id: "schema:kubling:model:sql:function:SQLFunctionBundleInfo"
 properties:
   partitions:
     type: "integer"
@@ -1190,7 +1345,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:sql:function:SQLQueryFunctionDefinition"
+      id: "schema:kubling:model:sql:function:SQLQueryFunctionDefinition"
       properties:
         name:
           type: "string"
@@ -1228,7 +1383,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:sql:function:SQLDDLFunctionDefinition"
+      id: "schema:kubling:model:sql:function:SQLDDLFunctionDefinition"
       properties:
         name:
           type: "string"
@@ -1244,7 +1399,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      $ref: "schema:kubling:dbvirt:model:sql:function:SQLDDLFunctionDefinition"
+      $ref: "schema:kubling:model:sql:function:SQLDDLFunctionDefinition"
 ```
 
 ### Sample
@@ -1281,7 +1436,7 @@ queryFunctions:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:template:function:TemplateFunctionDefinition"
+id: "schema:kubling:model:template:function:TemplateFunctionDefinition"
 properties:
   name:
     type: "string"
@@ -1345,7 +1500,7 @@ functions:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:query:QueryEndpointBase"
+id: "schema:kubling:model:query:QueryEndpointBase"
 properties:
   type:
     type: "string"
@@ -1390,7 +1545,7 @@ query: |
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:action:Action"
+id: "schema:kubling:model:action:Action"
 properties:
   asserters:
     type: "array"
@@ -1398,7 +1553,7 @@ properties:
       \ for testing template variables values."
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:action:BeforeCheck"
+      id: "schema:kubling:model:action:BeforeCheck"
       properties:
         name:
           type: "string"
@@ -1413,7 +1568,7 @@ properties:
     description: "Verifications performed before the actual operation chain."
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:action:BeforeOperation"
+      id: "schema:kubling:model:action:BeforeOperation"
       properties:
         name:
           type: "string"
@@ -1428,7 +1583,7 @@ properties:
           description: "List of query filters."
           items:
             type: "object"
-            id: "schema:kubling:dbvirt:translation:scripting:base:member:filter:FilterValue"
+            id: "schema:kubling:connectors:translation:scripting:base:member:filter:FilterValue"
             properties:
               field:
                 type: "string"
@@ -1442,7 +1597,7 @@ properties:
                 description: "Value used by the comparison operation."
               operation:
                 type: "object"
-                id: "schema:kubling:dbvirt:translation:scripting:base:member:proxy:EnumObject<com:kubling:dbvirt:translation:scripting:base:member:filter:FilterValue:Operation>"
+                id: "schema:kubling:connectors:translation:scripting:base:member:proxy:EnumObject<com:kubling:connectors:translation:scripting:base:member:filter:FilterValue:Operation>"
                 properties:
                   value:
                     type: "string"
@@ -1467,7 +1622,7 @@ properties:
     description: "The list of operations."
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:model:action:Operation"
+      id: "schema:kubling:model:action:Operation"
       properties:
         name:
           type: "string"
@@ -1490,13 +1645,13 @@ properties:
           description: "Filter used in case of the operation is an UPDATE or DELETE."
           items:
             type: "object"
-            $ref: "schema:kubling:dbvirt:translation:scripting:base:member:filter:FilterValue"
+            $ref: "schema:kubling:connectors:translation:scripting:base:member:filter:FilterValue"
         valueAssignments:
           type: "array"
           description: "List of value assignments."
           items:
             type: "object"
-            id: "schema:kubling:dbvirt:model:action:OperationValueAssignment"
+            id: "schema:kubling:model:action:OperationValueAssignment"
             properties:
               field:
                 type: "string"
@@ -1523,7 +1678,7 @@ properties:
                 - "base62"
         rollback:
           type: "object"
-          id: "schema:kubling:dbvirt:model:action:OperationRollback"
+          id: "schema:kubling:model:action:OperationRollback"
           description: "A sub-operation to be triggered in case of failure, in those\
             \ situations in which rollback is not automatic."
           properties:
@@ -1537,7 +1692,7 @@ properties:
               type: "array"
               items:
                 type: "object"
-                id: "schema:kubling:dbvirt:model:FilterValue"
+                id: "schema:kubling:model:FilterValue"
                 properties:
                   field:
                     type: "string"
@@ -1565,10 +1720,10 @@ properties:
               type: "array"
               items:
                 type: "object"
-                $ref: "schema:kubling:dbvirt:model:action:OperationValueAssignment"
+                $ref: "schema:kubling:model:action:OperationValueAssignment"
         waitUntilEffective:
           type: "object"
-          id: "schema:kubling:dbvirt:model:action:WaitUntilEffective"
+          id: "schema:kubling:model:action:WaitUntilEffective"
           description: "A wait loop that verifies a condition. Useful when operation\
             \ chain continuity depends on a value fetched from a data source."
           properties:
@@ -1580,7 +1735,7 @@ properties:
               description: "Seconds to wait before next iteration."
             byGetting:
               type: "object"
-              id: "schema:kubling:dbvirt:model:action:ByGetting"
+              id: "schema:kubling:model:action:ByGetting"
               properties:
                 fields:
                   type: "array"
@@ -1610,7 +1765,7 @@ properties:
             \ when its value is true."
   needed:
     type: "object"
-    id: "schema:kubling:dbvirt:model:action:BeforeNeeded"
+    id: "schema:kubling:model:action:BeforeNeeded"
     properties:
       fields:
         type: "array"
@@ -1762,7 +1917,7 @@ Applies to the following Data Source types:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:BaseDatabaseSourceConfig"
+id: "schema:kubling:model:vdb:sources:BaseDatabaseSourceConfig"
 properties:
   dataSourceName:
     type: "string"
@@ -1802,7 +1957,7 @@ properties:
       \ connection is created.Default: 14400000ms (4 hours)"
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -1820,7 +1975,7 @@ properties:
       \ condition clause of the operation, otherwise the operations are pushed as-is."
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
     properties:
       enabled:
         type: "boolean"
@@ -1841,7 +1996,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. Defaults\
           \ to disabled."
         properties:
@@ -1884,7 +2039,7 @@ Applies to the following Data Source types:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:script:ScriptingSourceConfig"
+id: "schema:kubling:model:vdb:sources:script:ScriptingSourceConfig"
 properties:
   contextVariables:
     type: "object"
@@ -1899,7 +2054,7 @@ properties:
       type: "string"
   module:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+    id: "schema:kubling:connectors:translation:scripting:base:model:Module"
     properties:
       name:
         type: "string"
@@ -1908,7 +2063,7 @@ properties:
         description: "URI of the module bundle."
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -1922,7 +2077,7 @@ properties:
     type: "boolean"
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsMvccSupportConfig"
     properties:
       enabled:
         type: "boolean"
@@ -1943,7 +2098,131 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
+  contributesToHealth:
+    type: "boolean"
+    description: "Indicates whether this data source contributes to the engine's overall\
+      \ health status. When set to true, if this data source is not healthy, the engine\
+      \ will be marked as unhealthy. Otherwise, the health status of this data source\
+      \ is ignored in the overall assessment."
+```
+
+## Provider gRPC Data Source Configuration
+Applies to the following Data Source types:
+
+- `PROVIDER_GRPC`
+
+```yaml
+---
+type: "object"
+id: "schema:kubling:model:vdb:sources:provider:grpc:ProviderGrpcSourceConfig"
+properties:
+  address:
+    type: "string"
+  port:
+    type: "integer"
+  timeoutMillis:
+    type: "integer"
+    description: "Maximum duration in milliseconds of a gRPC provider RPC. Must be\
+      \ greater than zero."
+  maxArrayDimensions:
+    type: "integer"
+    description: "Maximum ARRAY nesting depth accepted from this provider. Must be\
+      \ greater than zero."
+  maxLobChunkBytes:
+    type: "integer"
+    description: "Maximum bytes accepted in one provider LOB chunk. Must be greater\
+      \ than zero."
+  maxLobBytes:
+    type: "integer"
+    description: "Maximum bytes accepted for one provider LOB value. Must be greater\
+      \ than zero."
+  securityConfig:
+    type: "object"
+    id: "schema:kubling:model:vdb:sources:provider:grpc:ProviderGrpcSecurityConfig"
+    properties:
+      mode:
+        type: "string"
+        description: "Transport security mode:\n\n- `PLAINTEXT`: No transport encryption.\n\
+          - `TLS`: The provider authenticates itself to Kubling.\n- `MTLS`: The provider\
+          \ and Kubling authenticate each other.\n"
+        enum:
+        - "PLAINTEXT"
+        - "TLS"
+        - "MTLS"
+      serverName:
+        type: "string"
+        description: "Expected DNS name from the provider certificate.\n\nWhen omitted,\
+          \ the configured provider address is used.\n"
+      trustedCaCertificatesFilePath:
+        type: "string"
+        description: "Path to a PEM file containing the trusted CA certificates used\n\
+          to validate the provider certificate.\n\nWhen omitted, the system trust\
+          \ store is used.\n"
+      clientCertificateChainFilePath:
+        type: "string"
+        description: "Path to a PEM file containing the client certificate chain\n\
+          presented by Kubling.\n\nRequired when the security mode is `MTLS`.\n"
+      clientPrivateKeyFilePath:
+        type: "string"
+        description: "Path to the PEM private key associated with the client certificate.\n\
+          \nRequired when the security mode is `MTLS`.\n"
+      clientPrivateKeyPassword:
+        type: "string"
+        description: "Password used to decrypt the client private key, when encrypted.\n"
+  cache:
+    type: "object"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Specifies whether the cache is enabled for this Data Source.\
+          \ Default is false."
+      ttlSeconds:
+        type: "integer"
+        description: "The time-to-live (TTL) for cache entries, in seconds. Default\
+          \ is 43,200 seconds (12 hours)."
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. When\
           \ enabled, Kubling maintains per-transaction visibility using an internal\
           \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
@@ -1977,7 +2256,7 @@ Applies to the following Data Source types:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:PortableLocalSourceConfig"
+id: "schema:kubling:model:vdb:sources:PortableLocalSourceConfig"
 properties:
   dataSourceName:
     type: "string"
@@ -2017,7 +2296,7 @@ properties:
       \ connection is created.Default: 14400000ms (4 hours)"
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -2035,7 +2314,7 @@ properties:
       \ condition clause of the operation, otherwise the operations are pushed as-is."
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
     properties:
       enabled:
         type: "boolean"
@@ -2056,7 +2335,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. Defaults\
           \ to disabled."
         properties:
@@ -2115,14 +2394,14 @@ Applies to the following Data Source types:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:CompositeSourceConfig"
+id: "schema:kubling:model:vdb:sources:CompositeSourceConfig"
 properties:
   dataSourceName:
     type: "string"
     description: "Internal Engine data source name."
   connectionPool:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    id: "schema:kubling:model:vdb:sources:ConnectionPool"
     properties:
       partitions:
         type: "integer"
@@ -2147,7 +2426,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:translation:model:routing:ImportElement"
+      id: "schema:kubling:connectors:translation:model:routing:ImportElement"
       properties:
         dataSource:
           type: "string"
@@ -2155,7 +2434,7 @@ properties:
           type: "string"
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
     properties:
       enabled:
         type: "boolean"
@@ -2176,7 +2455,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. Defaults\
           \ to disabled."
         properties:
@@ -2201,7 +2480,7 @@ Applies to the following Data Source types:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:SnmpSourceConfig"
+id: "schema:kubling:model:vdb:sources:SnmpSourceConfig"
 properties:
   version:
     type: "string"
@@ -2234,7 +2513,7 @@ properties:
     type: "integer"
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsMvccSupportConfig"
     properties:
       enabled:
         type: "boolean"
@@ -2255,7 +2534,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. When\
           \ enabled, Kubling maintains per-transaction visibility using an internal\
           \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
@@ -2275,7 +2554,7 @@ properties:
               \ temporary directory."
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -2300,7 +2579,7 @@ properties:
       \ and respond reliably on the target device."
   connectionPool:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:ConnectionPool"
+    id: "schema:kubling:model:vdb:sources:ConnectionPool"
     properties:
       partitions:
         type: "integer"
@@ -2329,7 +2608,7 @@ properties:
       \ For details, see: https://github.com/kubling-community/gosmi-json-exporter"
   v3Config:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SnmpV3Config"
+    id: "schema:kubling:model:vdb:sources:SnmpV3Config"
     properties:
       username:
         type: "string"
@@ -2397,7 +2676,7 @@ Applies to the following Data Source types:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:ModbusSourceConfig"
+id: "schema:kubling:model:vdb:sources:ModbusSourceConfig"
 properties:
   address:
     type: "string"
@@ -2421,7 +2700,7 @@ properties:
     - "LITTLE_ENDIAN"
   tlsConfig:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:ModbusTLSConfig"
+    id: "schema:kubling:model:vdb:sources:ModbusTLSConfig"
     properties:
       certificates:
         type: "string"
@@ -2443,7 +2722,7 @@ properties:
           \ This is used only if 'privateKey' is not provided."
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsMvccSupportConfig"
     properties:
       enabled:
         type: "boolean"
@@ -2464,7 +2743,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. When\
           \ enabled, Kubling maintains per-transaction visibility using an internal\
           \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
@@ -2492,7 +2771,7 @@ properties:
     type: "integer"
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -2512,7 +2791,7 @@ Applies to the following Data Source types:
 ```yaml
 ---
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:SimpleRoutingSourceConfig"
+id: "schema:kubling:model:vdb:sources:SimpleRoutingSourceConfig"
 properties:
   strict:
     type: "boolean"
@@ -2547,7 +2826,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:translation:model:routing:ImportElement"
+      id: "schema:kubling:connectors:translation:model:routing:ImportElement"
       properties:
         dataSource:
           type: "string"
@@ -2557,7 +2836,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:translation:model:routing:SimpleRoutingRule"
+      id: "schema:kubling:connectors:translation:model:routing:SimpleRoutingRule"
       properties:
         tableNamePattern:
           type: "string"

@@ -1,0 +1,109 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Semantic federation <Tag description={"v26.5+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+Semantic federation adds a versioned domain model to a Virtual Database (VDB).
+Semantic documents map entities, identities and relationships to Kubling's
+logical catalog without replacing the source systems or the federated SQL
+engine. Kubling validates those bindings and compiles one immutable semantic
+package for each VDB version.
+
+<Callout type="warning">
+  Semantic federation is Preview and is not considered production-ready. Its
+  initial purpose is to let Kubling exchange a structured, VDB-scoped
+  description of data with capability runtimes. Those runtimes and their
+  interaction with Kubling are still under active development and evaluation,
+  so semantic documents, composition rules and package contracts may change as
+  those requirements mature. Limit usage to evaluation, pin every semantic
+  artifact and review compatibility notes before upgrading.
+</Callout>
+
+## Responsibility model
+
+The relational catalog defines executable structure. The semantic model adds
+domain identity and relationships explicitly; Kubling never infers that
+meaning from matching names or physical keys.
+
+Kubling separates those responsibilities:
+
+| Layer | Responsibility |
+| --- | --- |
+| Provider or source | Physical access, source-native behavior and optional source-local semantics. |
+| Kubling catalog | Logical relations, fields, types, keys and executable operations. |
+| Semantic fragment | Explicit entities, properties, identities and relationships for one domain. |
+| VDB composition | Organizational alignment, binding scopes and cross-domain relationships. |
+| Activation | Deterministic resolution, validation and an immutable executable package. |
+
+This keeps physical access replaceable and organizational meaning reviewable.
+A provider can change how it reaches a source without becoming the owner of
+cross-company definitions.
+
+## Activation
+
+During engine bootstrap, Kubling resolves configured Modules and optional
+provider fragments, applies the VDB composition, validates every binding
+against the deployed catalog and compiles the result. Studio, Logical Query and
+agent capabilities consume only the active VDB-scoped package.
+
+Kubling does not poll Modules or provider fragments for changes. Deploy a new
+Module reference or provider release and restart the engine to activate a new
+model.
+
+## Caller-scoped semantic context
+
+When a capability runtime uses the semantic package, it does not receive a
+deployment-wide view. Kubling authenticates the Task API request and derives
+the catalog, functions and semantic entries visible to that caller. This
+caller-authorized context, not the caller's credential or identity, is included
+in the task exchange.
+
+The runtime can use that context to propose a Logical Query. Kubling resolves,
+validates and executes the query as the captured initiating caller, so the
+VDB's policies remain authoritative. The runtime receives only the resulting
+bounded observation. It never receives the caller's credential, source
+credentials or a reusable database session.
+
+<Callout type="info">
+  Authentication is preserved across the capability loop. Credentials
+  configured for the Kubling-to-runtime connection authenticate that channel
+  only and cannot widen the initiating caller's access.
+</Callout>
+
+See the [agent security boundary](/agent/security) for supported identity
+patterns and deployment guidance.
+
+## The important boundaries
+
+- Semantics bind to Kubling logical `schema.table` relations, regardless of
+  whether they come from a provider, JDBC source, view, route or composition.
+- Physical primary and foreign keys can validate an executable binding. They
+  never create semantic identity, equivalence or relationships on their own.
+- Partial coverage is valid. A VDB can be catalog-only, semantic for one source,
+  or composed across several domains.
+- Semantic metadata is not an authorization layer. Kubling derives the
+  caller-visible semantic context and enforces the VDB's data policies again
+  when an operation executes.
+- Semantic composition does not imply that all source data is copied into one
+  store. Normal federated execution may still move bounded intermediate data or
+  use explicitly configured caches.
+
+## Key terms
+
+| Term | Meaning |
+| --- | --- |
+| Fragment | A versioned document describing entities, properties, identities and relationships in a bounded domain. |
+| Alignment | Explicit cross-domain concepts, identity bridges and relationships. |
+| Composition | The VDB-scoped document that selects imports, overlays, scopes and exports. |
+| Binding scope | A deployment-specific mapping from one semantic definition to logical catalog relations. |
+| Semantic Module | A digest-pinned Kubling Module used to distribute a manifest and its semantic documents. |
+| Semantic package | The compiled, source-attributed model activated for one VDB name and version. |
+| Logical Query | A versioned structured query that Kubling resolves and compiles against the pinned catalog and semantic package. |
+
+## Continue
+
+- [Model entities, relationships and scopes](/semantics/modeling).
+- [Build and configure semantic Modules](/semantics/modules).
+- [Build structured queries with Logical Query v1](/semantics/logical-query).
+- [Inspect activation state and diagnostics](/semantics/operations).
+- [Understand provider-owned fragments](/providers/semantics).

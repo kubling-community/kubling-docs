@@ -4,160 +4,293 @@ import Tag from '../../../component/Tag'
 # Protocol reference <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
 
 The public client protocol is defined with Protocol Buffers in the
-[`kubling-grpc`](https://github.com/kubling-community/kubling-grpc) repository.
-The `.proto` files are the source of truth for generated clients in any
-language supported by gRPC.
+[*kubling-grpc* repository](https://github.com/kubling-community/kubling-grpc).
+The protobuf package is `kubling.v1`. The server reports its effective protocol
+and session-bound capabilities through `GetServerInfo`.
 
 <Callout type="warning">
-  This is the client protocol exposed by the Kubling Engine. Provider
-  implementations use a separate contract from the
-  [`kubling-providers`](https://github.com/kubling-community/kubling-providers)
-  repository.
+  Client gRPC is the application interface exposed by the Kubling Engine.
+  Provider gRPC is a separate contract used between Kubling and a physical
+  source integration. Do not mix their protobuf packages or lifecycle rules.
 </Callout>
 
 ## Contract files
 
 | File | Purpose |
 | --- | --- |
-| `proto/kubling/v1/command.proto` | Sessions, SQL execution, streamed queries, transactions and server information. |
-| `proto/kubling/v1/value.proto` | Portable representations of Kubling logical values. |
+| `command.proto` | Sessions, SQL execution, ordered result events, transactions and server information. |
+| `value.proto` | Logical values, declared types, arrays, spatial values and LOB references. |
+| `capability.proto` | Authenticated capabilities, protocol limits, directional type support and affinity. |
+| `transaction.proto` | Transaction state, outcome and affinity enums. |
+| `lob.proto` | Bounded LOB upload, download and release operations. |
+| `error.proto` | Stable structured application errors and retryability. |
 
-The package is `kubling.v1`. Pin a released contract or SDK tag when generating
-application code; do not generate production clients from a moving branch.
+Generate application clients from a released `proto/v*` tag or use an SDK
+built from one. A branch head is not a compatibility boundary.
 
 ## Services
 
 ### `SessionService`
 
-| RPC | Request | Result |
-| --- | --- | --- |
-| `Login` | VDB name and version, credentials, application name and optional properties. | Session identity, expiration and expiring token. |
-| `Logout` | Expiring token. | Whether the logical session was closed. |
-| `Ping` | Empty request. | Whether the transport is reachable. |
-| `PingSession` | Expiring token and optional session ID. | Whether the session remains valid. |
+| RPC | Result |
+| --- | --- |
+| `Login` | An expiring token, session identity, VDB identity, timezone and affinity. |
+| `Logout` | Closes the logical session represented by the token. |
+| `Ping` | Confirms that the transport is reachable. |
+| `PingSession` | Confirms that a token and optional session ID remain valid. |
 
 ### `QueryService`
 
 | RPC | Behavior |
 | --- | --- |
-| `Query` | Runs SQL and returns a server stream of `QueryBatch` messages. |
-| `Exec` | Runs a data-changing statement and returns affected rows, update counts and optional generated keys. |
-| `BeginTransaction` | Starts a transaction in the token's logical session. |
-| `CommitTransaction` | Commits the session's active transaction. |
-| `RollbackTransaction` | Rolls back the session's active transaction. |
-| `IsInTransaction` | Reports whether that session currently owns an active transaction. |
-| `GetServerInfo` | Returns the Engine version and advertised optional features. |
+| `Execute` | Executes SQL once and streams its actual result kind. |
+| `Query` | Legacy server-streaming query API. |
+| `Exec` | Legacy unary update API. |
+| `BeginTransaction` | Starts or obtains the session transaction and returns its opaque ID when supported. |
+| `CommitTransaction` | Commits the active transaction, optionally asserting its ID. |
+| `RollbackTransaction` | Rolls back the active transaction, optionally asserting its ID. |
+| `IsInTransaction` | Reports whether the session currently has an active transaction. |
+| `GetTransactionStatus` | Returns an authoritative retained observation for one transaction ID when supported. |
+| `GetServerInfo` | Returns product information and authenticated, session-bound capabilities. |
 
-The expiring token is an explicit protobuf field in authenticated requests; it
-is not transported as an HTTP authorization header or implicit gRPC metadata.
+### `LobService` <Tag description={"v26.5+"} />
 
-## Query results
+| RPC | Behavior |
+| --- | --- |
+| `ReadLob` | Streams bounded chunks from an issued BLOB or CLOB reference. |
+| `WriteLob` | Uploads one immutable LOB and returns a reference. |
+| `ReleaseLob` | Releases a reference before its normal expiry. |
 
-`Query` is server-streaming. Each `QueryBatch` contains:
+The expiring token is an explicit protobuf field. It is not an HTTP
+authorization header or implicit gRPC metadata value.
 
-- column metadata, normally populated in the first batch.
-- zero or more rows whose values follow the positional column order.
+## Negotiate before execution <Tag description={"v26.5+"} />
 
-The request can suggest `batch_size`, but the Engine may adjust or ignore it.
-Clients must consume the stream until end-of-stream and must not assume that a
-result fits in one batch.
+New clients should negotiate after `Login`:
+
+1. call `GetServerInfo` with the expiring token
+2. inspect `features`, directional `supported_types`, limits and affinity
+3. retain the opaque `capability_id` from that response
+4. send that ID with every `Execute` and LOB request
+5. list only output features the client can decode in `accepted_features`
+
+Capabilities are effective for the authenticated session, selected VDB and
+serving node. Kubling rejects a stale or mismatched `capability_id` before
+executing SQL. Calling `GetServerInfo` without a token preserves legacy product
+information, but it does not provide authenticated capability guarantees.
+
+Zero in a protocol limit means unknown, not unlimited. A client may impose a
+smaller local bound.
+
+### Feature registry
+
+| Feature | Contract |
+| --- | --- |
+| `generic_execute_v1` | Ordered `Execute` events with a checked capability snapshot. |
+| `typed_parameters_v1` | Explicit parameter types, including typed `NULL`. |
+| `structured_errors_v1` | `KublingError` details in the final gRPC status. |
+| `transaction_ids_v1` | Opaque transaction IDs and stale-ID protection. |
+| `transaction_status_v1` | Retained authoritative transaction observations. |
+| `array_values_v1` | Typed homogeneous arrays with bounded nesting. |
+| `spatial_values_v1` | WKB geometry and geography with optional SRID or CRS. |
+| `lob_read_v1` | LOB references, bounded reads and explicit release. |
+| `lob_write_v1` | Immutable LOB upload and references as input parameters. |
+| `multiple_results_v1` | More than one primary result in execution order. |
+| `generated_keys_v1` | Associated, separately streamed generated-key results. |
+
+Feature activation is explicit. Do not infer LOB support from BLOB output,
+array support from JSON, or transaction status retention from transaction IDs.
+
+## `Execute` event stream <Tag description={"v26.5+"} />
+
+`Execute` replaces statement-kind probing. Submit the SQL once and consume the
+events in order.
+
+| Event | Meaning |
+| --- | --- |
+| `ResultSetStart` | Starts a query or generated-key result and carries its schema. |
+| `ResultRows` | Carries zero or more positional rows for that result ID. |
+| `ResultSetEnd` | Closes the result and reports its total row count. |
+| `UpdateResult` | Reports one update result with known or explicitly unknown counts. |
+| `ExecutionEnd` | Closes the successful execution and reports result count and transaction state. |
+
+A result set follows this grammar:
+
+```text
+ResultSetStart -> ResultRows* -> ResultSetEnd
+```
+
+A zero-row result still emits `ResultSetStart` and `ResultSetEnd`. Result IDs
+are consecutive from one and include query, update and generated-key results.
+Generated keys use their own result ID and identify the parent update.
+
+Successful completion requires both:
+
+- exactly one `ExecutionEnd` after every result
+- final gRPC status `OK`
+
+Rows are not proof of success. A constraint, transport or engine failure may
+arrive after rows have already been delivered. That stream ends with a non-OK
+status and no `ExecutionEnd`, so the consumer must discard any assumption of
+successful completion.
+
+<Callout type="warning">
+  Never recover from a result-shape error by replaying the same SQL through
+  `Query` or `Exec`. The first call may already have changed remote state.
+</Callout>
 
 ## Consume the result stream directly
 
-The Go SDK includes generated clients alongside its high-level helpers. This
-example uses the authenticated SDK channel but consumes batches incrementally:
+The Go SDK exposes the generated service through `cli.QueryService()`. A
+minimal scalar execution first obtains the authenticated capability ID:
 
 ```go copy
-import (
-	"context"
-	"errors"
-	"io"
-	"time"
-
-	kublingv1 "github.com/kubling-community/kubling-grpc/sdk-go/kubling/v1"
-)
-
-ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-defer cancel()
-
-stream, err := cli.QueryService().Query(ctx, &kublingv1.QueryRequest{
+info, err := cli.QueryService().GetServerInfo(ctx, &kublingv1.GetServerInfoRequest{
 	ExpiringToken: cli.Token(),
-	Sql:            "SELECT id, name FROM provider.PROJECT ORDER BY id",
-	BatchSize:      500,
 })
 if err != nil {
 	return err
 }
 
+stream, err := cli.QueryService().Execute(ctx, &kublingv1.ExecuteRequest{
+	ExpiringToken: cli.Token(),
+	Sql:            "SELECT id, name FROM provider.PROJECT ORDER BY id",
+	CapabilityId:   info.GetCapabilities().GetCapabilityId(),
+})
+if err != nil {
+	return err
+}
+
+sawExecutionEnd := false
 for {
-	batch, err := stream.Recv()
+	event, err := stream.Recv()
 	if errors.Is(err, io.EOF) {
+		if !sawExecutionEnd {
+			return errors.New("Kubling stream ended without ExecutionEnd")
+		}
 		break
 	}
 	if err != nil {
 		return err
 	}
 
-	// Decode batch.GetColumns() and batch.GetRows() before receiving the next batch.
-	_ = batch
+	// Handle each event in order and enforce matching result IDs.
+	if event.GetExecutionEnd() != nil {
+		sawExecutionEnd = true
+	}
 }
 ```
 
-Use a deadline appropriate for the workload and cancel the context when the
-consumer no longer needs the stream.
+Add an optional feature to `AcceptedFeatures` only after checking that the
+server advertises it and the client can process the corresponding output.
 
-## Values
+## Legacy `Query` and `Exec`
 
-`Value` uses a protobuf `oneof`, preserving Kubling's logical type instead of
-coercing every result to text.
+`Query` and `Exec` remain available for compatibility. `Query` streams
+`QueryBatch` messages whose columns normally appear in the first batch.
+`Exec` returns affected rows, per-command counts and optional generated keys.
+
+Legacy RPCs never emit the new array, spatial-with-CRS or LOB-reference
+variants. New clients should use `Execute` rather than guessing the statement
+kind or losing negotiated representations.
+
+## Values and parameters <Tag description={"v26.5+"} />
+
+`Value` uses a protobuf `oneof` so logical types do not collapse into text.
 
 | Logical family | Wire representation |
 | --- | --- |
-| Strings, character, JSON and XML | `string` |
-| Boolean | `bool` |
-| Byte, short and integer | `int32` with logical range validation |
-| Long | `int64` |
-| Float and double | protobuf floating-point primitives |
-| Big integer and big decimal | Decimal text to preserve precision |
-| Date, time and timestamp | ISO-formatted text |
-| Binary, BLOB, geometry and geography | `bytes` or a byte wrapper |
-| CLOB | String wrapper |
-| SQL `NULL` | Explicit `NullValue` variant |
+| String, character, JSON and XML | UTF-8 text variants. |
+| Boolean and fixed-width numeric values | Matching protobuf scalar with logical range validation. |
+| Big integer and decimal | Canonical decimal text to preserve precision. |
+| Date, time and timestamp | ISO local text. A timestamp is not implicitly converted to UTC. |
+| Binary, BLOB and CLOB | Inline wrapper or a negotiated LOB reference. |
+| Geometry and geography | Plain WKB, optionally with explicit SRID or CRS. |
+| Array | Element descriptor plus homogeneous values, including nested arrays. |
+| SQL `NULL` | Explicit `NullValue`, optionally paired with a declared type. |
 
-Rows are positional, so clients must use the column metadata to associate each
-value with its name and logical data type.
+Rows are positional. Associate every value with the schema in
+`ResultSetStart` and validate its declared logical type.
 
-## Parameters and generated keys
+A `Parameter` carries a value and may carry `declared_type`. Presence of that
+descriptor activates `typed_parameters_v1` and distinguishes a typed null from
+legacy inferred null. Array descriptors are recursive, and non-null elements
+must match the declared element type.
 
-Both `QueryRequest` and `ExecRequest` accept positional `Parameter` values.
-Encode each parameter with the same `Value` model used for results and preserve
-SQL placeholder order.
+Missing spatial metadata means unknown, not EPSG:4326. The protocol never
+implies coordinate transformation.
 
-Set `returnGeneratedKeys` on `ExecRequest` when generated keys are required.
-When present, `ExecResponse.generated_keys` is a `QueryBatch` and should be
-decoded using the same column and row rules as query results.
+## Transactions <Tag description={"v26.5+"} />
 
-## Errors and compatibility
+Transactions belong to the logical session, not the network channel. When
+`transaction_ids_v1` is advertised, `BeginTransaction` returns an opaque ID
+that can be asserted in SQL, commit and rollback requests. A stale ID must fail
+before Kubling acts on a different active transaction.
 
-Transport, authentication and execution failures are returned as standard gRPC
-errors. Clients should inspect the gRPC status code, keep the server message for
-diagnostics and avoid retrying mutations unless application semantics make the
-retry safe.
+`GetTransactionStatus` is available only with `transaction_status_v1`. Its
+retention bound comes from the authenticated capability snapshot. `UNKNOWN`
+means that Kubling cannot establish the historical outcome; it does not mean
+rolled back. Likewise, `IsInTransaction.active = false` proves only that no
+transaction is currently active.
 
-The contract is currently Preview. Treat protobuf field numbers and released
-package versions as compatibility boundaries, regenerate clients only after
-reviewing the target release, and use `GetServerInfo` when behavior depends on
-an optional Engine feature.
+Observe the advertised affinity. Losing the owning node can make a session,
+transaction observation or LOB reference unavailable even while another
+Kubling node is healthy.
+
+## LOB lifecycle <Tag description={"v26.5+"} />
+
+An accepted `lob_read_v1` result may contain an immutable, session-scoped
+`LobReference` rather than inline data. Read it in chunks no larger than the
+negotiated limit, then call `ReleaseLob` when finished.
+
+`lob_write_v1` uploads a BLOB or UTF-8 CLOB before execution and returns a
+reference that can be used as a parameter. CLOB sizes and offsets are UTF-8
+byte counts, not character counts.
+
+References remain valid until their declared expiry, explicit release, session
+closure or node loss. They are opaque identifiers, not bearer credentials, and
+must be used with the same session and capability context.
+
+## Catalog reflection <Tag description={"v26.5+"} />
+
+The client contract does not define a separate catalog RPC. Query `SYS` and
+`SYSADMIN` views through `Execute`, including `SYS.Tables`, `SYS.Columns`,
+`SYS.KeyColumns`, `SYS.ReferenceKeyColumns` and `SYSADMIN.Views`.
+
+This keeps schema discovery in the same authenticated SQL model as ordinary
+data access.
+
+## Errors, cancellation and deadlines <Tag description={"v26.5+"} />
+
+Application failures use standard gRPC status codes. With
+`structured_errors_v1`, `google.rpc.Status.details` may contain one
+`KublingError` with a stable code, optional SQLSTATE, category, retryability,
+transaction observation and whether SQL is known to have started.
+
+When `KublingError.code` contains a Kubling error identifier, it uses the
+`KBLnnnnn` format. Domain-specific families such as `LQ_*` retain their own
+namespaces. See the [26.5 naming
+migration](/naming-migration#error-identifier-migration).
+
+The human-readable gRPC message is diagnostic. Missing structured detail never
+implies that a retry is safe. In particular, do not retry a mutation unless
+the structured contract and application semantics both allow it.
+
+Cancelling a client context or reaching its deadline releases execution
+resources and leaves the logical session usable. A cancelled or failed stream
+does not emit `ExecutionEnd`. Cancellation can race with remote work, so it is
+not proof that a transaction or mutation had no effect.
 
 ## Generate clients
 
-The protocol repository uses Buf and contains the generation configuration and
-scripts maintained with the contract. From a pinned checkout, run:
+The contract repository uses Buf and keeps generation configuration beside the
+protobuf sources. From a pinned released checkout:
 
 ```shell copy
 ./scripts/generate.sh
 ```
 
-Generated code is a transport-level client. Applications remain responsible
-for channel credentials, deadlines, session lifecycle, token protection,
-stream consumption and transaction coordination.
+Generated code provides the transport contract. Applications remain
+responsible for trusted channel credentials, deadlines, token protection,
+capability renewal, ordered event validation, transaction coordination and LOB
+release.
