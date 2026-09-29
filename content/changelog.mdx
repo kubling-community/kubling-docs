@@ -1,5 +1,16 @@
 # Product changelog
 
+## v26.5.1
+
+- Fixed provider-backed `UPDATE` and `DELETE` statements for tables whose
+  logical primary key is generated from provider fields. Kubling now resolves
+  the provider-visible identity before issuing the mutation and rejects the
+  statement without writing when the provider cannot represent the complete
+  row filter in one request.
+- Fixed `schema.addColumns` for providers that return Kubling DDL, so
+  configured constant and generated columns are applied consistently whether
+  schema discovery returns structured metadata or DDL.
+
 ## v26.5
 
 - Introduced Preview [semantic federation](/semantics), allowing each VDB to
