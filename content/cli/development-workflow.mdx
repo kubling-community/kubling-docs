@@ -1,0 +1,101 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Development workflow <Tag description={"KDV v26.3+"} />
+
+Run project commands with the generated `./kdv` launcher from the project root. Unless specified otherwise, KDV uses the manifest's default environment and the `dev` instance.
+
+## Validate and build
+
+```bash
+./kdv project validate
+./kdv project build
+```
+
+`project validate` checks the manifest schema, selected environment, referenced project inputs and the presence of the Compose file. It does not parse JavaScript sources, validate the Compose model, pull images or start services.
+
+`project build` performs the deeper project build, including JavaScript validation and Module assembly. Build output is written to a unique directory under `.kdv/builds/`.
+
+`project up` runs validation and build automatically. Running them explicitly is useful as a fast local check and as a separate CI step.
+
+## Start or update a persistent instance
+
+```bash
+./kdv project up
+```
+
+KDV validates and builds the project, starts its Compose services, waits for Kubling to become healthy, and reports the available Studio, API and transport endpoints. If Kubling exits during startup, the command includes recent runtime logs in the failure report.
+
+Run `project up` again after changing runtime configuration, descriptors or Modules. KDV recreates the Kubling service while preserving compatible provider services and their volumes.
+
+<Callout type="warning">
+  `management.enableRestartEndpoint` must remain disabled in a KDV-managed
+  project. Enabled native, gRPC and PostgreSQL transports must listen on
+  `0.0.0.0` and use distinct ports that match the Compose configuration.
+</Callout>
+
+## Inspect a running instance
+
+```bash
+./kdv project status
+./kdv project logs
+./kdv project list
+```
+
+| Command | Result |
+| --- | --- |
+| `project status` | Connection and runtime details for one instance; fails if it is missing or stopped |
+| `project logs` | The latest 200 lines from all containers owned by one instance |
+| `project list` | All local KDV instances, without requiring a project manifest |
+| `project up --format json` | Machine-readable startup and connection details for automation |
+
+## Work with multiple environments or instances
+
+Use `--environment` to select a manifest environment and `--instance` to keep independent local runtimes:
+
+```bash
+./kdv project up --environment production --instance review
+./kdv project status --instance review
+./kdv project down --instance review
+```
+
+KDV derives project identity from the manifest path, so projects with the same display name in different directories do not collide. It also locks state-changing operations to prevent concurrent commands from modifying the same instance.
+
+## Stop and remove an instance
+
+```bash
+./kdv project down
+```
+
+<Callout type="warning">
+  `project down` removes the instance's containers, project-built images and
+  managed volumes. Data stored only in those volumes is deleted.
+</Callout>
+
+The command is idempotent when the instance does not exist. Project sources and generated reports remain available after teardown.
+
+## Make shortcuts
+
+Generated projects include a `Makefile` for common tasks:
+
+| Target | Purpose |
+| --- | --- |
+| `make requirements` | Check required local tools |
+| `make validate` | Validate the selected project environment |
+| `make build` | Build the project inputs |
+| `make test` | Run the default project tests |
+| `make up` | Start or update the persistent instance |
+| `make reload` | Rebuild and recreate Kubling |
+| `make status` | Inspect the current instance |
+| `make logs` | Read instance logs |
+| `make integration` | Run the integration suite |
+| `make ci` | Run the generated CI workflow |
+| `make down` | Stop and remove the current instance |
+
+Set `INSTANCE`, `ENVIRONMENT` or `KDV` when a shortcut must use non-default values:
+
+```bash
+make up INSTANCE=review ENVIRONMENT=production
+```
+
+The Make targets delegate to KDV. Use the corresponding `./kdv project ...` commands directly when you need additional CLI options or structured output.

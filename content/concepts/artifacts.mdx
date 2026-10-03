@@ -3,71 +3,81 @@ import Tag from '../../component/Tag'
 
 # Artifacts
 
-## Distribution names <Tag description={"v26.5+"} />
-
-The executable Maven artifact and JAR use the public service name:
-
-| Distribution | Name |
-| --- | --- |
-| Maven coordinates | `com.kubling:kubling-service` |
-| Executable output | `kubling-service` |
-| Published container and Helm release | `kubling-dbvirt-service` |
-
-Update automation that resolves the Maven artifact or expects the old
-executable JAR name. Existing container image references and Helm deployments
-keep `kubling-dbvirt-service` and do not need a naming-only migration.
-
-<Callout type="info">
-  Do not infer Java package names from the retained container and Helm name.
-  Starting with 26.5, Kubling-owned Java namespaces use `com.kubling.*`. See
-  the [26.5 naming migration](/naming-migration).
-</Callout>
+Kubling loads its runtime definition from an application configuration and a
+set of Modules. Together, these artifacts define how Kubling starts, which
+Virtual Databases it exposes and which extensions each VDB uses.
 
 ## Initialization process
 
-The first file Kubling engine reads during initialization is the application configuration, whose location is resolved via `APP_CONFIG` environment variable.
-
-That configuration contains top-level options and the location of the next loading artifact, which is the descriptor bundle.
-
-In turn, descriptor bundle contains the list of Data Sources, that can be of the type `Module` which are also resolved using the same loading mechanism.
-
-Note that the only local file needed by the engine is the application configuration, since the rest of the artifacts can be fetched from remote origins.
+1. The `APP_CONFIG` environment variable identifies the application
+   configuration.
+2. The application configuration selects the descriptor Module.
+3. The descriptor Module declares the Virtual Databases and references the
+   other Modules they require.
+4. Kubling resolves those references and loads the artifacts before making the
+   configured VDBs available.
 
 <Callout>
-  All artifacts (or `zip` files) **but the application configuration** are referred as `Module` in the Kubling universe.<br/>A `Module` should follow the CI/CD principle, that is, have a versioning strategy and a 
-  release cycle.
+  The application configuration is the only artifact in this chain that is not
+  a Module. Build Modules with the [Kubling CLI](/cli/modules) instead of
+  assembling their internal format directly, and give each Module an immutable
+  version and release lifecycle.
 </Callout>
 
 ![Kubling artifact loading sequence from application configuration to function bundles](../../public/img/init-file-resolution-sequence.svg)
 
-## Artifacts
+## Runtime artifacts
 
-### Application Configuration
-A `YAML` file that contains top-level options.<br/>
-[Check the configuration schema here.](/schemas#main-application-configuration)
+### Application configuration
 
-### Descriptor Bundle
-A module file that contains Virtual Databases descriptors, and the location of actions/queries descriptors.<br/>
-The bundle has a meta configuration file, which is used by the Engine to get information about what the descriptor contains. [Check its schema here.](/schemas#descriptor-bundle-information-file-bundle-infoyaml)
+A YAML document containing top-level runtime options and the origin of the
+descriptor Module.
 
-Each Virtual Database (VDB) definition listed in the descriptor's meta configuration file, needs to also be configured. [Check its schema here.](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle)
+[See the application configuration schema.](/schemas#main-application-configuration)
 
-### Script Data Source Bundle
-A module file that contains an [information file](/schemas#script-module-bundle-information-file-bundle-script-infoyaml) (descriptor) as well as the script code to load a delegation data source (that is the term we use internally to refer to a data source that does not open a connection against 
-a remote origin, but delegates CRUD operations to scripts).
+### Descriptor Module
 
-### SQL Functions Bundle
+Declares the Virtual Databases and locates their configuration, endpoint
+descriptors and referenced Modules. Its Module manifest inventories those
+contents.
 
-A module file that contains an [information file](/schemas#sql-function-module-bundle-information-file-bundle-sql-function-infoyaml) and script functions to be added to the Engine's **SQL function catalog**.<br/>
-[See how to create it.](/modules/functions/sql)
+[See the descriptor Module schema.](/schemas#descriptor-bundle-information-file-bundle-infoyaml)
 
-### Template Functions Bundle
+Each listed VDB has its own
+[Virtual Database configuration](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle).
 
-A module file that contains an [information file](/schemas#template-function-module-bundle-information-file-bundle-function-infoyaml) and script functions to be added to the Engine's **Template function catalog**.<br/>
-[See how to create it.](/modules/functions/template)
+### JavaScript data source Module
 
-## Dependency
+Contains the definition, scripts and resources required by a JavaScript data
+source.
 
-As a complement to the initialization sequence diagram, the following diagram shows the artifacts dependency, that is, what artifact contains the Path/URL to resolve the next artifact.
+[See the JavaScript Module schema.](/schemas#script-module-bundle-information-file-bundle-script-infoyaml)
+
+### SQL Functions Module
+
+Contains function metadata and scripts added to the Kubling SQL function
+catalog.
+
+[See how to create SQL functions.](/modules/functions/sql)
+
+### Template Functions Module
+
+Contains function metadata and scripts added to the Kubling template function
+catalog.
+
+[See how to create template functions.](/modules/functions/template)
+
+### Semantic Module <Tag description={"v26.5+"} />
+
+Contains the manifest and semantic documents used to add a domain model to a
+VDB. Semantic federation is a Preview feature.
+
+[See how to build and configure semantic Modules.](/semantics/modules)
+
+## Artifact dependencies
+
+Artifact references form a dependency graph. The application configuration
+selects the descriptor Module, and the descriptor Module identifies the VDB
+configuration and additional Modules that Kubling must resolve.
 
 ![Dependencies among Kubling configuration and module artifacts](../../public/img/artifacts-dep.svg)

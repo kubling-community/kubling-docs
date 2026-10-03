@@ -1,5 +1,21 @@
 # Product changelog
 
+This page covers Kubling releases. KDV is versioned independently; see the
+[KDV changelog](/cli/changelog) for CLI releases.
+
+## v26.5.2
+
+- Fixed [JavaScript SQL functions](/modules/functions/sql#parameter-and-result-types)
+  so scalar and aggregate results use the declared `returnType`. Functions
+  without a declared return type continue to return `string`, while invalid
+  type declarations are rejected during registration. JSON and CLOB arguments
+  from SQL columns are now passed to functions as text.
+- Improved Kubling Studio. Module-provided SQL functions now show their complete
+  signatures and return types, JavaScript HTTP endpoints appear alongside query
+  and action endpoints, and structured or long result values can be opened in a
+  dedicated viewer. Query columns remain visible even when a `SELECT` returns
+  no rows.
+
 ## v26.5.1
 
 - Fixed provider-backed `UPDATE` and `DELETE` statements for tables whose

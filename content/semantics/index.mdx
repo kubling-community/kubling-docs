@@ -29,7 +29,7 @@ Kubling separates those responsibilities:
 
 | Layer | Responsibility |
 | --- | --- |
-| Provider or source | Physical access, source-native behavior and optional source-local semantics. |
+| Data source | Access to the connected system, source-specific behavior and optional source-local semantics. |
 | Kubling catalog | Logical relations, fields, types, keys and executable operations. |
 | Semantic fragment | Explicit entities, properties, identities and relationships for one domain. |
 | VDB composition | Organizational alignment, binding scopes and cross-domain relationships. |
@@ -41,13 +41,13 @@ cross-domain definitions.
 
 ## Activation
 
-During engine bootstrap, Kubling resolves configured Modules and optional
-provider fragments, applies the VDB composition, validates every binding
-against the deployed catalog and compiles the result. Studio, Logical Query and
-agent capabilities consume only the active VDB-scoped package.
+When Kubling starts, it resolves configured Modules and optional provider
+fragments, applies the VDB composition, validates every binding against the
+deployed catalog and compiles the result. Studio, Logical Query and agent
+capabilities consume only the active VDB-scoped package.
 
 Kubling does not poll Modules or provider fragments for changes. Deploy a new
-Module reference or provider release and restart the engine to activate a new
+Module reference or provider release and restart Kubling to activate a new
 model.
 
 ## Caller-scoped semantic context
@@ -75,8 +75,9 @@ patterns and deployment guidance.
 
 ## The important boundaries
 
-- Semantics bind to Kubling logical `schema.table` relations, regardless of
-  whether they come from a provider, JDBC source, view, route or composition.
+- Semantics bind to Kubling logical `schema.table` relations. The binding is
+  the same whether a relation comes directly from a data source or is defined
+  by a view, route or composition.
 - Physical primary and foreign keys can validate an executable binding. They
   never create semantic identity, equivalence or relationships on their own.
 - Partial coverage is valid. A VDB can be catalog-only, semantic for one source,

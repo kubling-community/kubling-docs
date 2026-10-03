@@ -1,0 +1,156 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Project structure <Tag description={"KDV v26.3+"} />
+
+A KDV project is rooted at `kubling.yaml`. Paths declared in the manifest are resolved relative to that file, so you can run project commands from another directory by passing `--file`.
+
+## Generated layout
+
+A quickstart project uses the following layout:
+
+```text
+my-project/
+  kubling.yaml
+  compose.yaml
+  Makefile
+  kdv
+  app-config.local.yaml
+  app-config.production.yaml
+  .env
+  .env.production
+  local.properties
+  descriptor/
+  tests/
+  scripts/
+  .kdv/
+```
+
+The Functions and JavaScript starters contain the subset required by those
+workflows. Starter-specific Module directories and an optional
+`deploy/helm/kubling/` directory may also be present.
+
+## File ownership
+
+| Path | Purpose | Ownership |
+| --- | --- | --- |
+| `kubling.yaml` | KDV project contract | Review and edit |
+| `compose.yaml` | Local services and infrastructure | Edit as needed; KDV does not regenerate it |
+| `Makefile` | Optional workflow shortcuts | Edit as needed; KDV does not regenerate it |
+| `app-config.*.yaml` | Kubling runtime configuration | Review and edit |
+| `descriptor/` and Module directories | Descriptor and Module sources | Review and edit |
+| `.env*` | Non-secret runtime settings for Compose | Review and edit |
+| `local.properties` | Local credentials and sensitive properties | Keep outside version control |
+| `kdv` | Project-pinned KDV launcher | Use for project commands |
+| `.kdv/` | Generated builds, instance state and reports | Do not edit or commit |
+
+<Callout type="info">
+  KDV creates `compose.yaml` and `Makefile` when the project is initialized, but
+  does not overwrite them later. You can adapt both files to the infrastructure
+  required by your project.
+</Callout>
+
+## The project manifest
+
+`kubling.yaml` describes the inputs KDV needs to assemble and run a project:
+
+```yaml
+version: 1
+name: my-project
+
+runtime:
+  image: docker.io/kubling/kubling:latest
+  defaultEnvironment: local
+
+  environments:
+    local:
+      application: app-config.local.yaml
+      environmentFile: .env
+    production:
+      application: app-config.production.yaml
+      environmentFile: .env.production
+
+  properties: local.properties
+  descriptor: descriptor
+
+  modules:
+    MY_FUNCTIONS_BUNDLE: functions
+
+  startupTimeout: 90
+  testTimeout: 120
+```
+
+The manifest version is currently `1`. Unknown fields are rejected so configuration errors fail during validation instead of being silently ignored. Project names must contain between 1 and 40 lowercase letters, digits or hyphens, and must begin with a letter or digit.
+
+## Runtime fields
+
+| Field | Purpose |
+| --- | --- |
+| `image` | Base Kubling image used by the project |
+| `application` | Runtime configuration for a project with a single environment |
+| `defaultEnvironment` | Environment used when `--environment` is omitted |
+| `environments` | Named runtime configurations |
+| `properties` | Properties supplied to Kubling at runtime |
+| `descriptor` | Descriptor source used to build the project |
+| `modules` | Environment-variable names mapped to Module source directories or prebuilt Module artifacts |
+| `environment` | Environment variables shared by all named environments |
+| `environmentFile` | Compose environment file for a single-environment project |
+| `console` | Controls whether the web console is enabled |
+| `startupTimeout` | Maximum startup wait in seconds |
+| `testTimeout` | Maximum runtime for each Compose test service, in seconds |
+
+Module variable names use uppercase letters, digits and underscores, begin with
+a letter and end in `_BUNDLE`. Use the CLI to build Modules from their source
+directories instead of depending on a particular packaging format.
+
+## Named environments
+
+Use named environments when the same project needs different runtime configuration:
+
+```bash
+./kdv project validate --environment local
+./kdv project up --environment production --instance review
+```
+
+Values in `runtime.environment` are shared. Values declared inside a named environment override the shared values for that environment.
+
+A manifest can use either a top-level `runtime.application` or `runtime.environments`, but not both. With named environments, declare `environmentFile` inside each environment that needs one.
+
+## KDV-owned environment variables
+
+KDV derives these variables from the selected project and environment:
+
+- `APP_CONFIG`
+- `DESCRIPTOR_BUNDLE`
+- `MAIN_HTTP_PORT`
+- `PROPS_FILE`
+- `ENABLE_WEB_CONSOLE`, when the manifest controls the console
+- Every variable declared in `runtime.modules`
+
+KDV rejects attempts to override these values through the manifest environment map. This keeps the generated runtime consistent with the project inputs.
+
+## Secrets and local properties
+
+`local.properties` is intended for local credentials and sensitive
+properties. KDV streams it into private runtime storage and excludes it from
+production release artifacts.
+
+<Callout type="warning">
+  Files referenced by `environmentFile` are standard Compose inputs, not a
+  secret store. Keep production secrets in the secret-management system used by
+  your deployment platform.
+</Callout>
+
+## Generated state
+
+KDV stores disposable local state under `.kdv/`:
+
+| Directory | Contents |
+| --- | --- |
+| `builds/` | Isolated project build outputs |
+| `instances/` | Managed local instance state |
+| `locks/` | Project-operation locks |
+| `reports/` | Test and diagnostic reports |
+| `release/` | Deployment artifacts for a project image or artifact-URI delivery |
+
+Add `.kdv/` to `.gitignore`. Edit the manifest and source inputs rather than generated state.

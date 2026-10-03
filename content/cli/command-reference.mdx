@@ -1,0 +1,124 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Command reference <Tag description={"KDV v26.3+"} />
+
+Use this page to choose a command and understand its result. Run
+`./kdv <group> <command> --help` for the exact options supported by the
+project-pinned CLI version.
+
+## Common behavior
+
+Commands that operate on a project manifest use `kubling.yaml` in the current
+directory by default. Pass `-f` or `--file` to select another manifest.
+Paths in the manifest are resolved relative to that file. `requirements` and
+`list` do not require a manifest.
+
+When omitted:
+
+- `--environment` uses `runtime.defaultEnvironment`
+- `--instance` uses `dev`
+
+The standard `--help` and `--version` options are available at every command
+level.
+
+<Callout type="warning">
+  `--quiet` suppresses result documents as well as progress output. Do not use
+  it to obtain machine-readable output. Use `--format json` where supported.
+</Callout>
+
+## Project commands
+
+| Command | Common form | Result |
+| --- | --- | --- |
+| `init` | `project init [target]` | Creates a complete project from a starter |
+| `requirements` | `project requirements [--format human\|json]` | Checks Docker, Compose, daemon access and optional Make |
+| `validate` | `project validate [-f file] [--environment name]` | Validates the manifest and referenced inputs |
+| `build` | `project build [-f file] [--environment name] [--release]` | Builds validated application configuration and bundles |
+| `test` | `project test [path ...] [--timeout seconds] [--format human\|json]` | Runs isolated JavaScript tests |
+| `up` | `project up [--environment name] [--instance name] [--format human\|json]` | Starts or updates a persistent instance |
+| `run` | `project run [--profile ci\|dev] [--instance name] <service>...` | Runs labelled Compose test services |
+| `status` | `project status [--instance name]` | Returns one running instance as JSON |
+| `logs` | `project logs [--instance name]` | Prints recent logs from owned containers |
+| `down` | `project down [--instance name]` | Removes an instance and its managed volumes |
+| `list` | `project list` | Lists KDV-owned instances visible to the Docker daemon |
+
+### Project initialization
+
+```text
+project init [target]
+  [--template quickstart|functions|javascript]
+  [--name name]
+  [--advanced]
+  [--deployment helm]
+  [--from source]
+```
+
+| Selection | Generated project |
+| --- | --- |
+| `quickstart` (default) | Federation, providers, authentication, endpoints, scheduling and transactions |
+| `quickstart --advanced` | A larger Kubernetes and Redis federation environment |
+| `--template functions` | SQL and template function development |
+| `--template javascript` | JavaScript data-source Module development |
+
+`quickstart` is the default template. `--advanced` and
+`--deployment helm` apply to the quickstart template and may be combined.
+`--from` copies a project that already uses the current manifest and cannot be
+combined with template options.
+
+### Test profiles
+
+`project run` defaults to the `ci` profile. It creates a fresh instance and
+attempts cleanup after the run. The `dev` profile uses a persistent named
+instance and leaves it running.
+
+See [Testing](/cli/test-framework) for service labels, test discovery and
+evidence.
+
+## Module command
+
+```text
+bundle genmod <directory> [--output path] [--parse]
+```
+
+Builds a deterministic Module from a source directory. `--parse` validates
+JavaScript and static imports before publishing the output.
+
+See [Build Modules](/cli/modules) for the project and publication workflow.
+
+## Certificate commands
+
+| Command | Result |
+| --- | --- |
+| `cert create` | Creates server and client material for transport TLS or mutual TLS |
+| `cert create-http` | Creates server and client trust material for HTTP TLS |
+
+Both commands support certificate validity, output paths, generated or explicit
+passwords, repeatable SAN values, a SAN file and explicit overwrite.
+
+See [Certificates](/cli/certificates) for output roles and examples.
+
+## Output and automation
+
+| Command | Machine-oriented result |
+| --- | --- |
+| `requirements --format json` | Requirement status and overall readiness |
+| `validate` | Compact validation result |
+| `build` | Input and bundle hashes, fingerprint and output directory |
+| `test --format json` | Aggregate and per-test results |
+| `up --format json` | Runtime identity, URLs and transport endpoints |
+| `run` | Evidence under `.kdv/reports/` |
+| `status` | Compact runtime description |
+
+`build --release` writes the deployable subset to
+`.kdv/release/<environment>/`. `build` writes progress before its result and
+does not currently provide a JSON-only mode. `logs`, `down` and `list` are
+intended for direct command or exit-status handling.
+
+## Exit status
+
+| Code | Meaning |
+| ---: | --- |
+| `0` | Command completed successfully, including empty discovery or an idempotent teardown |
+| `1` | Validation, requirement, execution or test failure |
+| `2` | Invalid command-line syntax or option |

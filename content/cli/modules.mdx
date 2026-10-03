@@ -1,0 +1,70 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Build Modules <Tag description={"KDV v26.3+"} />
+
+KDV builds a Module from a source directory so projects and deployment
+pipelines do not depend on its internal distribution format.
+
+## Build a standalone Module
+
+```shell copy
+mkdir -p dist
+./kdv bundle genmod ./my-module \
+  --output ./dist/my-module \
+  --parse
+```
+
+`--parse` validates every JavaScript file before the output replaces any
+existing artifact. KDV also validates static imports and rejects imports that
+escape the Module source directory or resolve to a missing file.
+
+The build is deterministic: the same source files produce the same Module
+content. Binary assets are preserved without text conversion.
+
+<Callout type="info">
+  Use an explicit output path in scripts and CI. This makes the artifact name a
+  deployment decision instead of relying on the CLI's default filename.
+</Callout>
+
+## Build Modules as part of a project
+
+Declare source directories or prebuilt Module artifacts in `kubling.yaml`:
+
+```yaml copy
+runtime:
+  descriptor: descriptor
+  modules:
+    SQL_FUNCTIONS_BUNDLE: sql-functions
+    TEMPLATE_FUNCTIONS_BUNDLE: template-functions
+```
+
+Each environment-variable name must end in `_BUNDLE`. KDV builds source
+directories during `project build` and supplies the corresponding runtime
+variables. A production deployment can include the resulting Module artifacts
+in a project-specific image or publish them and pass their Kubling-supported
+URIs to the official runtime image.
+
+Use the standalone `bundle genmod` command when a Module has its own release
+lifecycle or is shared by multiple projects.
+
+See [Build and deploy](/cli/build-deploy#choose-a-delivery-model) for the two
+delivery models.
+
+## Publish and consume Modules
+
+Publish versioned Modules through the artifact repository already used by the
+organization. KDV does not define a separate Module registry.
+
+Recommended lifecycle:
+
+1. validate the Module source and its tests
+2. build the Module with `bundle genmod --parse`
+3. calculate and record its content digest
+4. publish it under an immutable version
+5. update the consuming project or descriptor reference
+6. rebuild and test the project before deployment
+
+For semantic model packaging and digest verification, see
+[Semantic Modules](/semantics/modules). For the runtime loading sequence, see
+[Artifacts](/concepts/artifacts).

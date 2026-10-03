@@ -1,12 +1,40 @@
 # Versioning
-Starting from version `25.1`, Kubling follows a three-segment versioning system:
 
-- **Year**: Represents the release year. Internally, this helps structure product backlogs by year.
-- **Release**: An incrementing number starting from `1` for each year's first release.
-- **Fix** _(optional)_: An incrementing number starting from `1`, indicating a fix or patch for a specific release.
+Kubling Core uses a three-segment release format:
 
-## Examples:
-- **`25.1`** → First release of 2025.
-- **`25.1.21`** → First release of 2025, with the 21st fix applied.
+```text
+YEAR.RELEASE[.FIX]
+```
 
-While fixes typically do not introduce new features, they may include minor enhancements if necessary to resolve existing issues.
+- **Year** identifies the release year
+- **Release** increments for each feature release in that year
+- **Fix** is optional and increments for compatible fixes to that release
+
+Examples:
+
+- `25.1` is the first feature release of 2025
+- `25.1.2` is the second fix for that feature release
+
+Fix releases normally preserve the feature set, but may include small
+user-visible corrections required to make existing behavior work as
+documented.
+
+## Component versions
+
+A version identifies one published component, not the entire Kubling platform.
+Kubling Core and KDV use independent release streams. Providers, client
+libraries and other independently distributed components own their respective
+versions as well.
+
+In a KDV project:
+
+- the generated `./kdv` launcher pins the CLI image
+- `runtime.image` selects the Kubling image used by the project environment
+- `compose.yaml` selects provider and supporting-service images
+- the production deployment selects its project-specific or official Kubling
+  image and any external runtime artifacts
+- application dependencies select their client library versions
+
+Record and upgrade these versions independently. Use the release notes and
+compatibility guidance of each component instead of assuming that equal version
+numbers are required.

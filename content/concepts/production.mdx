@@ -1,21 +1,67 @@
-# Production Instances
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
 
-When deploying Kubling in production, consider the following best practices:
+# Production instances
 
-- Treat your instances as **immutable**, meaning no internal aspects of the instance should be changed once it is running.
-- **Disable** the embedded web console.
-- **Disable** the restart endpoint.
-- Enable only the transports that you know will be actively used.
-- **Enable communication security** by generating certificates (ideally through an automated pipeline). Certificates should have a maximum validity of 180 days.
-- Mount a **separate volume for the buffer** and configure the buffer directory to point to that volume.
-- **Never disable buffer encryption** when using disk storage.
-- **Monitor your instances** by collecting or sending metrics from Kubling instances to your monitoring system.
+Deploy reviewed, immutable Kubling runtime and project artifacts. Keep secrets,
+storage, network policy and reconciliation under the deployment platform's
+control.
 
----
+## Select a delivery model <Tag description={"KDV v26.3+"} />
 
-## Upgrading Versions
+KDV supports two production models:
 
-When upgrading to a new Kubling version, always run all your tests before upgrading the production environment. Use the latest CLI version to perform these tests.
+- build a project-specific image containing the application configuration,
+  descriptor and Modules
+- deploy the official Kubling image and supply configuration plus
+  descriptor and Module URIs
 
-This is critical because the CLI shares certain Engine components, and any changes are released together (CLI and Engine).
-If your code requires adaptations to the newer version, you can identify them by carefully inspecting the test outputs.
+The first model promotes one self-contained project image. The second avoids a
+project image but requires every configured origin to be available when
+Kubling loads its artifacts.
+
+Use [Build and deploy](/cli/build-deploy) to export the common release artifacts
+and configure the selected model.
+
+## Production checklist
+
+- Pin Kubling, provider and supporting images to reviewed versions or digests
+- Use immutable artifact URIs and retain KDV build hashes for provenance
+- Disable Studio unless it is explicitly required
+- Disable the restart endpoint and let the deployment platform own restarts
+- Enable only the client transports used by the deployment
+- Protect every exposed transport with TLS and appropriate network policy
+- Issue certificates through an automated rotation process
+- Mount persistent runtime state on storage selected for the workload
+- Keep buffer encryption enabled when the buffer uses disk storage
+- Supply sensitive configuration through the platform's secret-management
+  system
+- Collect health, metrics and logs before directing production traffic
+
+<Callout type="warning">
+  The generated Helm chart owns the Kubling workload only. Providers and their
+  backing systems remain separate deployment units with their own availability,
+  capacity, security and upgrade requirements.
+</Callout>
+
+## Upgrade a deployment
+
+Kubling Core, KDV, providers and clients are released independently. Do not
+infer compatibility from matching version numbers.
+
+For a controlled upgrade:
+
+1. read the release notes for every component being changed
+2. update the corresponding pinned images, dependencies and artifact sources
+3. build the project with its pinned `./kdv` launcher
+4. run isolated tests and fresh Compose integration tests
+5. export the production deployment artifacts
+6. either build and scan the project image, or publish the bundles and update
+   their URLs and hashes
+7. validate the rendered deployment configuration
+8. deploy through the normal staged rollout and rollback process
+
+The generated launcher pins the KDV version used by the project. The project
+environment, providers and production deployment each select their own images
+and artifacts. Change those inputs deliberately and review their migration
+notes rather than upgrading them as an implicit set.

@@ -1,0 +1,16 @@
+# KDV changelog
+
+KDV releases are versioned independently from Kubling releases.
+
+## v26.3
+
+- Redesigned the [Kubling CLI](/cli/overview) around complete, editable Kubling
+  projects with a manifest, Docker Compose topology and optional Make workflow.
+- Added a project lifecycle for initialization, validation, builds, persistent
+  development instances and local inspection.
+- Added isolated JavaScript unit tests and real integration tests executed as
+  project-owned Compose services, with separate development and CI profiles.
+- Added production artifact export and an optional Helm scaffold supporting a
+  project-specific image or the official Kubling image with externally
+  supplied configuration and artifact URIs resolved directly by Kubling.
+  Existing CLI projects should follow the [migration guide](/cli/migration).
