@@ -1,0 +1,84 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Certificates <Tag description={"KDV v26.3+"} />
+
+KDV can create certificate material that Kubling and its clients can consume
+directly. Use separate commands for client transports and the HTTP server.
+
+## Client transport certificates
+
+`cert create` generates the stores required by the native, gRPC and
+PostgreSQL-compatible transports:
+
+```shell copy
+./kdv cert create \
+  --san kubling.internal.example.com,10.20.0.15
+```
+
+The default outputs are:
+
+| File | Purpose |
+| --- | --- |
+| `server.ks` | Server identity and certificate chain |
+| `client-truststore.ks` | CA material used by clients to verify the server |
+| `server-truststore.ks` | CA material used by the server to verify client certificates |
+| `client.p12` | Client identity used for mutual TLS |
+
+One-way TLS uses the server identity and the client truststore. Mutual TLS also
+uses the server truststore and client identity.
+
+## HTTP certificates
+
+`cert create-http` creates the smaller pair used by Kubling's HTTP server:
+
+```shell copy
+./kdv cert create-http \
+  --san api.internal.example.com,10.20.0.16
+```
+
+The default outputs are `server-http.ks` and
+`client-http-trust.ks`.
+
+## Subject Alternative Names
+
+Provide every DNS name and IP address clients will use to reach the service.
+Hostname verification depends on the certificate Subject Alternative Names,
+not on the filename or deployment Service name.
+
+For a maintained list, place one DNS name or IP address per line:
+
+```shell copy
+./kdv cert create --san-file ./config/transport-sans.txt
+```
+
+Inline and file-based SAN entries can be combined. Duplicate values are
+removed.
+
+## Passwords and existing files
+
+When passwords are omitted, KDV generates them and prints the resulting values
+and expiration time. Store those passwords in the deployment's secret manager;
+do not commit them with the generated stores.
+
+The default validity is 180 days. Use `--validity` to set a different positive
+number of days according to the organization's certificate policy.
+
+KDV refuses to replace existing outputs unless `--overwrite` is supplied:
+
+```shell copy
+./kdv cert create-http \
+  --server ./certs/server-http.ks \
+  --client ./certs/client-http-trust.ks \
+  --san api.internal.example.com \
+  --overwrite
+```
+
+<Callout type="warning">
+  The generated material is suitable for development and controlled deployment
+  workflows. In production, use the organization's certificate authority and
+  rotation process when policy requires centrally issued certificates.
+</Callout>
+
+Continue with [transport security](/security/communication) or
+[HTTP security](/security/http) to configure Kubling.

@@ -1,0 +1,64 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Migrate an existing CLI project <Tag description={"KDV v26.3+"} />
+
+KDV 26.3 replaces the former integration-plan and task DSL with normal project
+files, Docker Compose services and optional Make targets. Existing projects are
+not converted automatically.
+
+## Command and configuration changes
+
+| Before KDV 26.3 | KDV 26.3 |
+| --- | --- |
+| `kdv test integration plan.yaml` | `kdv project run <service>...` |
+| CLI-managed mock servers | Project-owned services in `compose.yaml` |
+| Manifest `dependencies` | Compose services and dependencies |
+| Manifest `tasks` | Make targets, scripts or CI jobs |
+| `kdv project exec` | Direct project scripts, Make or Docker Compose commands |
+| `kdv bundle pubmod` | The artifact repository already used by the organization |
+
+`kdv project test` now means isolated JavaScript unit tests. It does not start
+Kubling or execute the former integration test plan.
+
+## Migration procedure
+
+1. Generate a new project with the starter closest to the existing workload.
+2. Move the application configuration, descriptor sources and Module sources
+   into the generated project.
+3. Declare those inputs and runtime environments in `kubling.yaml`.
+4. Add providers, backing systems, fixtures and test runners to
+   `compose.yaml`.
+5. Move fast JavaScript tests under `tests/` using the new test API.
+6. Represent real integration checks as Compose services labelled for KDV.
+7. Run `project validate`, `project test`, `project up` and
+   `project run --profile dev` before replacing the previous pipeline.
+
+<Callout type="warning">
+  `project init --from` copies an existing project that already satisfies the
+  KDV 26.3 manifest. It is not a converter for the former manifest or
+  integration-test format.
+</Callout>
+
+## Recommended cutover
+
+Keep the old pipeline available until the new project passes both test levels:
+
+```shell copy
+./kdv project test
+./kdv project up
+./kdv project run --profile dev smoke
+./kdv project down
+```
+
+In CI, use a fresh instance with automatic cleanup:
+
+```shell copy
+./kdv project test --format json
+./kdv project run --profile ci smoke
+```
+
+Replace `smoke` with the test-service names declared by the project.
+
+See [Project structure](/cli/project-structure) for the manifest and file
+ownership model.

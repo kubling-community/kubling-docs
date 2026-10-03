@@ -1,4 +1,5 @@
 import { Callout, FileTree } from 'nextra/components'
+import Tag from '../../../component/Tag'
 
 # SQL Functions Bundle Module
 This module contains functions that can be called in DDL and Query SQL contexts.
@@ -164,6 +165,73 @@ This allows the engine to map query arguments to the function's parameters dynam
 
 ---
 
+## Parameter and result types <Tag description={"v26.5.2+"} />
+
+Parameter types and `returnType` use Kubling's canonical
+[data type names](/engine/data-types).
+
+For scalar and aggregate query functions, `returnType` determines the SQL type
+exposed to queries and clients. When it is omitted or set to `null`, the
+function returns `string`. An unknown type prevents the function from being
+registered and the error identifies the module, function and invalid value.
+
+```yaml copy
+queryFunctions:
+  - name: "is_active"
+    scriptFilePath: "fn/query/is_active.js"
+    parameters:
+      status: string
+    returnType: boolean
+
+  - name: "task_count"
+    scriptFilePath: "fn/query/task_count.js"
+    parameters:
+      task: string
+    returnType: integer
+    aggregationFunction: true
+
+  - name: "display_name"
+    scriptFilePath: "fn/query/display_name.js"
+    parameters:
+      name: string
+    # returnType omitted: defaults to string
+```
+
+<Callout type="warning">
+  Before version 26.5.2, a function that declared a non-string return type could
+  still be exposed to clients as `string`. After upgrading, clients receive the
+  declared type and may need to adjust how they read that value.
+</Callout>
+
+### JSON, CLOB and null parameters
+
+Values declared as `json` or `clob` are passed to JavaScript as text, whether
+they come from a literal or a table column. JSON is not parsed automatically.
+Check for `null` before parsing it:
+
+```js copy
+function workload_namespace({ object }) {
+    if (object === null) return null;
+
+    const workload = JSON.parse(String(object));
+    return workload.metadata?.namespace ?? null;
+}
+```
+
+```yaml copy
+queryFunctions:
+  - name: "workload_namespace"
+    scriptFilePath: "fn/query/workload_namespace.js"
+    parameters:
+      object: json
+    returnType: string
+```
+
+`null` SQL arguments remain JavaScript `null`. Aggregate functions receive the
+same representations inside their values array, including `null` entries.
+
+---
+
 ### SQL Aggregation Functions
 
 An **aggregation function** performs a calculation on a set of values and returns a single aggregated value, such as the well-known `SUM`, `AVG`, `MAX`, and `MIN`. These functions typically operate over grouped rows when a `GROUP BY` clause is used.
@@ -243,7 +311,11 @@ That is why it is highly recommended to keep them separate in directories.
 
 ### Performance
 
-Keep in mind that functions have a limited number of execution contexts, which are configurable via the `partitions`, `minContexts`, and `maxContexts` parameters in the `bundle-sql-function-info.yaml` configuration file. Each context can execute only one function at a time.
+Keep in mind that functions have a limited number of execution contexts, which
+are configurable with `maxContexts` in the
+`bundle-sql-function-info.yaml` configuration file. Each context can execute
+only one function at a time. When all contexts are busy, subsequent executions
+wait up to `maxWaitMilliseconds` for one to become available.
 
 #### Example:
 Consider the DDL function defined earlier. If the engine processes a query like:
@@ -261,6 +333,7 @@ To ensure optimal performance:
    Avoid placing complex or resource-intensive logic in functions, as it can slow down query execution and increase the likelihood of queuing.
 
 3. **Tune Contexts**:  
-   Properly configure the `partitions`, `minContexts`, and `maxContexts` parameters to balance available resources and function execution demand.
+   Configure `maxContexts` and `maxWaitMilliseconds` to balance available
+   resources, concurrency and the maximum acceptable wait time.
 
 By following these guidelines, you can reduce bottlenecks and ensure smoother query execution.

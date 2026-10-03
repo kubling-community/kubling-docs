@@ -1,0 +1,410 @@
+import { Callout, Steps, Tabs } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Build and deploy <Tag description={"KDV v26.3+"} />
+
+KDV exports the same validated application configuration, descriptor and
+Modules for two production delivery models. A deployment can package those
+files in a project-specific image or run the official Kubling image with
+mounted application configuration and external artifact URIs.
+
+## Choose a delivery model
+
+| Model | Project files | Operational consequence |
+| --- | --- | --- |
+| Project-specific image | Included in a self-contained project image | The deployment builds, scans and publishes an additional image. No artifact download is required when a Pod starts |
+| Official image and artifact URIs | Application configuration from Kubernetes, with descriptor and Module origins passed to Kubling | No project image is required. Kubling must be able to resolve the configured origins |
+
+Both models use the same project sources, validation and tests. The choice
+changes how the production artifacts reach the Kubling container, not how they
+are authored.
+
+## Generate the Helm scaffold
+
+Request the chart when creating a quickstart project:
+
+```shell copy
+docker run --rm \
+  --volume "$PWD:/workspace" \
+  docker.io/kubling/kubling-cli:latest \
+  project init my-project --deployment helm
+```
+
+The editable chart is created at `deploy/helm/kubling/`. It includes:
+
+| Values file | Delivery model |
+| --- | --- |
+| `values.yaml` | Project-specific image |
+| `values-external.yaml` | Editable example for the official-image and artifact-URI model |
+
+<Callout type="info">
+  KDV creates deployment artifacts and an editable chart. It does not publish
+  files, manage Kubernetes objects, install a release, contact a cluster or
+  reconcile deployed resources.
+</Callout>
+
+## Export the deployment artifacts
+
+```shell copy
+./kdv project build --environment production --release
+```
+
+Projects generated with the Helm scaffold provide the equivalent target:
+
+```shell copy
+make release-artifacts
+```
+
+The command writes the stable release directory:
+
+```text
+.kdv/release/production/
+```
+
+It contains:
+
+- a generated `Dockerfile`
+- the selected application configuration as `app-config.yaml`
+- `descriptor.zip`
+- one ZIP for every Module declared by the environment
+
+The command result includes the bundle SHA-256 values and build fingerprint.
+The release directory excludes `local.properties`, environment files,
+`generated.env` and `build.json`.
+
+<Callout type="warning">
+  KDV excludes the normal local credential inputs, but it cannot detect a
+  credential embedded directly in application configuration or Module source.
+  Review the exported files before publishing an image or artifact.
+</Callout>
+
+`make release-context` remains as a compatibility alias for
+`make release-artifacts`.
+
+## Model 1: project-specific image
+
+This model adds the application configuration and bundles to an image derived
+from the official Kubling runtime. A Pod needs only the container registry to
+obtain those project files. The chart passes their `file:` origins to Kubling.
+
+### Build and publish the image
+
+```shell copy
+make runtime-image \
+  KUBLING_BASE_IMAGE=docker.io/kubling/kubling:<release> \
+  RUNTIME_IMAGE_REPOSITORY=docker.io/my-organization/my-project \
+  RUNTIME_IMAGE_TAG=1.0.0
+
+make runtime-push \
+  RUNTIME_IMAGE_REPOSITORY=docker.io/my-organization/my-project \
+  RUNTIME_IMAGE_TAG=1.0.0
+```
+
+Pin both the Kubling base image and project image to reviewed versions or
+digests. Do not deploy the generated
+`docker.io/example/<project-name>:dev` placeholder.
+
+The same context can be built with normal Docker tooling:
+
+```shell copy
+docker build --pull \
+  --build-arg KUBLING_BASE_IMAGE=docker.io/kubling/kubling:<release> \
+  --tag docker.io/my-organization/my-project:1.0.0 \
+  .kdv/release/production
+```
+
+### Render the chart
+
+```shell copy
+make helm-lint
+make helm-render \
+  RUNTIME_IMAGE_REPOSITORY=docker.io/my-organization/my-project \
+  RUNTIME_IMAGE_TAG=1.0.0
+```
+
+## Model 2: official image and artifact URIs
+
+This model runs `docker.io/kubling/kubling` directly. The application
+configuration comes from an existing ConfigMap or Secret. The chart passes the
+descriptor and Module origins to Kubling, which resolves those URIs directly.
+
+<Callout type="warning">
+  Remote origins must remain reachable whenever Kubling loads the artifacts.
+  Use immutable artifact locations and prefer HTTPS for remote production
+  origins.
+</Callout>
+
+<Steps>
+
+### Publish the artifacts
+
+The following examples export the production artifacts and upload them to an
+Artifactory generic repository under an immutable release path.
+
+<Callout type="info">
+  These examples are illustrative. Kubling does not require Artifactory or a
+  specific CI system. Replace the repository URL, authentication and upload
+  command with the artifact repository and client used by your organization.
+</Callout>
+
+<Tabs
+  items={['Portable shell', 'GitHub Actions', 'GitLab CI', 'Jenkins']}
+  storageKey="kdv-artifact-publisher"
+>
+
+<Tabs.Tab>
+
+```bash copy
+export ARTIFACTORY_BASE_URL="https://artifacts.example.com/artifactory"
+export ARTIFACTORY_REPOSITORY="kubling-releases"
+export ARTIFACTORY_TOKEN="<access-token>"
+export KUBLING_PROJECT="my-project"
+export RELEASE_VERSION="1.0.0"
+
+make release-artifacts
+
+for artifact in .kdv/release/production/*.zip; do
+  filename="${artifact##*/}"
+  artifact_uri="${ARTIFACTORY_BASE_URL%/}/${ARTIFACTORY_REPOSITORY}/${KUBLING_PROJECT}/${RELEASE_VERSION}/${filename}"
+  curl --fail --silent --show-error \
+    --header "Authorization: Bearer ${ARTIFACTORY_TOKEN}" \
+    --upload-file "${artifact}" \
+    "${artifact_uri}"
+  printf '%s\n' "${artifact_uri}"
+done
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```yaml copy
+- name: Export and publish Kubling artifacts
+  env:
+    ARTIFACTORY_BASE_URL: ${{ vars.ARTIFACTORY_BASE_URL }}
+    ARTIFACTORY_REPOSITORY: kubling-releases
+    ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+    KUBLING_PROJECT: my-project
+    RELEASE_VERSION: ${{ github.sha }}
+  shell: bash
+  run: |
+    make release-artifacts
+    for artifact in .kdv/release/production/*.zip; do
+      filename="${artifact##*/}"
+      artifact_uri="${ARTIFACTORY_BASE_URL%/}/${ARTIFACTORY_REPOSITORY}/${KUBLING_PROJECT}/${RELEASE_VERSION}/${filename}"
+      curl --fail --silent --show-error \
+        --header "Authorization: Bearer ${ARTIFACTORY_TOKEN}" \
+        --upload-file "${artifact}" \
+        "${artifact_uri}"
+      printf '%s\n' "${artifact_uri}"
+    done
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```yaml copy
+# Configure ARTIFACTORY_BASE_URL and ARTIFACTORY_TOKEN as protected variables.
+publish-kubling-artifacts:
+  stage: publish
+  variables:
+    ARTIFACTORY_REPOSITORY: kubling-releases
+    KUBLING_PROJECT: my-project
+  script:
+    - make release-artifacts
+    - |
+      release_version="${CI_COMMIT_TAG:-${CI_COMMIT_SHA}}"
+      for artifact in .kdv/release/production/*.zip; do
+        filename="${artifact##*/}"
+        artifact_uri="${ARTIFACTORY_BASE_URL%/}/${ARTIFACTORY_REPOSITORY}/${KUBLING_PROJECT}/${release_version}/${filename}"
+        curl --fail --silent --show-error \
+          --header "Authorization: Bearer ${ARTIFACTORY_TOKEN}" \
+          --upload-file "${artifact}" \
+          "${artifact_uri}"
+        printf '%s\n' "${artifact_uri}"
+      done
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```groovy copy
+stage('Publish Kubling artifacts') {
+    environment {
+        ARTIFACTORY_BASE_URL = 'https://artifacts.example.com/artifactory'
+        ARTIFACTORY_REPOSITORY = 'kubling-releases'
+        ARTIFACTORY_TOKEN = credentials('artifactory-token')
+        KUBLING_PROJECT = 'my-project'
+    }
+    steps {
+        sh '''
+          make release-artifacts
+          release_version="${GIT_COMMIT}"
+          for artifact in .kdv/release/production/*.zip; do
+            filename="${artifact##*/}"
+            artifact_uri="${ARTIFACTORY_BASE_URL%/}/${ARTIFACTORY_REPOSITORY}/${KUBLING_PROJECT}/${release_version}/${filename}"
+            curl --fail --silent --show-error \
+              --header "Authorization: Bearer ${ARTIFACTORY_TOKEN}" \
+              --upload-file "${artifact}" \
+              "${artifact_uri}"
+            printf '%s\n' "${artifact_uri}"
+          done
+        '''
+    }
+}
+```
+
+</Tabs.Tab>
+
+</Tabs>
+
+Each example publishes `descriptor.zip` and every Module artifact. Use a tag,
+commit or other immutable release identifier in the repository path and retain
+the printed URIs for the release values file. Do not reuse one URI for different
+artifact bytes.
+
+KDV reports each bundle's SHA-256. A release pipeline can retain those hashes
+for publication verification and provenance, but the chart does not pass them
+to Kubling.
+
+### Generate a release-specific values file
+
+Keep the chart stable and generate a values override containing the image and
+artifact versions for each release:
+
+```yaml copy
+image:
+  repository: docker.io/kubling/kubling
+  tag: <release>
+
+kubling:
+  appConfig:
+    source: ConfigMap
+    path: /etc/kubling/app-config.yaml
+    name: my-project-app-config
+    key: app-config.yaml
+  descriptorBundle: https://artifacts.example.com/my-project/<release>/descriptor.zip
+
+env:
+  SQL_FUNCTIONS_BUNDLE: https://artifacts.example.com/my-project/<release>/sql_functions_bundle.zip
+```
+
+Descriptor and Module origins use the schemes supported by Kubling, including
+`file:`, `http:` and `https:`. A `file:` URI can reference an artifact
+mounted by the deployment platform. For remote production artifacts, use an
+immutable HTTPS URI unless the deployment has an explicit reason to allow
+unencrypted HTTP.
+
+The standard starter has no additional Module. The advanced starter includes
+the `KUBERNETES_FUNCTIONS_BUNDLE` example in its external values file.
+
+### Supply the application configuration
+
+For configuration without embedded secrets, create a ConfigMap from the
+exported file:
+
+```shell copy
+kubectl -n my-namespace create configmap my-project-app-config \
+  --from-file=app-config.yaml=.kdv/release/production/app-config.yaml
+```
+
+If the application configuration contains sensitive values, create a Secret
+instead:
+
+```shell copy
+kubectl -n my-namespace create secret generic my-project-app-config \
+  --from-file=app-config.yaml=.kdv/release/production/app-config.yaml
+```
+
+Set `kubling.appConfig.source` to `ConfigMap` or `Secret` and reference the
+existing object's name and key. The chart mounts the file without embedding
+its contents in the rendered manifests.
+
+### Render with the release values
+
+```shell copy
+make helm-lint-external \
+  HELM_EXTERNAL_VALUES=deploy/helm/kubling/values-release.yaml
+make helm-render-external \
+  HELM_EXTERNAL_VALUES=deploy/helm/kubling/values-release.yaml
+```
+
+The checked-in `values-external.yaml` is an editable example with placeholder
+URLs. A production pipeline should generate or supply a release-specific
+override rather than regenerate the chart.
+
+</Steps>
+
+## Configure common runtime inputs
+
+The generated chart owns the Kubling workload in both models:
+
+- Deployment and Service
+- HTTP health probes
+- persistent or ephemeral runtime storage
+- externally managed runtime properties
+- optional read-only Secret file mounts
+- optional ingress and NetworkPolicy
+- resource, placement and image-pull settings
+
+### Runtime properties
+
+The generated production configuration uses a file for runtime properties. By
+default, the chart mounts the `runtime.properties` key from the existing
+`<project-name>-runtime-properties` Secret.
+
+Create and rotate that file through the platform's configuration or
+secret-management workflow. This is a convention of the generated scaffold.
+Adapt the application configuration and volume layout together when using
+another supported property source.
+
+### TLS and other mounted files
+
+Use `secretMounts` for TLS keystores and other files referenced by the
+application configuration:
+
+```yaml copy
+secretMounts:
+  - name: transport-keystore
+    secretName: my-project-transport-tls
+    key: server.p12
+    mountPath: /run/secrets/kubling-server.p12
+```
+
+The chart mounts each value read-only. The deployment platform remains
+responsible for creating and rotating the Secret.
+
+### Storage, network and providers
+
+The scaffold defaults to one replica and a `ReadWriteOnce` volume for runtime
+state. Select storage and scaling behavior for the target architecture.
+
+Review ingress, NetworkPolicy, TLS and the DNS names of every provider and
+backing service. Providers remain separate deployment units from the Kubling
+workload.
+
+## Package and hand off
+
+```shell copy
+make helm-package
+```
+
+For the artifact-URI model, validate the release-specific override during
+packaging as well:
+
+```shell copy
+make helm-package \
+  HELM_EXTERNAL_VALUES=deploy/helm/kubling/values-release.yaml
+```
+
+The generated Makefile validates the default image model and the selected
+external values before packaging the chart. Rendered manifests and packaged
+charts are written below `.kdv/release/helm/`.
+
+Deploy the reviewed chart and its referenced configuration through Helm,
+Argo CD, Flux or the organization's existing GitOps process.
+
+See [Production instances](/concepts/production) for the runtime checklist and
+[Certificates](/cli/certificates) for transport and HTTP TLS material.

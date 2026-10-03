@@ -51,13 +51,21 @@ const footer = <Footer>Kubling Documentation</Footer>
 
 const banner = (
   <Banner dismissible={false}>
-    <a
-      href="/naming-migration"
-      className="underline underline-offset-4 hover:no-underline"
-    >
-      Kubling 26.5 changes namespaces, JDBC identifiers and error codes.
-      Review the migration guide →
-    </a>
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+      <span>Migration guides:</span>
+      <a
+        href="/naming-migration"
+        className="underline underline-offset-4 hover:no-underline"
+      >
+        Kubling 26.5 namespace, JDBC and error-code changes →
+      </a>
+      <a
+        href="/cli/migration"
+        className="underline underline-offset-4 hover:no-underline"
+      >
+        KDV 26.3 CLI project and test workflow changes →
+      </a>
+    </div>
   </Banner>
 )
 

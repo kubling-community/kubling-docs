@@ -4,6 +4,7 @@ const withNextra = nextra({})
 
 export default withNextra({
   output: 'standalone',
+  agentRules: false,
   async redirects() {
     return [
       {

@@ -1,0 +1,156 @@
+import { Callout, Steps } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Create a Kubling project <Tag description={"KDV v26.3+"} />
+
+This walkthrough creates a complete local project, validates its inputs, starts
+Kubling with two providers and runs its supplied checks.
+
+## Requirements
+
+- Docker Engine
+- Docker Compose v2
+- enough local resources to run Kubling and the two In-memory providers
+
+GNU Make is optional. The commands below use `./kdv` directly.
+KDV is distributed as `docker.io/kubling/kubling-cli`; Java and a
+Kubling-specific package manager are not required on the host.
+
+<Steps>
+
+### Generate the project
+
+Run the public CLI container from a directory where `my-project` does not
+already exist:
+
+```shell copy
+docker run --rm \
+  --volume "$PWD:/workspace" \
+  docker.io/kubling/kubling-cli:latest \
+  project init my-project
+```
+
+The command creates the project atomically. It also prints the generated local
+administrator username, password and the path to `local.properties`.
+
+The project includes an executable `./kdv` launcher pinned to the KDV version
+that created it. Set `KDV_IMAGE` only when you intentionally want to run the
+project with another CLI image.
+
+<Callout type="warning">
+  The launcher connects KDV to the selected local Docker socket. Access to that
+  socket grants control over the Docker daemon. Review where the launcher and
+  project commands run before using them in shared or untrusted environments.
+</Callout>
+
+<Callout type="warning">
+  `local.properties` is ignored by Git and created with restricted file
+  permissions on supported filesystems. It is intended for local development
+  and tests, not as production secret management.
+</Callout>
+
+### Check the local environment
+
+```shell copy
+cd my-project
+./kdv project requirements
+```
+
+KDV checks the Docker CLI, Compose v2 and daemon access. Missing GNU Make is
+reported but does not prevent direct `./kdv` commands.
+
+### Run the fast tests
+
+```shell copy
+./kdv project test
+```
+
+These tests exercise the project's endpoint, scheduler and authentication
+scripts without starting the Compose stack.
+
+### Validate and build the project
+
+```shell copy
+./kdv project validate
+./kdv project build
+```
+
+`validate` checks the manifest and referenced files. `build` also parses the
+JavaScript and prepares the application configuration, descriptor and Modules.
+
+### Start Kubling
+
+```shell copy
+./kdv project up
+```
+
+KDV builds the project runtime, starts the Compose services and waits for
+Kubling to become healthy. The completion message shows the Studio URL, HTTP
+URL and enabled client transports.
+
+Open the reported Studio URL and sign in with the administrator credentials
+printed by `project init`.
+
+### Run a federated query
+
+In **SQL Workspace**, select `ProviderQuickstartVDB` and run:
+
+```sql copy
+SELECT planned.id AS task_id,
+       planned.title,
+       planned.priority AS planned_priority,
+       delivered.priority AS delivery_priority,
+       delivered.completed
+FROM planning.TASK planned
+JOIN delivery.TASK delivered ON delivered.id = planned.id
+ORDER BY planned.id;
+```
+
+The query joins the plan held by one provider with delivery state held by
+another.
+
+### Run the project checks
+
+```shell copy
+./kdv project run --profile dev smoke rbac transaction
+```
+
+The services verify federation, the authenticated endpoint, scheduled work,
+role enforcement and a transaction spanning both providers. They run against
+the persistent development instance created by `project up`.
+
+### Inspect the instance
+
+```shell copy
+./kdv project status
+./kdv project logs
+```
+
+`status` returns the current runtime and connection details. `logs` prints
+the recent output from every container owned by this project instance.
+
+### Remove the instance
+
+```shell copy
+./kdv project down
+```
+
+This removes the managed containers, network, project-built images and volumes.
+Project source files and test reports remain in the working directory.
+
+</Steps>
+
+## Make shortcuts
+
+The generated Makefile delegates to the same commands:
+
+```shell copy
+make requirements
+make test
+make up
+make integration
+make down
+```
+
+Continue with [Project structure](/cli/project-structure) before adapting the
+starter to your sources.

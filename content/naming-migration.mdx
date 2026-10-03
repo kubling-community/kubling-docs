@@ -7,6 +7,10 @@ Kubling 26.5 completes the naming update across its public Java API, JDBC
 configuration and error identifiers. Applications, extensions and operational
 tooling that use the previous names must be updated.
 
+For gRPC and other non-Java clients, the relevant change is the Kubling error
+identifier prefix. Namespace, class and JDBC changes apply to applications that
+use the JVM client or extend Kubling APIs.
+
 <Callout type="warning">
   Treat the Java and native-client boundary as a breaking upgrade. Recompile
   Java integrations and use the current Kubling JDBC driver with the upgraded
@@ -25,7 +29,6 @@ tooling that use the previous names must be updated.
 | Socket client properties | `org.teiid.sockets.*` | `com.kubling.sockets.*` |
 | Default client settings resource | `/teiid-client-settings.properties` | `/kubling-client-settings.properties` |
 | Kubling error identifiers | `TEIID` followed by five digits | `KBL` followed by five digits |
-| JVM client source repository | `kubling-teiid-os` | `kubling-core` |
 
 The package change applies to classes shipped by Kubling. Third-party
 dependencies continue to use their own namespaces.
@@ -81,13 +84,23 @@ Domain-specific code families, such as `LQ_*`, retain their own namespaces.
 5. Update monitoring, parsing and tests that expect `TEIID` error identifiers.
 6. Test the upgraded client and Engine together before production rollout.
 
-## Names that remain
+## Runtime and deployment names
+
+The public Kubling runtime image is:
+
+```text
+docker.io/kubling/kubling
+```
+
+KDV can build a project-specific image on top of that base or deploy the
+official image with external runtime artifacts. Image repositories, tags,
+artifact locations and Helm release names are owned by the project deployment.
+Do not derive Docker or Helm names from Maven coordinates, Java namespaces or
+legacy deployment assets.
+
+## Protocol identifiers that remain
 
 The rename does not change every protocol or distribution identifier:
 
 - `mm` and `mms` remain the native JDBC transport markers.
-- the published container and Helm release retain
-  `kubling-dbvirt-service`.
 - the public gRPC protobuf package remains `kubling.v1`.
-
-See [Artifacts](/concepts/artifacts) for the current distribution names.

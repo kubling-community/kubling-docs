@@ -1,4 +1,5 @@
 export default {
   index: 'Overview',
-  studio: 'Explore with Studio'
+  sample: 'Run the sample',
+  studio: 'Explore the sample with Studio'
 }
