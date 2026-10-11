@@ -160,6 +160,15 @@ The provider boundary also supports:
 - individual aggregate functions plus optional `DISTINCT`, `GROUP BY` and
   `HAVING` support.
 
+#### Query outcomes and bounded access <Tag description={"v26.6+"} />
+
+The provider boundary can also describe:
+
+- explicit complete or partial query outcomes with structured diagnostics.
+- alternative access patterns that keep table access bounded while allowing
+  criteria and [dependent joins](/engine/queries/dependent-joins) to supply
+  routing values.
+
 Kubling uses this information while planning. Supported work can be pushed to
 the provider; unsupported expressions remain in the engine. A provider may
 still reject an operation that is invalid for a specific table or native
@@ -170,6 +179,8 @@ These optional capabilities have dedicated references:
 - [Semantic fragments](/providers/semantics)
 - [Value capabilities and LOB reads](/providers/values)
 - [Aggregate pushdown](/providers/pushdown)
+- [Partial query results](/providers/partial-results)
+- [Access patterns](/providers/access-patterns)
 
 ## Register a provider in Kubling
 

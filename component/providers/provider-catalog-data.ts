@@ -10,7 +10,9 @@ export const providerKinds = ['Integration', 'Reference'] as const
 export const providerCapabilities = [
   'Semantic fragment',
   'Rich values',
-  'Aggregate pushdown'
+  'Aggregate pushdown',
+  'Partial results',
+  'Access patterns'
 ] as const
 
 export type ProviderCategory = (typeof providerCategories)[number]
@@ -65,6 +67,32 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     imageName: 'kubling/inmemory-provider',
     imageUrl: 'https://hub.docker.com/r/kubling/inmemory-provider',
     keywords: ['example', 'fixture', 'sdk', 'testing', 'development']
+  },
+  {
+    name: 'Host',
+    description:
+      'Presents a fleet of outbound host agents as bounded tables for system facts, resources, network activity and processes.',
+    category: 'Infrastructure & orchestration',
+    kind: 'Integration',
+    status: 'Official',
+    publisher: 'Kubling',
+    release: '0.1.0',
+    capabilities: ['Semantic fragment', 'Partial results', 'Access patterns'],
+    sourceUrl:
+      'https://github.com/kubling-community/kubling-providers/tree/main/providers/host',
+    imageName: 'kubling/host-provider',
+    imageUrl: 'https://hub.docker.com/r/kubling/host-provider',
+    keywords: [
+      'agent',
+      'cpu',
+      'fleet',
+      'host',
+      'memory',
+      'network',
+      'observability',
+      'processes',
+      'system'
+    ]
   },
   {
     name: 'Kubernetes',

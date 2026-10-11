@@ -445,6 +445,9 @@ JOIN NODE n ON p.spec__nodeName = n.metadata__name
 WHERE p.status__phase = 'Running';
 ```
 
+For joins whose source accesses depend on values returned by another side, see
+[Dependent joins](/engine/queries/dependent-joins).
+
 ### Advanced Example
 
 ```sql

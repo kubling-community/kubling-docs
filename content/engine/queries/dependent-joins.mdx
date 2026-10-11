@@ -1,0 +1,233 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Dependent joins
+
+Kubling can execute a join by reading both sides independently, or by using
+values returned from one side to constrain access to the other. The second
+strategy is a **dependent join**.
+
+Most queries should leave this decision to the planner. It evaluates the join
+predicates, source capabilities, metadata and estimated cardinality before
+choosing an execution plan.
+
+## Execution model
+
+| Role | Execution |
+| --- | --- |
+| Independent side | Runs first and produces the join-key values |
+| Dependent side | Is accessed with those values as additional criteria |
+| Kubling | Coordinates the source requests and completes the join |
+
+One SQL join can therefore produce an initial source request followed by one
+or more bounded requests to the dependent side. Kubling may deduplicate and
+batch the values according to the source capabilities.
+
+This is one of the decisions made by the
+[Distributed Query Processor](/concepts/architecture#query-engine). The same
+planning phase also decides which operations can be pushed to a source and
+which must be evaluated inside Kubling.
+
+## What the planner is choosing
+
+For many joins, the DQP can produce either of these plans:
+
+| Plan | Source access |
+| --- | --- |
+| Independent access | Read both sides without values from the other side, then join the results inside Kubling |
+| Dependent access | Read one side first, then use its join-key values to constrain the other side |
+
+The dependent plan can avoid a large scan when the independent side produces a
+small set of values. The independent plan can be cheaper when both sides are
+already bounded or when the produced value set would require many dependent
+requests.
+
+Without an access constraint or a hint, Kubling chooses between these plans
+using available statistics, estimated cardinality, distinct-value estimates
+and source capabilities. Missing or stale statistics can therefore change the
+chosen plan.
+
+### Source scope when criteria are omitted
+
+The plans must represent the same logical data even though they issue
+different source requests. This requires special attention for API-backed
+tables where an omitted criterion can change the scope of the remote request.
+
+For example:
+
+```sql
+SELECT dp.metadata__name, ns.metadata__name AS namespace
+FROM kube.NAMESPACE AS ns
+JOIN kube.DEPLOYMENT AS dp
+  ON dp.metadata__namespace = ns.metadata__name
+```
+
+An independent plan can request `NAMESPACE` and `DEPLOYMENT` separately, then
+join their rows inside Kubling. A dependent plan can request `NAMESPACE` first
+and use the returned names to make bounded `DEPLOYMENT` requests.
+
+The Kubernetes Provider's `blankNamespaceStrategy` determines what a
+namespaced request means when no namespace criterion reaches the provider:
+
+| Strategy | Unqualified namespaced query |
+| --- | --- |
+| `DEFAULT` | Uses the default namespace selected by the Kubernetes context |
+| `ALL` | Queries all namespaces |
+| `FAIL` | Rejects the request |
+
+The correct setting depends on the logical scope the provider instance is
+intended to expose. For a query expected to cover multiple namespaces, an
+unqualified access must not silently represent only the default namespace.
+Use an explicit criterion or configure the provider with the intended scope.
+
+<Callout type="warning">
+  A planner hint changes the execution plan, not the logical meaning of a
+  table. Do not use `MAKEDEP` as a permanent workaround when an unqualified
+  source request represents the wrong data scope.
+</Callout>
+
+<Callout type="info">
+  The Kubernetes Provider is used here only as an illustrative example of how
+  source scope can affect a join plan. See the
+  [Kubernetes Provider documentation](https://github.com/kubling-community/kubling-providers/tree/main/providers/kubernetes)
+  for its configuration and behavior.
+</Callout>
+
+## Access patterns and dependent joins <Tag description={"v26.6+"} />
+
+These concepts are related, but they are not interchangeable:
+
+| Concept | Purpose |
+| --- | --- |
+| Access pattern | Declares which values must be available before a table can be accessed |
+| Dependent join | Obtains values from one join side and applies them when accessing the other |
+| `MAKEDEP` or `MAKEIND` | Overrides the planner's normal choice of join roles |
+
+Without access patterns, choosing a dependent join is normally an optimization
+decision. An unsatisfied access pattern changes that decision: independent
+access is not valid, so the constrained table must receive the required values
+from explicit criteria or from another join side.
+
+### Planning without access patterns
+
+Before providers could declare access patterns, Kubling did not know that an
+observation table such as `NETWORK_IO` required a routing value. Consider this
+Host Provider query with unbounded fan-out disabled:
+
+```sql copy
+SELECT source.*, target.*
+FROM host.HOST AS source
+JOIN host.NETWORK_IO AS target
+  ON source.host_id = target.host_id
+ AND source.namespace = target.namespace
+LIMIT 100
+```
+
+The join supplies the routing columns, but the metadata did not prevent the
+planner from reading `NETWORK_IO` first. That plan sent an unconstrained request
+to the provider, which rejected it:
+
+```text
+unbounded host fan-out is disabled; constrain namespace, host_id or hostname
+```
+
+The SQL was valid. The selected execution direction was not valid for the
+provider. Before access patterns, the query could force the required direction:
+
+```sql copy
+SELECT source.*, target.*
+FROM host.HOST AS source
+JOIN host.NETWORK_IO AS target
+  ON source.host_id = target.host_id
+ AND source.namespace = target.namespace
+LIMIT 100
+OPTION MAKEDEP target
+```
+
+`MAKEDEP target` directs Kubling to read `HOST` first and use its routing values
+when accessing `NETWORK_IO`. The original diagnostic used the more explicit
+`OPTION MAKEIND source MAKEDEP target`; for this two-table join, `MAKEDEP target`
+is sufficient.
+
+### Planning with access patterns
+
+The Host Provider now exposes `HOST` as an unrestricted discovery table and
+declares the routing values required by observation tables. The original query,
+without either hint, can therefore be planned as follows:
+
+1. Read the matching rows from `HOST`
+2. Collect the routing values produced by that side
+3. Access `NETWORK_IO` with those values
+4. Join the returned observations with the corresponding hosts
+
+The access pattern makes an unrestricted read of `NETWORK_IO` invalid, so
+Kubling selects it as the dependent side when the join can supply a declared
+pattern. No hint is required.
+
+See [Access patterns](/providers/access-patterns) for explicit criteria,
+alternative patterns and rejected unbounded queries.
+
+## Planner hints
+
+Hints are useful when both sides can be accessed independently but you have a
+specific reason to override the cost-based plan. They should not be required
+just to use a provider-declared access pattern.
+
+### `MAKEDEP`
+
+`MAKEDEP` directs the planner to use the selected table as the dependent side.
+The other side produces the values used to constrain it. Applied to the
+Kubernetes example:
+
+```sql
+SELECT dp.metadata__name, ns.metadata__name AS namespace
+FROM kube.NAMESPACE AS ns
+JOIN kube.DEPLOYMENT AS dp
+  ON dp.metadata__namespace = ns.metadata__name
+OPTION MAKEDEP dp
+```
+
+The query-level form targets the table alias. Use the alias when a table is
+aliased so the hint remains unambiguous if the same table appears more than
+once. The equivalent table-scoped form is
+`JOIN kube.DEPLOYMENT AS dp MAKEDEP`.
+
+### `MAKEIND`
+
+`MAKEIND` directs the planner to use the annotated table as the independent
+side. An eligible table joined to it becomes the dependent side:
+
+```sql
+SELECT dp.metadata__name, ns.metadata__name AS namespace
+FROM kube.NAMESPACE AS ns MAKEIND
+JOIN kube.DEPLOYMENT AS dp
+  ON dp.metadata__namespace = ns.metadata__name
+```
+
+`MAKEDEP` names the side that receives values. `MAKEIND` names the side that
+produces them. For a simple two-table join they can express the same intended
+direction from opposite sides. In both examples, `NAMESPACE` runs first and
+`DEPLOYMENT` is accessed with the namespace values it produces.
+
+<Callout type="warning">
+  Planner hints do not create missing join criteria, satisfy missing
+  access-pattern columns or make an invalid dependent join valid. They also do
+  not override a provider's bounded-access requirement.
+</Callout>
+
+## Eligibility and verification
+
+A dependent join requires equality join criteria from which Kubling can derive
+the values for the dependent side. It is not available for a cross join or a
+full outer join. For other outer joins, only the inner side can be dependent.
+
+Hints can become counterproductive when source sizes, statistics or
+capabilities change. Before keeping one in application SQL:
+
+1. Compare the query with and without the hint
+2. Inspect the generated query plan
+3. Confirm that the independent side produces a bounded set of join values
+4. Recheck the plan after material schema or data-volume changes
+
+The [tracing guide](/observability/tracing) explains how to include query plans
+for development and diagnostics.

@@ -54,6 +54,13 @@ exercise both read and write paths against the In-memory provider.
 
 </Steps>
 
+### Repeated output names <Tag description={"v26.6+"} />
+
+SQL results preserve every selected value when two or more columns have the
+same output name, including common joins such as `source.id, target.id`. Aliases
+remain useful for readability, but Studio no longer requires them to avoid
+losing a value in the result grid.
+
 ## Semantics preview <Tag description={"v26.5+"} />
 
 When the selected VDB has an active semantic package, the Semantics workspace
