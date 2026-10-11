@@ -1,4 +1,4 @@
-import { Callout } from 'nextra/components'
+import { Callout, Tabs } from 'nextra/components'
 import Tag from '../../../component/Tag'
 
 # Protocol reference <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
@@ -87,6 +87,7 @@ smaller local bound.
 | Feature | Contract |
 | --- | --- |
 | `generic_execute_v1` | Ordered `Execute` events with a checked capability snapshot. |
+| `partial_results_v1` | Explicit result completeness and structured terminal warnings for clients that accept partial rows. |
 | `typed_parameters_v1` | Explicit parameter types, including typed `NULL`. |
 | `structured_errors_v1` | `KublingError` details in the final gRPC status. |
 | `transaction_ids_v1` | Opaque transaction IDs and stale-ID protection. |
@@ -138,6 +139,100 @@ successful completion.
   Never recover from a result-shape error by replaying the same SQL through
   `Query` or `Exec`. The first call may already have changed remote state.
 </Callout>
+
+## Partial query results <Tag description={"v26.6+"} />
+
+Partial results are opt-in and apply only to queries whose provider can return
+valid rows after one or more remote targets fail. The client must accept
+`partial_results_v1` and set the per-execution authorization flag. Otherwise,
+Kubling preserves strict behavior.
+
+<Tabs items={['Go', 'Java', 'Python']} storageKey="grpc-partial-results-language">
+
+<Tabs.Tab>
+
+```go copy
+if !slices.Contains(info.GetFeatures(), features.PartialResultsV1) {
+	return errors.New("server does not support partial results")
+}
+
+stream, err := cli.QueryService().Execute(ctx, &kublingv1.ExecuteRequest{
+	ExpiringToken:      cli.Token(),
+	Sql:                sql,
+	CapabilityId:       info.GetCapabilities().GetCapabilityId(),
+	AcceptedFeatures:   []string{features.PartialResultsV1},
+	AllowPartialResults: true,
+})
+
+// Consume every result event. At ExecutionEnd, inspect completeness and
+// classify warnings by WarningRole.
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```java copy
+if (!info.getFeaturesList().contains(Features.PARTIAL_RESULTS_V1)) {
+    throw new IllegalStateException("server does not support partial results");
+}
+
+var request = ExecuteRequest.newBuilder()
+    .setExpiringToken(login.getExpiringToken())
+    .setSql(sql)
+    .setCapabilityId(info.getCapabilities().getCapabilityId())
+    .addAcceptedFeatures(Features.PARTIAL_RESULTS_V1)
+    .setAllowPartialResults(true)
+    .build();
+
+// Consume every response. At ExecutionEnd, inspect getCompleteness() and
+// classify warnings with warning.getRole().
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```python copy
+from kubling import features
+from kubling.v1 import command_pb2
+
+if features.PARTIAL_RESULTS_V1 not in info.features:
+    raise RuntimeError("server does not support partial results")
+
+request = command_pb2.ExecuteRequest(
+    expiring_token=login.expiring_token,
+    sql=sql,
+    capability_id=info.capabilities.capability_id,
+    accepted_features=[features.PARTIAL_RESULTS_V1],
+    allow_partial_results=True,
+)
+
+# Consume every response. At execution_end, inspect completeness and classify
+# warnings by role.
+```
+
+</Tabs.Tab>
+
+</Tabs>
+
+At the terminal `ExecutionEnd`:
+
+- `COMPLETE` means every required target was evaluated. It may still carry
+  general warnings.
+- `PARTIAL` means the rows are valid but incomplete. At least one warning has
+  the `PARTIAL_RESULT_CAUSE` role.
+- a non-OK final gRPC status or a missing `ExecutionEnd` is a failed execution,
+  even if row events arrived first.
+
+Warnings and affected resource identifiers are bounded by the negotiated
+limits. Use `omitted_warning_count` and each warning's omitted-resource count
+to detect additional diagnostics that were not retained. Determine the result
+state from `completeness` and `role`, never from a code, message or list
+position.
+
+See [Partial query results](/providers/partial-results) for the end-to-end
+behavior and guidance on choosing strict or partial execution.
 
 ## Consume the result stream directly
 

@@ -25,7 +25,7 @@ and published with the other
 <dependency>
     <groupId>com.kubling</groupId>
     <artifactId>kubling-client</artifactId>
-    <version>26.2</version>
+    <version>26.4</version>
 </dependency>
 ```
 
@@ -59,7 +59,7 @@ jdbc:kubling:<vdb-name>[@mm[s]://<host>:<port>][;prop-name=prop-value]*
 |:----------------------------|:---------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ApplicationName`           | `string`  | Name of the client application; allows the administrator to identify the connections                                                                                                                                                                                                                                                                                                                                                               |
 | `FetchSize`                 |   `int`   | Size of the `resultset`; The default size if `500`. `0` indicates that the default should be used.                                                                                                                                                                                                                                                                                                                                                 |
-| `partialResultsMode`        | `boolean` | Enable/disable partial results mode. Default `false`                                                                                                                                                                                                                                                                                                                                                                                               |
+| `partialResultsMode`        | `boolean` | Accept valid incomplete rows from providers that support partial results. Default `false`.                                                                                                                                                                                                                                                                                                                                                         |
 | `user`                      | `string`  | User name                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `password`                  | `string`  | User credential                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `version`                   | `integer` | VDB version                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -88,6 +88,57 @@ try (Connection connection = DriverManager.getConnection(
     // Execute JDBC operations.
 }
 ```
+
+## Partial query results <Tag description={"v26.6+"} />
+
+JDBC connections are strict by default. Set `partialResultsMode=true` only
+when the application can use an incomplete answer and will inspect the
+statement warning chain:
+
+```java copy
+import com.kubling.jdbc.PartialResultsWarning;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.util.Properties;
+
+var props = new Properties();
+props.setProperty("user", "sa");
+props.setProperty("password", "mypass");
+props.setProperty("partialResultsMode", "true");
+
+try (var connection = DriverManager.getConnection(jdbcUrl, props);
+     var statement = connection.createStatement();
+     var rows = statement.executeQuery(sql)) {
+
+    while (rows.next()) {
+        // Consume valid rows.
+    }
+
+    for (SQLWarning warning = statement.getWarnings();
+         warning != null;
+         warning = warning.getNextWarning()) {
+        if (warning instanceof PartialResultsWarning partial) {
+            for (String source : partial.getFailedConnectors()) {
+                SQLException cause = partial.getConnectorException(source);
+                // Report the incomplete source and its cause.
+            }
+        } else {
+            // Handle a general KublingSQLWarning.
+        }
+    }
+}
+```
+
+`PartialResultsWarning` identifies the sources that did not contribute rows
+and exposes their associated exceptions. Other provider diagnostics appear as
+general `KublingSQLWarning` entries. Do not parse message text to decide
+whether the result is partial.
+
+When `partialResultsMode` is absent or `false`, a provider that cannot complete
+the query causes the execution to fail instead of returning an incomplete
+result. See [Partial query results](/providers/partial-results) for the
+end-to-end policy.
 
 ### Client networking properties file <Tag description={"v26.5+"} />
 

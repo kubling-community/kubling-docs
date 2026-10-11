@@ -1,0 +1,82 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Access patterns <Tag description={"v26.6+"} />
+
+Some provider tables cannot be read safely without routing information. A
+provider can declare access patterns that tell Kubling which columns must be
+available before the table is accessed.
+
+Kubling can satisfy a pattern with explicit query criteria or with values from
+another side of a join. If no declared pattern can be satisfied, the planner
+rejects the query before starting an unbounded provider request.
+
+## Alternatives and required columns
+
+Each access pattern is one alternative. Every column inside the selected
+pattern is required.
+
+For example, the Host Provider publishes these alternatives for
+`NETWORK_IO`:
+
+| Pattern | Required values |
+| --- | --- |
+| `AP_NETWORK_IO_NAMESPACE` | `namespace` |
+| `AP_NETWORK_IO_HOST_ID` | `host_id` |
+| `AP_NETWORK_IO_HOSTNAME` | `hostname` |
+
+A predicate that supplies `namespace` satisfies the first alternative. A
+query does not need to satisfy every pattern.
+
+An empty access-pattern list preserves unrestricted access. Access patterns
+do not declare keys, uniqueness, indexes or authorization rules.
+
+## Explicit criteria
+
+The simplest bounded query supplies the routing value directly:
+
+```sql copy
+SELECT namespace, host_id, name AS interface_name, bytes_sent, bytes_received
+FROM host.NETWORK_IO
+WHERE namespace = 'local'
+```
+
+The provider receives only the bounded access Kubling planned from that
+criterion.
+
+## Values supplied by a join
+
+Routing values can also come from another table. Kubling can execute that table
+first and use its join-key values to access the constrained table. This is a
+dependent join, and the planner selects it automatically when it can satisfy a
+declared pattern.
+
+The [Dependent joins](/engine/queries/dependent-joins) guide explains this
+execution model and when the `MAKEDEP` and `MAKEIND` planner hints are useful.
+
+By contrast, this direct query provides no routing value and is rejected when
+`NETWORK_IO` is constrained:
+
+```sql copy
+SELECT namespace, host_id, name AS interface_name
+FROM host.NETWORK_IO
+```
+
+<Callout type="info">
+  A planning rejection protects the provider from unbounded fan-out. Add a
+  criterion that satisfies one advertised pattern or join through a table
+  that supplies the required values. A planner hint cannot replace those
+  values.
+</Callout>
+
+## Compatibility
+
+The contract is additive for providers that declare no patterns. When a
+provider begins restricting a previously unrestricted table, existing direct
+queries may need a predicate or a bounded join.
+
+The exact patterns belong to each provider because they reflect its routing
+and cost model. Use the [Provider catalog](/providers/catalog) to reach the
+provider's schema and query guidance. Provider authors should use the
+[published Provider protocol](https://buf.build/kubling/kubling-providers) for
+the metadata field definitions and validation rules.

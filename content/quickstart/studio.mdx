@@ -1,4 +1,4 @@
-import { Callout, Steps } from 'nextra/components'
+import { Callout, ImageZoom, Steps, Tabs } from 'nextra/components'
 import Tag from '../../component/Tag'
 
 # Explore the sample with Kubling Studio
@@ -17,17 +17,21 @@ credentials, VDB and example data refer to that environment.
   the instance HTTP APIs.
 </Callout>
 
-## First exploration
+## Open the workspace
 
 <Steps>
 
-### Open Studio
+### Sign in
 
 In the Quickstart, open
 [http://localhost:8282/console](http://localhost:8282/console) and enter
 `quickstart` as both username and password. The values only satisfy the local
 login form; the sample VDB has no authentication delegate and does not persist
 them.
+
+In an authenticated deployment, Studio creates a session for the supplied
+Kubling account. Catalog visibility, queries and mutations use that account's
+permissions; Studio does not provide a privileged path around VDB policies.
 
 ### Select the Virtual Database
 
@@ -50,6 +54,13 @@ exercise both read and write paths against the In-memory provider.
 
 </Steps>
 
+### Repeated output names <Tag description={"v26.6+"} />
+
+SQL results preserve every selected value when two or more columns have the
+same output name, including common joins such as `source.id, target.id`. Aliases
+remain useful for readability, but Studio no longer requires them to avoid
+losing a value in the result grid.
+
 ## Semantics preview <Tag description={"v26.5+"} />
 
 When the selected VDB has an active semantic package, the Semantics workspace
@@ -65,10 +76,159 @@ files. It includes:
 The workspace is read-only. Provider fragments, authored modules and VDB
 composition remain version-controlled deployment artifacts.
 
+### Read the workspace
+
+| View | What it answers |
+| --- | --- |
+| Overview | Is the package active, which query surfaces are selected and how much of the model is visible? |
+| Entities | Which domain entities, properties and catalog bindings were compiled? |
+| Relationships | Which entities are connected, and does the relationship have an executable binding? |
+| Graph | How do entities and concepts connect? Select a node or edge to inspect its details. |
+| Diagnostics | Why did acquisition, validation or compilation fail? |
+| JSON | What normalized package did Kubling activate for this VDB version? |
+
+### Active query surfaces and all compiled sources
+
+The two scope controls show different projections of the same active semantic
+package:
+
+| View | Contents | Use it for |
+| --- | --- | --- |
+| **Active query surfaces** | Definitions mapped to the binding scopes selected by the VDB composition as its intended query interface. | Normal exploration and query generation. |
+| **All compiled sources** | Every definition and binding scope retained in the compiled package, including source-local mappings and their provenance. | Diagnosing composition, projections and model origins. |
+
+A query surface is a selected binding scope, not a data source. For example, a
+composition can retain the source-local `kube` and `kube_remote` scopes while
+publishing a projected `fleet` scope for normal queries. Kubling keeps all
+three in the compiled package, but the active view presents only the entities
+and relationships mapped to `fleet`.
+
+If a composition does not declare query surfaces, the active view falls back
+to all binding scopes for compatibility.
+
+The example below uses a composed Kubernetes VDB. Scope names and counts vary
+with the active package.
+
+<Callout type="info">
+  Query surfaces guide query generation and Studio exploration. They do not
+  grant access, remove catalog objects or instruct Kubling to query every
+  compiled scope. Authentication and VDB policies remain authoritative.
+</Callout>
+
+<div className="mt-5 block dark:hidden">
+  <ImageZoom
+    src="/img/studio/semantics-overview-light.png"
+    alt="Kubling Studio Semantics overview showing the active fleet query surface and the control for viewing all compiled sources"
+    width={1600}
+    height={857}
+  />
+</div>
+<div className="mt-5 hidden dark:block">
+  <ImageZoom
+    src="/img/studio/semantics-overview-dark.png"
+    alt="Kubling Studio Semantics overview showing the active fleet query surface and the control for viewing all compiled sources"
+    width={1600}
+    height={857}
+  />
+</div>
+
 `catalogOnly` means that the VDB is active without a compiled semantic package.
 An invalid state exposes diagnostics rather than presenting a partial graph as
 usable. See [Semantics](/semantics) for bootstrap, composition and failure
 policy.
+
+<span id="semantic-relationships-and-executable-bindings" />
+
+### Semantic relationships and executable bindings <Tag description={"v26.5.3+"} />
+
+Open **Semantics**, select the VDB, choose **Graph**, and then select
+**Open full graph**. Selecting an edge shows whether it only describes the
+domain or also declares a binding that Kubling can turn into SQL.
+
+A semantic relationship does not have to correspond to a direct relationship
+between two catalog tables. In this Kubernetes model, a Deployment owns Pods
+in domain terms, but the catalog-backed ownership path is:
+
+**Deployment → ReplicaSet → Pod**
+
+Filter the graph to `DeploymentOwns` and compare the two edges:
+
+<Tabs
+  items={['Semantic only', 'Executable binding']}
+  storageKey="studio-semantic-relationship-kind"
+>
+
+<Tabs.Tab>
+
+`DeploymentOwnsPod` captures the transitive domain relationship. Studio marks
+it **Semantic only**, identifies the path through `DeploymentOwnsReplicaSet`
+and `ReplicaSetOwnsPod`, and reports **No execution binding**. The relationship
+is part of the model, but it does not claim that Deployment and Pod can be
+joined directly.
+
+<div className="mt-5 block dark:hidden">
+  <ImageZoom
+    src="/img/studio/relationship-semantic-only-light.png"
+    alt="Semantic graph with DeploymentOwnsPod selected and the detail panel marking it Semantic only with no execution binding"
+    width={1600}
+    height={857}
+  />
+</div>
+<div className="mt-5 hidden dark:block">
+  <ImageZoom
+    src="/img/studio/relationship-semantic-only-dark.png"
+    alt="Semantic graph with DeploymentOwnsPod selected and the detail panel marking it Semantic only with no execution binding"
+    width={1600}
+    height={857}
+  />
+</div>
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+`DeploymentOwnsReplicaSet` declares how that step is resolved against the
+catalog. Studio marks it **Executable** and shows its execution scopes, JOIN
+conditions and physical column mappings. Only this form exposes **Copy JOIN
+SQL**.
+
+<div className="mt-5 block dark:hidden">
+  <ImageZoom
+    src="/img/studio/relationship-executable-light.png"
+    alt="Semantic graph with DeploymentOwnsReplicaSet selected and the detail panel showing its executable binding and physical JOIN conditions"
+    width={1600}
+    height={857}
+  />
+</div>
+<div className="mt-5 hidden dark:block">
+  <ImageZoom
+    src="/img/studio/relationship-executable-dark.png"
+    alt="Semantic graph with DeploymentOwnsReplicaSet selected and the detail panel showing its executable binding and physical JOIN conditions"
+    width={1600}
+    height={857}
+  />
+</div>
+
+</Tabs.Tab>
+
+</Tabs>
+
+<Callout type="info">
+  **Semantic only** does not mean that a relationship is invalid or incomplete.
+  It means that the edge has no direct execution binding. Its underlying path
+  can still be modeled as separate relationships with their own execution
+  bindings.
+</Callout>
+
+When **Copy JOIN SQL** is available, Studio copies a bounded JOIN, including a
+`LIMIT 100`, to the clipboard. Paste it into **SQL Workspace** and adapt its
+projection, predicates or limit. Studio never executes copied SQL
+automatically.
+
+<Callout type="info">
+  Generated SQL reflects the currently active semantic package and catalog.
+  Treat it as an editable starting point and review it before execution.
+</Callout>
 
 ## Investigations preview <Tag description={"v26.5+"} />
 

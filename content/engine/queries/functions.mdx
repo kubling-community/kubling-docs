@@ -1011,3 +1011,55 @@ Expected output (assuming `manifest_yaml` contains valid YAML documents):
 | {"key":"value"} |
 | {"foo":"bar"}   |
 ```
+
+## `JSONTABLE` <Tag description={"v26.6+"} />
+
+`JSONTABLE` is a table function that expands a JSON document into typed
+relational rows. The packaged Kubling service includes the required runtime
+support, so no additional module or classpath change is needed.
+
+```text
+JSONTABLE(
+  json_expression,
+  row_path
+  [, missing_leaf_as_null]
+  COLUMNS column_definition [, column_definition ...]
+) AS alias
+```
+
+A column definition is either a typed value with an optional JSON path or an
+ordinality column:
+
+```text
+column_name data_type [PATH 'column_path']
+column_name FOR ORDINALITY
+```
+
+When `missing_leaf_as_null` is `true`, a missing leaf selected by a column path
+produces `NULL`. The default is `false`.
+
+This query expands one JSON object into typed columns:
+
+```sql copy
+SELECT j.id, j.name, j.status
+FROM JSONTABLE(
+  CAST('{"id":5,"name":"carly","status":"sold"}' AS json),
+  '$',
+  false COLUMNS
+    id integer,
+    name string,
+    status string
+) AS j
+```
+
+Expected output:
+
+```text
+| id | name  | status |
+| -- | ----- | ------ |
+| 5  | carly | sold   |
+```
+
+The JSON expression can also reference a column from another table. In that
+form, `JSONTABLE` acts as a nested table reference and produces rows for each
+input document.

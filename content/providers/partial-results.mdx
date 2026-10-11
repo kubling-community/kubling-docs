@@ -1,0 +1,75 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# Partial query results <Tag description={"v26.6+"} />
+
+A query over several remote targets can produce valid rows even when one of
+those targets is unavailable. Kubling can return those rows as an explicitly
+partial result, together with structured diagnostics that identify why the
+answer is incomplete.
+
+Strict execution remains the default. A client receives partial rows only
+when the provider supports them and the client explicitly accepts them.
+
+## Result states
+
+| State | Meaning | Client action |
+| --- | --- | --- |
+| Complete | Every target required by the query was evaluated. General warnings may still be present. | Consume the rows and inspect any warnings. |
+| Partial | The returned rows are valid, but at least one required target was not evaluated. | Consume the rows only if an incomplete answer is acceptable, and surface the reported causes. |
+| Failed | Kubling cannot return a successful result under the active policy. | Treat the execution as failed. Rows received before the failure do not establish success. |
+
+<Callout type="warning">
+  Do not infer completeness from the number of rows or from warning text. Use
+  the terminal completeness value and the diagnostic role exposed by the
+  client interface.
+</Callout>
+
+## End-to-end opt-in
+
+Partial results require agreement across the complete execution path:
+
+1. The provider advertises partial-result support.
+2. The provider deployment allows incomplete results for the affected source.
+3. The client interface supports the behavior and the application opts in.
+4. The provider finishes with a valid partial outcome and at least one
+   diagnostic identified as a partial-result cause.
+
+If any condition is missing, Kubling keeps strict behavior and fails a query
+that cannot be completed. Enabling the option does not convert SQL errors,
+invalid provider responses or transport failures into partial success.
+
+## Client behavior
+
+| Client | Opt-in | How to inspect the outcome |
+| --- | --- | --- |
+| Client gRPC | Accept `partial_results_v1` and set `allow_partial_results` for the `Execute` request. | Read `ExecutionEnd.completeness` and classify its warnings by `role`. |
+| Java JDBC | Set `partialResultsMode=true` on the connection. | Read the `Statement` warning chain and handle `PartialResultsWarning`. |
+
+The opt-in is deliberately explicit. Use it for workflows where a current but
+incomplete observation is useful, such as fleet inspection or distributed
+telemetry. Keep strict execution for reconciliation, policy decisions and
+other operations that require every selected source to participate.
+
+- [Use partial results with client gRPC](/clients/grpc/protocol#partial-query-results)
+- [Use partial results with Java JDBC](/clients/drivers/native_jdbc#partial-query-results)
+
+## Provider contract
+
+A provider that supports partial results declares that capability during
+discovery. When Kubling permits an incomplete answer, the provider may stream
+valid row batches and then report a terminal outcome:
+
+- `COMPLETE` means that every required target was evaluated.
+- `PARTIAL` means that at least one target was not evaluated and requires a
+  diagnostic with the partial-result-cause role.
+- warnings unrelated to completeness remain general diagnostics.
+- a non-successful gRPC status is still a failed provider query.
+
+Diagnostic codes and messages are useful for troubleshooting, but clients
+must not parse them to decide whether the result is partial. The role is the
+stable classification signal.
+
+The published
+[Provider protocol](https://buf.build/kubling/kubling-providers) remains the
+source of truth for message fields and compatibility rules.

@@ -21,6 +21,10 @@ source's implementation.
 As a result, the query the source receives is almost identical to the one Kubling received.
 
 In regular mode, however, the DQP resolves the AST differently. Subqueries may be resolved as independent units, resulting in multiple queries being sent to the data source.
+
+Federated plans may also produce multiple source requests when Kubling uses
+values from one side of a [dependent join](/engine/queries/dependent-joins) to
+constrain access to the other.
 <br/>
 
 ### Additional Columns  <Tag description={"v25.1+"} />
@@ -208,4 +212,3 @@ In this specific sample all the `TABLES` of the schema `PUBLIC` will have a loca
 
 ## MySQL Data Source (`MYSQL`)
 Configuration is exactly the same as `POSTGRESQL` (above). Only difference is that `dataSourceType` must have the value `MYSQL`.
-
