@@ -179,6 +179,37 @@ Query must select a scope when more than one binding is valid.
 Kubling does not interpret repeated scopes as an instruction to fan out a query
 automatically. The selected query surface remains explicit.
 
+### Query surfaces and the complete model
+
+A composition can select one or more binding scopes as its normal query
+interface:
+
+```yaml copy
+spec:
+  querySurfaces:
+    - fleet
+```
+
+The compiled package still retains every validated scope. This separation lets
+Kubling expose a composed scope such as `fleet` for query generation while
+keeping source-local scopes such as `kube` and `kube_remote` for provenance,
+diagnostics and explicitly scoped resolution.
+
+| Scope view | Meaning |
+| --- | --- |
+| Active query surfaces | The entities and relationships mapped to the scopes selected by `querySurfaces`. |
+| Complete compiled model | All validated definitions and mappings from every binding scope. |
+
+Selecting a query surface does not copy data, create a federated view or grant
+access. The target relations must already exist in the VDB catalog, and every
+operation remains subject to the caller's permissions. When `querySurfaces` is
+absent or empty, Kubling publishes all binding scopes for compatibility.
+
+Studio exposes these projections as **Active query surfaces** and
+**All compiled sources**. See the
+[Studio Semantics guide](/quickstart/studio#active-query-surfaces-and-all-compiled-sources)
+for the interactive workflow.
+
 ## Provider and authored fragments
 
 A provider may contribute one optional source-local fragment. Authored
