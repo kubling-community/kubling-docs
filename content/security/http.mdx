@@ -7,14 +7,34 @@ In addition to the native transport used to connect to the Query Engine, Kubling
 
 These HTTP endpoints can also be secured with TLS by configuring a certificate at the [application level](/schemas#main-application-configuration):
 
-```yaml
+```yaml copy
 http:
   tls:
+    storeType: "PKCS12"
     storeFilePath: "/certs/server-http.ks"
-    storePassword: "myhttpserverpass"
+    storePassword: "{{ HTTP_TLS_STORE_PASSWORD }}"
+    entryAlias: "kubling_http_server"
+    minimumTlsVersion: TLS_1_3
 ```
 
 If clients need to verify the server certificate, be sure to generate the proper trust pair.
 We recommend using the
 [Kubling CLI](/cli/certificates#http-certificates), which simplifies the
 process and produces certificates ready to be used by the server and clients.
+
+`TLS_1_3` requires TLS 1.3. Set `minimumTlsVersion` to `TLS_1_2` when
+clients must be allowed to negotiate TLS 1.2.
+
+## Browser origins
+
+When a browser client is served from another origin, list the origins that may
+access the HTTP API:
+
+```yaml copy
+http:
+  corsAllowedOrigins:
+    - "https://studio.example.com"
+```
+
+See the [application configuration schema](/schemas#main-application-configuration)
+for the complete HTTP configuration.

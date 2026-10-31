@@ -76,7 +76,7 @@ Kubling preserves these semantics rather than introducing abstractions that woul
 <summary>Modbus Source configuration</summary>
 ```yaml
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:ModbusSourceConfig"
+id: "schema:kubling:model:vdb:sources:ModbusSourceConfig"
 properties:
   address:
     type: "string"
@@ -100,7 +100,7 @@ properties:
     - "LITTLE_ENDIAN"
   tlsConfig:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:ModbusTLSConfig"
+    id: "schema:kubling:model:vdb:sources:ModbusTLSConfig"
     properties:
       certificates:
         type: "string"
@@ -122,7 +122,7 @@ properties:
           \ This is used only if 'privateKey' is not provided."
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsMvccSupportConfig"
     properties:
       enabled:
         type: "boolean"
@@ -143,7 +143,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. When\
           \ enabled, Kubling maintains per-transaction visibility using an internal\
           \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
@@ -171,7 +171,7 @@ properties:
     type: "integer"
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"

@@ -1,0 +1,46 @@
+import { Callout, Cards } from 'nextra/components'
+
+# Install Kubling
+
+Kubling is distributed as a set of components rather than as one system-wide
+package. Install the runtime, project tooling and providers required by your
+deployment, using the delivery method that fits where each component runs.
+
+<Callout type="info">
+  Installing one component does not install a complete Kubling environment.
+  The Kubling Engine, KDV CLI and providers are selected and upgraded
+  independently.
+</Callout>
+
+## Choose an installation method
+
+<Cards num={2}>
+  <Cards.Card title="Docker" href="/install/docker" arrow>
+    Use official container images for local environments, CI and containerized
+    deployments.
+  </Cards.Card>
+  <Cards.Card title="Debian and Ubuntu" href="/install/debian" arrow>
+    Configure the official APT repository and install the components published
+    as signed Debian packages.
+  </Cards.Card>
+</Cards>
+
+| Method | Best suited for | Release selection |
+| --- | --- | --- |
+| Docker | Compose, Kubernetes, CI and other container runtimes | Image tag or digest |
+| Debian package | Services and command-line tools managed directly on Debian or Ubuntu hosts | APT package version |
+
+Not every component is published through every method. Consult the component's
+documentation or the repository itself before choosing a package or image.
+
+## Components
+
+| Component | Purpose | Documentation |
+| --- | --- | --- |
+| Kubling Engine | Runs virtual databases, executes queries and exposes client endpoints | [Engine](/engine/virtual-database) |
+| KDV CLI | Creates, validates, tests and packages Kubling projects | [Install KDV](/cli/install) |
+| Providers | Connect Kubling to external systems and execute source operations | [Provider catalog](/providers/catalog) |
+
+For a complete first environment, follow the [Quickstart](/quickstart). The
+installation pages are intended for choosing and managing individual
+components in an existing environment.

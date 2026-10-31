@@ -10,7 +10,7 @@ import Tag from '../../component/Tag'
 ```yaml
 metrics:
   type: "object"
-  id: "schema:kubling:dbvirt:config:app:instrumentation:MetricsProperties"
+  id: "schema:kubling:service:config:app:instrumentation:MetricsProperties"
   properties:
     metricsCommonTags:
       type: "object"
@@ -20,7 +20,7 @@ metrics:
         type: "string"
     azureMonitor:
       type: "object"
-      id: "schema:kubling:dbvirt:config:app:instrumentation:AzureMonitorProperties"
+      id: "schema:kubling:service:config:app:instrumentation:AzureMonitorProperties"
       properties:
         enabled:
           type: "boolean"
@@ -28,7 +28,7 @@ metrics:
           type: "string"
     openTelemetry:
       type: "object"
-      id: "schema:kubling:dbvirt:config:app:instrumentation:OpenTelemetryConfig"
+      id: "schema:kubling:service:config:app:instrumentation:OpenTelemetryConfig"
       properties:
         enabled:
           type: "boolean"
@@ -69,7 +69,7 @@ metrics:
           - "CUMULATIVE"
     dataDog:
       type: "object"
-      id: "schema:kubling:dbvirt:config:app:instrumentation:DatadogConfig"
+      id: "schema:kubling:service:config:app:instrumentation:DatadogConfig"
       properties:
         enabled:
           type: "boolean"

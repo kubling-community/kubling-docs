@@ -3,13 +3,13 @@ import Tag from '../../component/Tag'
 
 # Migrate an existing CLI project <Tag description={"KDV v26.3+"} />
 
-KDV 26.3 replaces the former integration-plan and task DSL with normal project
-files, Docker Compose services and optional Make targets. Existing projects are
-not converted automatically.
+KDV 26.3 and later replace the former integration-plan and task DSL with normal
+project files, Docker Compose services and optional Make targets. Existing
+projects are not converted automatically.
 
 ## Command and configuration changes
 
-| Before KDV 26.3 | KDV 26.3 |
+| Before KDV 26.3 | KDV 26.3+ |
 | --- | --- |
 | `kdv test integration plan.yaml` | `kdv project run <service>...` |
 | CLI-managed mock servers | Project-owned services in `compose.yaml` |
@@ -36,7 +36,7 @@ Kubling or execute the former integration test plan.
 
 <Callout type="warning">
   `project init --from` copies an existing project that already satisfies the
-  KDV 26.3 manifest. It is not a converter for the former manifest or
+  KDV 26.3+ manifest. It is not a converter for the former manifest or
   integration-test format.
 </Callout>
 

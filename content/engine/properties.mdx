@@ -1,44 +1,93 @@
+import { Callout } from 'nextra/components'
+
 # Properties
 
-Property injection is the standard mechanism for passing variables into a Kubling instance. 
-As a general rule, when a property is defined in a more specific context, it overrides any values set in a broader context.<br/>
+Properties provide named string values to Kubling's
+[template parser](/template/parser). They can be defined for the whole
+application or for one data source.
 
-## Environment variables
-They are the most basic mechanism for passing variables. All variables are picked up when the engine initializes and are available in all template contexts.
+## Application-wide properties
 
-## Properties File
-A properties file, similar to `.env` files, specified at the [Main application configuration](/schemas#main-application-configuration) 
-level using the `propertiesFilePath`. This file overrides any environment variable properties.
+The [application configuration](/schemas#main-application-configuration)
+supports inline properties and an external properties file:
 
-However, it’s important to note that variables defined in this file are not available during the parsing of the main application configuration itself.
+```yaml copy
+properties:
+  REGION: "eu-west"
+  API_BASE_URL: "https://api.example.com"
+propertiesFilePath: "/etc/kubling/runtime.properties"
+```
 
-The expected file format is as follows:
-- Each entry is generally expected to be a single line of the form `key=value`. 
-White space between the key and value is ignored, therefore `key = value` is equivalent.
-- Lines starting with `#` are comments, therefore ignored.
+Application-wide values are combined in this order, from lowest to highest
+precedence:
 
-## Data Source Properties
-Properties passed in the [Virtual Database information file](/schemas#virtual-database-information-file-located-inside-the-descriptor-bundle), 
-`dataSources.[data_source].properties` attribute.
+1. Inline `properties`
+2. Environment variables
+3. Values loaded from `propertiesFilePath`
 
-Variables defined in this scope are available in Data Source configuration (`dataSources.[data_source].config`),
-Translator configuration (`dataSources.[data_source].translatorConfig`), DDL (`dataSources.[data_source].schema.ddl`) 
-and DDL Files (`dataSources.[data_source].schema.ddlFilePaths`).
+The properties file uses the standard `key=value` format:
 
-It's important to note that Schema DDLs receive a special object in the context, called `schema`, which includes `dataSources.[data_source].schema`. 
-If this object contains properties, they can be accessed via `schema.properties`. 
-This approach enables reusability of common configuration files, such as `translatorConfig`, by isolating specific schema properties.
+```properties copy
+REGION=eu-central
+API_BASE_URL=https://api.internal.example.com
+```
 
+Blank lines and lines beginning with `#` are ignored. Whitespace around the
+key and value is also ignored.
 
-Properties specified in the Virtual Database (VDB) information file, defined using the `dataSources.[data_source].properties` attribute.
+<Callout type="info">
+  The main application configuration is parsed before its inline and file-based
+  properties are loaded. Use environment variables for templates inside that
+  file. The resulting application properties are available to configuration
+  templates loaded later.
+</Callout>
 
-Variables defined at this level are accessible throughout the following configurations:
+<Callout type="warning">
+  Do not commit credentials in inline properties or properties files. Inject
+  them through the deployment platform's environment or secret-mount
+  mechanism.
+</Callout>
 
-- Data Source Configuration (`dataSources.[data_source].config`)
-- Translator Configuration (`dataSources.[data_source].translatorConfig`)
-- Schema DDL (`dataSources.[data_source].schema.ddl`)
-- DDL Files (`dataSources.[data_source].schema.ddlFilePaths`).
+## Data source properties
 
-It's important to highlight that Schema DDLs are injected with a special context object named `schema`, which includes `dataSources.[data_source].schema`. 
-If the `schema` object contains `properties`, they can be accessed via `schema.properties`. This enables flexibility and reusability,
-especially when working with shared configurations, such as `translatorConfig`.
+`dataSources[].properties` adds values to one data source's template context.
+These values override application-wide properties with the same name when
+Kubling parses that data source's external configuration.
+
+```yaml copy
+dataSources:
+  - name: inventory
+    dataSourceType: PROVIDER_GRPC
+    properties:
+      PROVIDER_HOST: inventory-provider
+    config: "bundle:inventory-provider.yaml"
+```
+
+The referenced configuration can then use the value directly:
+
+```yaml copy
+address: "{{ PROVIDER_HOST }}"
+port: 50051
+```
+
+Use `config` when data source-scoped interpolation is required.
+`configObject` is already part of the VDB document and is not parsed again
+with the data source's property scope.
+
+## Schema properties
+
+`dataSources[].schema.properties` carries values that belong to the schema
+model rather than to the connection configuration:
+
+```yaml copy
+schema:
+  type: PHYSICAL
+  properties:
+    catalog: inventory
+  ddlFilePaths:
+    - "bundle:inventory.ddl"
+```
+
+Schema DDL templates access these values through the `schema` object, for
+example `{{ schema.properties.catalog }}`. This keeps a shared DDL file
+independent from one deployment's schema values.

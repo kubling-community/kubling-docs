@@ -22,7 +22,7 @@ There are three independent log handlers:
 ```yaml
 logs:
   type: "object"
-  id: "schema:kubling:dbvirt:config:app:instrumentation:LogsProperties"
+  id: "schema:kubling:service:config:app:instrumentation:LogsProperties"
   properties:
     scheduleDelayInSeconds:
       type: "integer"
@@ -52,7 +52,7 @@ logs:
         type: "string"
     core:
       type: "object"
-      id: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+      id: "schema:kubling:service:config:app:instrumentation:CommonLogsProperties"
       properties:
         enabled:
           type: "boolean"
@@ -67,10 +67,10 @@ logs:
           type: "boolean"
     script:
       type: "object"
-      $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+      $ref: "schema:kubling:service:config:app:instrumentation:CommonLogsProperties"
     agentic:
       type: "object"
-      $ref: "schema:kubling:dbvirt:config:app:instrumentation:CommonLogsProperties"
+      $ref: "schema:kubling:service:config:app:instrumentation:CommonLogsProperties"
 ```
 </details>
 

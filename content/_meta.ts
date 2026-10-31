@@ -4,6 +4,7 @@ export default {
     display: 'hidden'
   },
   quickstart: 'Quickstart',
+  install: 'Install',
   clients: 'Clients',
   concepts: 'Concepts',
   engine: 'Engine',

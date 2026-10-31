@@ -22,7 +22,7 @@ Uses the Standard DB Data Source Configuration.
 
 ```yaml
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:BaseDatabaseSourceConfig"
+id: "schema:kubling:model:vdb:sources:BaseDatabaseSourceConfig"
 properties:
   dataSourceName:
     type: "string"
@@ -62,7 +62,7 @@ properties:
       \ connection is created.Default: 14400000ms (4 hours)"
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -80,7 +80,7 @@ properties:
       \ condition clause of the operation, otherwise the operations are pushed as-is."
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
     properties:
       enabled:
         type: "boolean"
@@ -101,7 +101,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. Defaults\
           \ to disabled."
         properties:
@@ -130,10 +130,8 @@ properties:
     type: "string"
     description: "Allows to run a DDL in the REMOTE data source once the connection\
       \ is established."
-  ddlFilePaths:
+  ddlfilePaths:
     type: "array"
-    description: "Allows to run multiple DDL, loaded from external file paths, in\
-      \ the REMOTE data source once the connection is established."
     items:
       type: "string"
 ```
@@ -152,15 +150,15 @@ Sample configuration in VDB file:
     minConnectionPoolSize: 1
     maxConnectionIdleMilliseconds: 7200000
     maxConnectionLifeTimeMilliseconds: 14400000
-    ddlFilePaths:
-    - /path/to/some.ddl
+    ddlfilePaths:
+      - /path/to/some.ddl
   translatorConfig: /path/to/some-config.yaml
   schema:
     type: PHYSICAL
     properties:
-    importer.useCatalogName: "false"
-    importer.useFullSchemaName: "false"
-    importer.schemaName: PUBLIC
+      importer.useCatalogName: "false"
+      importer.useFullSchemaName: "false"
+      importer.schemaName: PUBLIC
 ```
 
 Kubling uses an adapted version of the popular H2 DB Engine, so please refer to [their documentation](https://github.com/h2database/h2database) to get info about the supported grammar

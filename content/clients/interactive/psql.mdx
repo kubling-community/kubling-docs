@@ -1,7 +1,13 @@
 # PostgreSQL interactive terminal
-[psql](https://www.postgresql.org/docs/current/app-psql.html) is a standard terminal-based front-end to PostgreSQL. Which you can use it to interact with Kubling.
+[psql](https://www.postgresql.org/docs/current/app-psql.html) is a standard
+terminal front end for PostgreSQL that can connect through Kubling's PostgreSQL
+compatibility transport.
 
-Please note that `psql` uses the PostgreSQL protocol, therefore you cannot establish a connection using the Kubling native protocol.
+For new terminal workflows, use the [KDV SQL terminal](/cli/sql-terminal),
+which connects through Kubling's gRPC client transport. Use `psql` when an
+existing workflow specifically requires PostgreSQL compatibility.
+
+`psql` cannot connect through Kubling's native or gRPC transports.
 
 ## Installation
 

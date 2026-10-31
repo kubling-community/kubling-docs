@@ -33,6 +33,15 @@ This section lets you explicitly define core metadata that will be attached auto
 | `serviceInstance`  | string | Unique identifier for this specific service instance (e.g. container ID, hostname, or device ID).   | If not defined, Kubling uses the engine `instanceName`, which defaults to a random string if unset. | `"node-123"` or `"switch-47"`  |
 | `environment`      | string | Logical deployment environment of the service. Useful for filtering by lifecycle stage.             | –                                                                                                   | `"dev"`, `"staging"`, `"prod"` |
 
+```yaml copy
+instrumentation:
+  openTelemetryCommonAttributes:
+    serviceName: kubling
+    serviceNamespace: data-platform
+    serviceInstance: node-01
+    environment: production
+```
+
 When configured, these values are automatically injected into:
 
 - **Trace spans** (as span attributes like `service.name`, `service.namespace`, etc.)

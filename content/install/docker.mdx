@@ -1,0 +1,48 @@
+import { Callout } from 'nextra/components'
+
+# Install with Docker
+
+Kubling publishes official container images for the Engine, KDV CLI and
+providers. Container images are the broadest distribution method across local
+development, CI, Docker Compose and Kubernetes deployments.
+
+<Callout type="warning">
+  Pin an explicit image tag or digest for maintained environments. Use
+  `latest` only for short-lived evaluation when automatically adopting a new
+  release is acceptable.
+</Callout>
+
+## Official images
+
+| Component | Image or catalog | Purpose |
+| --- | --- | --- |
+| Kubling Engine | [`docker.io/kubling/kubling`](https://hub.docker.com/r/kubling/kubling) | Query runtime and client endpoints |
+| KDV CLI | [`docker.io/kubling/kubling-cli`](https://hub.docker.com/r/kubling/kubling-cli) | Project creation, validation, testing and packaging |
+| Providers | [Provider catalog](/providers/catalog) | Connectivity and execution for external systems |
+
+Pull the exact release required by the project:
+
+```shell copy
+docker pull docker.io/kubling/kubling:<tag>
+docker pull docker.io/kubling/kubling-cli:<tag>
+```
+
+Provider image names and links to their available tags are listed in the
+[Provider catalog](/providers/catalog). Providers are deployed separately from
+the Engine and may follow their own release cadence.
+
+## Use the images
+
+The Engine image needs a Kubling project configuration, Modules and provider
+connections before it can serve a virtual database. Choose one of these
+workflows instead of starting an unconfigured container:
+
+| Goal | Guide |
+| --- | --- |
+| Run a maintained evaluation environment | [Quickstart sample](/quickstart/sample) |
+| Create an editable project | [Create a project with KDV](/cli/first-project) |
+| Build or deploy an existing project | [Build and deploy](/cli/build-deploy) |
+
+Projects created by KDV include a launcher pinned to the CLI image used to
+create them. Keep that launcher under version control so developers and CI run
+the same CLI release.

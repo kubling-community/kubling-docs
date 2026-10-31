@@ -12,7 +12,7 @@ This is a fundamental piece when designing petabyte-scale decentralized operatio
 <summary>Routing Source configuration</summary>
 ```yaml
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:SimpleRoutingSourceConfig"
+id: "schema:kubling:model:vdb:sources:SimpleRoutingSourceConfig"
 properties:
   strict:
     type: "boolean"
@@ -47,7 +47,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:translation:model:routing:ImportElement"
+      id: "schema:kubling:connectors:translation:model:routing:ImportElement"
       properties:
         dataSource:
           type: "string"
@@ -57,7 +57,7 @@ properties:
     type: "array"
     items:
       type: "object"
-      id: "schema:kubling:dbvirt:translation:model:routing:SimpleRoutingRule"
+      id: "schema:kubling:connectors:translation:model:routing:SimpleRoutingRule"
       properties:
         tableNamePattern:
           type: "string"

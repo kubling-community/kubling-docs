@@ -31,6 +31,10 @@ different hosts or containers. Assign distinct ports when both listeners share
 the same network namespace. The Quickstart sample uses `50061` for the
 client transport and `50051` for its provider to make the boundary explicit.
 
+For interactive SQL rather than application integration, use the
+[KDV SQL terminal](/cli/sql-terminal). It connects through this same
+authenticated client transport without requiring an application SDK.
+
 ## What the client API provides <Tag description={"v26.5+"} />
 
 The public contract exposes three services:
