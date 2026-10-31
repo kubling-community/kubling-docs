@@ -26,7 +26,7 @@
   },
   "homepage": "https://docs.kubling.com",
   "dependencies": {
-    "next": "16.3.6",
+    "next": "16.4.1",
     "nextra": "4.6.1",
     "nextra-theme-docs": "4.6.1",
     "react": "19.2.8",
