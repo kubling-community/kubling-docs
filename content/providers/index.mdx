@@ -90,8 +90,9 @@ lifecycles:
 - protocol modules are published at
   [`buf.build/kubling/kubling-providers`](https://buf.build/kubling/kubling-providers).
 - Go SDK tags use the `sdk-go/vMAJOR.MINOR.PATCH` form.
-- provider tags use the `providers/<name>/vMAJOR.MINOR.PATCH` form and publish
-  multi-platform images for `linux/amd64` and `linux/arm64`.
+- each provider publishes its own semantic-versioned releases and
+  multi-platform images for `linux/amd64` and `linux/arm64`. Use the source
+  repository linked from the catalog for its tag format and image coordinates.
 
 Use the exact `vMAJOR.MINOR.PATCH` image tag selected for your deployment.
 `latest` is convenient for local exploration, but it is not a reproducible

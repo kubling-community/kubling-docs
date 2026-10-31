@@ -8,6 +8,8 @@ services and tests together.
 
 Use the [Quickstart](/quickstart) to evaluate Kubling. Use KDV when the
 configuration, tests and deployment inputs must become a maintained project.
+Start with [Install KDV](/cli/install), then create a project using the
+container-based workflow shown in this documentation.
 
 ## Scope
 
@@ -18,6 +20,11 @@ KDV provides the Kubling-specific project workflow:
 - run isolated JavaScript tests and Compose-based integration tests
 - manage named development instances through Docker Compose
 - prepare deployment artifacts, TLS material and an optional Helm scaffold
+
+**SQL terminal** <Tag description={"KDV v26.5+"} />
+
+The [KDV SQL terminal](/cli/sql-terminal) runs interactive or one-shot
+SQL through Kubling's client gRPC transport.
 
 KDV does not embed or replace the Kubling runtime. It uses the project
 environment's selected image for local workflows and exports the artifacts
@@ -34,15 +41,18 @@ needed by the production delivery model.
 | Helm or GitOps | Deploy and reconcile the generated Kubernetes resources |
 | Artifact repository | Publish versioned Modules and externally delivered runtime bundles |
 
-KDV is distributed as `docker.io/kubling/kubling-cli`. Generated projects
-include a launcher pinned to the KDV version used to create them.
+KDV is available through multiple distribution channels. Generated projects
+include a container-backed launcher pinned to the KDV version used to create
+them, which is why the remaining guides use `./kdv` for project commands.
 
 ## Choose the next guide
 
 | Goal | Guide |
 | --- | --- |
+| Install the CLI | [Install KDV](/cli/install) |
 | Create and run a complete project | [Create a project](/cli/first-project) |
-| Move from the former CLI workflow | [Migrate to KDV 26.3](/cli/migration) |
+| Query a Virtual Database from a terminal | [KDV SQL terminal](/cli/sql-terminal) |
+| Move from the former CLI workflow | [Migrate to KDV 26.3+](/cli/migration) |
 | Understand the manifest and generated files | [Project structure](/cli/project-structure) |
 | Manage local environments and instances | [Development workflow](/cli/development-workflow) |
 | Test scripts and running services | [Testing](/cli/test-framework) |

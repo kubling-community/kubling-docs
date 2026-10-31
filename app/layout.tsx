@@ -63,7 +63,7 @@ const banner = (
         href="/cli/migration"
         className="underline underline-offset-4 hover:no-underline"
       >
-        KDV 26.3 CLI project and test workflow changes →
+        KDV 26.3+ CLI project and test workflow changes →
       </a>
     </div>
   </Banner>

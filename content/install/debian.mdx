@@ -1,0 +1,128 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Install on Debian and Ubuntu
+
+The official Kubling APT repository distributes selected components as signed
+Debian packages. Configure it once on a Debian or Ubuntu system, then install
+the Engine, CLI or provider packages available for that host.
+
+<Callout type="warning">
+  Configuring the repository does not install Kubling or change an existing
+  installation. Package availability is component-specific. Check the
+  repository or the component's documentation for the exact package name
+  before installing it.
+</Callout>
+
+## Repository contract
+
+| Setting | Value |
+| --- | --- |
+| Repository | `https://apt.kubling.com` |
+| Suite | `stable` |
+| Component | `main` |
+| Architectures | `amd64`, `arm64` |
+| Signing-key fingerprint | `EE4E B1C3 33FE 0B80 15B5 1551 183C 6C10 7C76 8DAB` |
+| APT pin priority | `100` |
+
+The repository uses a dedicated keyring through `Signed-By`. Its key is not
+added to APT's global trust store. The preference file assigns priority `100`
+only to packages whose metadata declares the Kubling origin, so the repository
+does not unexpectedly replace unrelated system packages.
+
+## Configure the repository
+
+<Steps>
+
+### Install the bootstrap tools
+
+```shell copy
+sudo apt-get update
+sudo apt-get install --yes ca-certificates curl gnupg
+```
+
+### Download and verify the signing key
+
+```shell copy
+curl --fail --silent --show-error \
+  https://apt.kubling.com/kubling-archive-keyring.pgp \
+  --output /tmp/kubling-archive-keyring.pgp
+
+fingerprint="$(
+  gpg --show-keys --with-colons /tmp/kubling-archive-keyring.pgp |
+    awk -F: '$1 == "fpr" { print $10; exit }'
+)"
+printf '%s\n' "$fingerprint"
+test "$fingerprint" = 'EE4EB1C333FE0B8015B51551183C6C107C768DAB'
+```
+
+The final command must complete successfully. If it does not, stop and do not
+install the downloaded key.
+
+### Install the key and repository definitions
+
+```shell copy
+sudo install -o root -g root -m 0644 \
+  /tmp/kubling-archive-keyring.pgp \
+  /usr/share/keyrings/kubling-archive-keyring.pgp
+
+curl --fail --silent --show-error \
+  https://apt.kubling.com/kubling.sources \
+  --output /tmp/kubling.sources
+sudo install -o root -g root -m 0644 \
+  /tmp/kubling.sources \
+  /etc/apt/sources.list.d/kubling.sources
+
+curl --fail --silent --show-error \
+  https://apt.kubling.com/kubling.pref \
+  --output /tmp/kubling.pref
+sudo install -o root -g root -m 0644 \
+  /tmp/kubling.pref \
+  /etc/apt/preferences.d/kubling.pref
+```
+
+### Refresh the package metadata
+
+```shell copy
+sudo apt-get update
+```
+
+</Steps>
+
+The canonical bootstrap files and a plain-text copy of these instructions are
+published at
+[`apt.kubling.com/README.txt`](https://apt.kubling.com/README.txt).
+
+## Find and install a package
+
+List the Kubling packages currently visible to APT:
+
+```shell copy
+apt-cache search --names-only '^kubling($|-)'
+```
+
+Inspect the candidate version, then install the exact package named by the
+component's documentation:
+
+```shell copy
+apt-cache policy <package-name>
+sudo apt-get install <package-name>
+```
+
+APT records the installed package version and uses the same repository for
+future upgrades. Components remain independently versioned even when they are
+distributed through the same repository.
+
+## Remove the repository
+
+Remove the source, preference and scoped keyring, then refresh APT metadata:
+
+```shell copy
+sudo rm -f \
+  /etc/apt/sources.list.d/kubling.sources \
+  /etc/apt/preferences.d/kubling.pref \
+  /usr/share/keyrings/kubling-archive-keyring.pgp
+sudo apt-get update
+```
+
+This removes the repository configuration but does not uninstall packages that
+were installed from it.

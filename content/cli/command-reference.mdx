@@ -98,6 +98,18 @@ passwords, repeatable SAN values, a SAN file and explicit overwrite.
 
 See [Certificates](/cli/certificates) for output roles and examples.
 
+## SQL command <Tag description={"KDV v26.5+"} />
+
+```text
+sql [--endpoint target] --vdb name [--execute statement]
+```
+
+Without `--execute`, the command opens an interactive SQL terminal. It uses
+Kubling's client gRPC transport, enables TLS by default and authenticates a
+normal VDB session. See [KDV SQL terminal](/cli/sql-terminal) for
+connection options, credential precedence, interactive commands and display
+controls.
+
 ## Output and automation
 
 | Command | Machine-oriented result |

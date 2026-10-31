@@ -36,3 +36,16 @@
   body {
       font-family: "gilroy-medium", sans-serif;
   }
+
+  .nextra-card > p {
+      padding-inline: 1rem;
+  }
+
+  .nextra-card > p:first-child {
+      margin-top: 0;
+      padding-top: 1rem;
+  }
+
+  .nextra-card > span:last-child {
+      margin-top: auto;
+  }

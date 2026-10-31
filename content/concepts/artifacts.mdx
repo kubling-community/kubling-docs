@@ -33,6 +33,14 @@ Virtual Databases it exposes and which extensions each VDB uses.
 A YAML document containing top-level runtime options and the origin of the
 descriptor Module.
 
+```yaml copy
+vdb:
+  descriptorBundle: "https://artifacts.example.com/my-project/descriptor.zip"
+```
+
+The descriptor Module may also be referenced through a supported `file:` URI
+when the artifact is mounted with the application configuration.
+
 [See the application configuration schema.](/schemas#main-application-configuration)
 
 ### Descriptor Module

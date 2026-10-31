@@ -3,6 +3,29 @@
 This page covers Kubling releases. KDV is versioned independently; see the
 [KDV changelog](/cli/changelog) for CLI releases.
 
+## v26.6.2
+
+- Fixed [dependent joins](/engine/queries/dependent-joins) for
+  [access-restricted provider tables](/providers/access-patterns) that support
+  equality predicates but not `OR`. Multi-value lookups remain bounded, and a
+  query is rejected before provider execution when the table's declared access
+  pattern cannot be preserved.
+- Fixed [row locking](/engine/tx/rowlocking) for concurrent multi-row mutations
+  in Soft Transactions. A lock conflict no longer leaves partial locks behind
+  or removes locks owned by another transaction.
+- Added the official
+  [Redfish Provider](https://github.com/kubling-community/kubling-provider-redfish)
+  for querying hardware inventory, health, firmware, power and thermal data
+  across multiple Redfish BMCs.
+- Added the [Kubling APT repository](/install/debian) for selected signed
+  Debian packages on `amd64` and `arm64` systems.
+
+## v26.6.1
+
+- Rebuilt Kubling's native images with Oracle GraalVM 25.0.5.0.2,
+  incorporating the Java security update for CVE-2026-91403. No configuration,
+  descriptor or client migration is required.
+
 ## v26.6
 
 - Added opt-in [partial query results](/providers/partial-results) with explicit

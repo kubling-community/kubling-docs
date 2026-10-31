@@ -22,7 +22,7 @@ H2 was chosen over Kubling's internal small database engine (used for metadata s
 <summary>Portable Source configuration</summary>
 ```yaml
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:PortableLocalSourceConfig"
+id: "schema:kubling:model:vdb:sources:PortableLocalSourceConfig"
 properties:
   dataSourceName:
     type: "string"
@@ -62,7 +62,7 @@ properties:
       \ connection is created.Default: 14400000ms (4 hours)"
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -80,7 +80,7 @@ properties:
       \ condition clause of the operation, otherwise the operations are pushed as-is."
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsSourceGeneralConfig"
     properties:
       enabled:
         type: "boolean"
@@ -101,7 +101,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. Defaults\
           \ to disabled."
         properties:
@@ -146,12 +146,6 @@ properties:
     type: "array"
     items:
       type: "string"
-  ddlFilePaths:
-    type: "array"
-    description: "Allows to run multiple DDL, loaded from external file paths, in\
-      \ the REMOTE data source once the connection is established."
-    items:
-      type: "string"
   migrationDir:
     type: "string"
     description: "Specifies a directory containing migration scripts. When set, the\
@@ -178,7 +172,7 @@ Sample configuration in VDB file:
       allowBruteForceOperations: false
       filePath: /some/path
       filePassword: [REDACTED]
-      DDL: |
+      ddl: |
         CREATE TABLE IF NOT EXISTS MyTable...
   schema:
       type: PHYSICAL
@@ -186,7 +180,7 @@ Sample configuration in VDB file:
         importer.schemaName: PUBLIC
         importer.useFullSchemaName: "false"
         importer.useCatalogName: "false"
-        cacheDefaultStrategy: CACHE
+      cacheDefaultStrategy: CACHE
 ```
 
 ### Limitations
@@ -223,7 +217,7 @@ You can then reference the directory like this: `migrationDir: "bundle:migration
 Flyway requires a table to track migration state. For this purpose, Kubling automatically creates a table named `KUBLING_MIGRATION_AUDIT`, which **must not be modified externally**.
 
 <Callout type='info'>
-  Note that `ddlFilePaths` is ignored when `migrationDir` is used — the two mechanisms are mutually exclusive.
+  Note that `ddlfilePaths` is ignored when `migrationDir` is used — the two mechanisms are mutually exclusive.
 
   For stateful, non-ephemeral Kubling instances that rely on a local database, we strongly recommend using migrations instead of embedding schema creation logic in a single H2 DDL file.
 </Callout>
@@ -290,7 +284,7 @@ dataSources:
     configObject:
       ...
       useKublingDDL: true
-      ddlFilePaths:
+      ddlfilePaths:
         - "bundle:full.sql"
     schema:
       type: "PHYSICAL"

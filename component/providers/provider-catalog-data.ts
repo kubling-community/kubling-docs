@@ -15,10 +15,23 @@ export const providerCapabilities = [
   'Access patterns'
 ] as const
 
+export const providerDistributionChannels = [
+  'Container image',
+  'Debian package'
+] as const
+
 export type ProviderCategory = (typeof providerCategories)[number]
 export type ProviderKind = (typeof providerKinds)[number]
 export type ProviderCapability = (typeof providerCapabilities)[number]
+export type ProviderDistributionChannel =
+  (typeof providerDistributionChannels)[number]
 export type ProviderStatus = 'Official' | 'Community'
+
+export type ProviderDistribution = {
+  channel: ProviderDistributionChannel
+  href: string
+  identifier: string
+}
 
 export type ProviderCatalogEntry = {
   name: string
@@ -27,11 +40,9 @@ export type ProviderCatalogEntry = {
   kind: ProviderKind
   status: ProviderStatus
   publisher: string
-  release: string
   capabilities: ProviderCapability[]
+  distributions: ProviderDistribution[]
   sourceUrl: string
-  imageName: string
-  imageUrl: string
   keywords: string[]
 }
 
@@ -44,12 +55,16 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
-    release: '0.1.0',
     capabilities: ['Aggregate pushdown'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/cassandra-provider',
+        identifier: 'kubling/cassandra-provider'
+      }
+    ],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/cassandra',
-    imageName: 'kubling/cassandra-provider',
-    imageUrl: 'https://hub.docker.com/r/kubling/cassandra-provider',
     keywords: ['cql', 'database', 'keyspace', 'nosql', 'storage']
   },
   {
@@ -60,12 +75,16 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Reference',
     status: 'Official',
     publisher: 'Kubling',
-    release: '0.1.0',
     capabilities: ['Rich values', 'Aggregate pushdown'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/inmemory-provider',
+        identifier: 'kubling/inmemory-provider'
+      }
+    ],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/inmemory',
-    imageName: 'kubling/inmemory-provider',
-    imageUrl: 'https://hub.docker.com/r/kubling/inmemory-provider',
     keywords: ['example', 'fixture', 'sdk', 'testing', 'development']
   },
   {
@@ -76,12 +95,21 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
-    release: '0.1.0',
     capabilities: ['Semantic fragment', 'Partial results', 'Access patterns'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/host-provider',
+        identifier: 'kubling/host-provider'
+      },
+      {
+        channel: 'Debian package',
+        href: '/install/debian',
+        identifier: 'kubling-host-provider and kubling-host-agent'
+      }
+    ],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/host',
-    imageName: 'kubling/host-provider',
-    imageUrl: 'https://hub.docker.com/r/kubling/host-provider',
     keywords: [
       'agent',
       'cpu',
@@ -102,12 +130,16 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
-    release: '0.2.0',
     capabilities: ['Semantic fragment'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/kubernetes-provider',
+        identifier: 'kubling/kubernetes-provider'
+      }
+    ],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/kubernetes',
-    imageName: 'kubling/kubernetes-provider',
-    imageUrl: 'https://hub.docker.com/r/kubling/kubernetes-provider',
     keywords: ['cluster', 'cloud native', 'k8s', 'orchestration', 'resources']
   },
   {
@@ -118,13 +150,53 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
-    release: '0.0.1',
     capabilities: [],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/openapi-provider',
+        identifier: 'kubling/openapi-provider'
+      }
+    ],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/openapi',
-    imageName: 'kubling/openapi-provider',
-    imageUrl: 'https://hub.docker.com/r/kubling/openapi-provider',
     keywords: ['api', 'http', 'json', 'rest', 'openapi 3']
+  },
+  {
+    name: 'Redfish',
+    description:
+      'Exposes hardware inventory, health, firmware, power and thermal data from multiple Redfish BMCs as bounded read-only tables.',
+    category: 'Infrastructure & orchestration',
+    kind: 'Integration',
+    status: 'Official',
+    publisher: 'Kubling',
+    capabilities: ['Semantic fragment', 'Partial results', 'Access patterns'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/redfish-provider',
+        identifier: 'kubling/redfish-provider'
+      },
+      {
+        channel: 'Debian package',
+        href: '/install/debian',
+        identifier: 'kubling-redfish-provider'
+      }
+    ],
+    sourceUrl: 'https://github.com/kubling-community/kubling-provider-redfish',
+    keywords: [
+      'bare metal',
+      'bmc',
+      'data center',
+      'firmware',
+      'hardware',
+      'inventory',
+      'out of band',
+      'power',
+      'redfish',
+      'server',
+      'thermal'
+    ]
   },
   {
     name: 'Redis',
@@ -134,12 +206,16 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     kind: 'Integration',
     status: 'Official',
     publisher: 'Kubling',
-    release: '0.0.2',
     capabilities: [],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/redis-provider',
+        identifier: 'kubling/redis-provider'
+      }
+    ],
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/redis',
-    imageName: 'kubling/redis-provider',
-    imageUrl: 'https://hub.docker.com/r/kubling/redis-provider',
     keywords: ['cache', 'database', 'hash', 'key value', 'nosql', 'storage']
   }
 ]

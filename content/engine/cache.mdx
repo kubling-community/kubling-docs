@@ -33,6 +33,16 @@ you can adjust certain settings to control cache behavior:
 - `maxMemorySizeMB`: Maximum allowed memory size for this cache. By default, the Engine ignores this setting and limits the cache solely by `maxEntries`. 
 However, when enabled, the Engine estimates the memory size of each cache entry, which may significantly impact cache performance. 
 Use this option only when strict memory constraints are necessary.
+- `enableInvalidateEndpoint`: Enables the HTTP cache invalidation endpoints. Default is false.
+
+```yaml copy
+cache:
+  sessionScoped: false
+  maxEntries: 1024
+  # Use instead of maxEntries when a strict memory bound is required.
+  # maxMemorySizeMB: 256
+  enableInvalidateEndpoint: false
+```
 
 ### Data Source Level (aka Schema)
 In each data source, caching can be enabled or disabled and the TTL specified:

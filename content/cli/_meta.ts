@@ -1,7 +1,9 @@
 export default {
+  install: 'Install',
   overview: 'Overview',
+  'sql-terminal': 'SQL terminal',
   'first-project': 'Create a project',
-  migration: 'Migrate to KDV 26.3',
+  migration: 'Migrate to KDV 26.3+',
   'project-structure': 'Project structure',
   'development-workflow': 'Development workflow',
   'test-framework': 'Testing',

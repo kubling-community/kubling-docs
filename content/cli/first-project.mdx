@@ -13,15 +13,20 @@ Kubling with two providers and runs its supplied checks.
 - enough local resources to run Kubling and the two In-memory providers
 
 GNU Make is optional. The commands below use `./kdv` directly.
-KDV is distributed as `docker.io/kubling/kubling-cli`; Java and a
-Kubling-specific package manager are not required on the host.
+
+<Callout type="info">
+  This guide uses the official KDV container so the bootstrap flow is the same
+  across supported development and CI environments. A native package exposes
+  the same commands, but the examples intentionally continue with the
+  project-pinned `./kdv` launcher.
+</Callout>
 
 <Steps>
 
 ### Generate the project
 
 Run the public CLI container from a directory where `my-project` does not
-already exist:
+already exist. This does not require KDV to be installed on the host:
 
 ```shell copy
 docker run --rm \

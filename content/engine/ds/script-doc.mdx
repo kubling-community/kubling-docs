@@ -22,7 +22,7 @@ is further inspected by the engine before returning the rows.
 <summary>Script Document Data Source configuration</summary>
 ```yaml
 type: "object"
-id: "schema:kubling:dbvirt:model:vdb:sources:script:ScriptingSourceConfig"
+id: "schema:kubling:model:vdb:sources:script:ScriptingSourceConfig"
 properties:
   contextVariables:
     type: "object"
@@ -37,7 +37,7 @@ properties:
       type: "string"
   module:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:scripting:base:model:Module"
+    id: "schema:kubling:connectors:translation:scripting:base:model:Module"
     properties:
       name:
         type: "string"
@@ -46,7 +46,7 @@ properties:
         description: "URI of the module bundle."
   cache:
     type: "object"
-    id: "schema:kubling:dbvirt:translation:model:CacheDataSourceConfig"
+    id: "schema:kubling:connectors:translation:model:CacheDataSourceConfig"
     properties:
       enabled:
         type: "boolean"
@@ -60,7 +60,7 @@ properties:
     type: "boolean"
   softTransactions:
     type: "object"
-    id: "schema:kubling:dbvirt:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsMvccSupportConfig"
     properties:
       enabled:
         type: "boolean"
@@ -81,7 +81,7 @@ properties:
         - "DEFER_OPERATION"
       mvcc:
         type: "object"
-        id: "schema:kubling:dbvirt:model:vdb:sources:MVCCSimConfig"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
         description: "Enables the simulated MVCC engine for the data source. When\
           \ enabled, Kubling maintains per-transaction visibility using an internal\
           \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\

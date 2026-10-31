@@ -1,0 +1,145 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../component/Tag'
+
+# KDV SQL terminal <Tag description={"KDV v26.5+"} />
+
+`kdv sql` opens an interactive SQL session through Kubling's client gRPC
+transport. Use it to inspect a Virtual Database, run ad hoc queries or execute
+one statement from a script without installing a JDBC or PostgreSQL client.
+
+For application integration, use an [official gRPC client](/clients/grpc)
+instead of invoking the terminal as a subprocess.
+
+<Callout type="info">
+  The terminal authenticates a normal Kubling session. Queries run as the
+  supplied user and remain subject to that VDB's authentication, roles and
+  data-access policies.
+</Callout>
+
+## Before you connect
+
+You need:
+
+- [KDV 26.5 or later](/cli/install)
+- an enabled [client gRPC transport](/clients/grpc#enable-the-transport)
+- the transport endpoint and Virtual Database name
+- credentials accepted by that Virtual Database
+
+TLS is enabled by default. Use `--plaintext` only for an isolated local
+runtime whose gRPC listener is configured without TLS.
+
+## Open an interactive session
+
+For a local project, obtain its dynamically assigned gRPC endpoint from
+`project status`, then connect with the host-installed CLI:
+
+```shell copy
+kdv project status
+kdv sql \
+  --endpoint 127.0.0.1:<grpc-port> \
+  --plaintext \
+  --vdb ProviderQuickstartVDB
+```
+
+When the command runs from a generated project's directory, KDV reads the
+administrator username and password from `local.properties`. If credentials
+are still missing in an interactive terminal, it prompts for the username and
+reads the password without echo.
+
+For a TLS-enabled remote endpoint, omit `--plaintext` and identify the user:
+
+```shell copy
+kdv sql \
+  --endpoint kubling.example.com:50051 \
+  --vdb OperationsVDB \
+  --username alice
+```
+
+<Callout type="warning">
+  These examples use the host-installed `kdv` command. When the CLI runs in a
+  container, the target must be reachable from that container; its
+  `127.0.0.1` is not the host runtime.
+</Callout>
+
+## Work in the terminal
+
+End each SQL statement with a semicolon. A statement can span multiple lines.
+The terminal keeps complete statements in history and supports `Ctrl-R` search.
+
+| Command | Result |
+| --- | --- |
+| `\help` | Show the terminal commands and editing shortcuts |
+| `\clear` | Clear the statement currently being entered |
+| `\history clear` | Confirm and remove saved and in-memory SQL history |
+| `\x` | Toggle between table and expanded result display |
+| `\x auto`, `\x on`, `\x off` | Select automatic, expanded or table display |
+| `\q` | Close the session |
+
+Up and Down move within recalled multiline SQL. Shift+Up and Shift+Down move
+between complete history entries. KDV stores up to 1,000 completed statements
+in the user's XDG state directory; the generated container launcher preserves
+that state across runs.
+
+<Callout type="warning">
+  SQL history is persistent and can contain sensitive values. Avoid placing
+  secrets in statements and use `\history clear` when history must be removed.
+</Callout>
+
+## Execute one statement
+
+Use `--execute` for a non-interactive command:
+
+```shell copy
+kdv sql \
+  --endpoint 127.0.0.1:<grpc-port> \
+  --plaintext \
+  --vdb ProviderQuickstartVDB \
+  --execute 'SELECT * FROM planning.PROJECT'
+```
+
+For automation, supply credentials through the execution environment or its
+secret manager rather than placing a password in shell history.
+
+## Connection and display options
+
+| Option | Behavior |
+| --- | --- |
+| `--endpoint`, `--target` | gRPC target; defaults to `127.0.0.1:50061` |
+| `--plaintext` | Disable TLS for an isolated local endpoint |
+| `--vdb` | Required Virtual Database name |
+| `--vdb-version` | Optional Virtual Database version |
+| `-u`, `--username` | Login username |
+| `--password` | Login password; prefer the prompt or a secret-backed environment variable |
+| `--properties <file>` | Read `KUBLING_ADMIN_USERNAME` and `KUBLING_ADMIN_PASSWORD` from a project properties file |
+| `-e`, `--execute <sql>` | Execute one statement and exit |
+| `--max-rows` | Rows retained for display; defaults to `1000` |
+| `--display` | Result layout: `auto`, `table` or `expanded` |
+| `--width` | Display width; `0` selects the terminal width, `COLUMNS` or 120 characters |
+| `--timeout` | RPC timeout in seconds; defaults to `30` |
+
+Automatic display uses a table for compact results and switches wide results
+to expanded records without truncating values. `--max-rows` bounds only what
+the terminal retains for display: the query still runs normally and the client
+consumes the complete server stream. When the server provides structured
+diagnostics, the terminal preserves the stable Kubling error identifier.
+
+## Environment variables
+
+The terminal accepts:
+
+- `KUBLING_GRPC_TARGET`
+- `KUBLING_GRPC_PLAINTEXT`
+- `KUBLING_GRPC_VDB`
+- `KUBLING_GRPC_VDB_VERSION`
+- `KUBLING_GRPC_USERNAME`
+- `KUBLING_GRPC_PASSWORD`
+
+Explicit command options take precedence over environment variables.
+Environment credentials take precedence over the properties file, and the
+interactive prompts are the final fallback. The VDB name is never inferred or
+prompted.
+
+<Callout type="info">
+  The first SQL terminal release does not provide parameter binding,
+  transaction meta-commands or LOB download commands.
+</Callout>
