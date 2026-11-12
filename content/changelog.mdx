@@ -3,6 +3,69 @@
 This page covers Kubling releases. KDV is versioned independently; see the
 [KDV changelog](/cli/changelog) for CLI releases.
 
+## v26.7.1
+
+- Added opt-in Soft Transactions to the Preview
+  [embedded RocksDB Data Source](/engine/ds/rocksdb). Existing configurations
+  remain disabled by default.
+- Added read-only `contextVars` to the Preview
+  [JavaScript routing resolver](/engine/ds/routing/javascript), allowing
+  routing policies to use application and Data Source configuration.
+- Deprecated the built-in [SNMP](/engine/ds/industrial/snmp) and
+  [Modbus](/engine/ds/industrial/modbus) Data Sources. They remain available
+  for existing deployments during this release cycle and are planned to move
+  to external providers before removal in a future major release cycle.
+- Corrected JDBC metadata so tables in `SYS`, `SYSMETRICS`, `SYSREGISTRY` and
+  `SOFT_TRANSACTIONS` are exposed as `SYSTEM TABLE`. SQL clients that hide
+  system objects may need system-table visibility enabled to display them.
+- Added the running Kubling version to `SYSREGISTRY.ENGINE` for SQL-based
+  runtime identification.
+
+## v26.7
+
+- Added a Preview [JavaScript routing resolver](/engine/ds/routing/javascript)
+  with optional bounded reads of dynamic routing state.
+- Added the Preview [embedded RocksDB Data Source](/engine/ds/rocksdb) for
+  persistent local relational tables with declared keys and indexes.
+- Added [instance information and POST-based SQL execution](/engine/admin) to
+  the Administration API.
+- Added bounded recursive [federation topology discovery](/engine/admin/topology)
+  across explicitly configured Kubling Data Sources.
+- Added configurable transaction timeouts and
+  [durable recovery](/engine/tx/recovery) for supported native Data Source and
+  provider transactions.
+- Added durable Soft Transaction recovery state and redacted diagnostics in
+  [`SOFT_TRANSACTIONS.TXDB`](/engine/ss/stx).
+- Added [transaction and recovery metrics](/observability/metrics#transaction-metrics)
+  and a dedicated recovery health endpoint.
+- Added safe [multi-request provider mutations](/providers/execution) inside
+  explicit supported transactions.
+- Added the official
+  [BACnet Provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/bacnet)
+  for exposing building-management devices, objects and points from BACnet/IP
+  networks through profile-driven tables.
+- Added the official
+  [Object Storage Provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/object-storage)
+  for exposing S3-compatible, Azure Blob, Google Cloud Storage and filesystem
+  buckets through one relational model.
+- Added configurable Buffer Manager memory limits and query-correlated
+  [physical persistence events](/perf/schema#physical-persistence-events).
+- Added per-cache logical-size limits and
+  [detailed cache metrics](/observability/metrics#per-cache-metrics).
+- Added TLS validation, private trust roots and response-size limits to the
+  JavaScript [`httpCli`](/modules/script-context-members#httpcli).
+- Added optional concurrency and wait limits for the internal query pool used
+  by routed reads.
+- Fixed native and Soft Transaction path selection, participant lifecycle and
+  recovery-state handling.
+- Fixed query-cache isolation, policy, TTL and invalidation behavior.
+- Fixed static routing rule isolation, ordering, fallback and mutation safety.
+- Fixed Buffer Manager persistence retries and RocksDB tuning settings.
+- Fixed provider queries with quoted identifiers and avoided requesting
+  unselected provider columns.
+- Fixed VDB-version isolation and resource cleanup during replacement,
+  undeploy and shutdown.
+
 ## v26.6.2
 
 - Fixed [dependent joins](/engine/queries/dependent-joins) for
@@ -293,7 +356,7 @@ This resolves issues where containers could not be stopped and restarted due to 
 
 ## v24.5.3
 - Implemented Cache. [See here.](/engine/cache)
-- Added metrics to monitor Cache. [See here.](/observability/metrics#cache-related-metrics)
+- Added metrics to monitor Cache. [See here.](/observability/metrics#cache-metrics)
 - Implemented first-class Document functions. [See here.](/engine/queries/functions#document-functions)
 - Engine Stream Buffer can now use local disk. See the `buffer` configuration option in the [main application configuration](/schemas#main-application-configuration).
 - Updated embedded web console to reflect the above-mentioned changes.

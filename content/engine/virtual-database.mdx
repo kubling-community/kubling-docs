@@ -1,18 +1,19 @@
-import { Callout, Steps } from 'nextra/components'
-
 # Virtual Database (VDB)
 
-A Virtual Database (or VDB) is a metadata container used to logically integrate data from multiple Data Sources, 
-so that they can be accessed in an aggregated way through a single, uniform interface, which is SQL in our case.
+A Virtual Database (VDB) is a versioned metadata and execution boundary. It
+combines one or more data sources into a single catalog that clients can query
+through Kubling's supported SQL transports.
 
-VDBs contain Data Sources, and each Data Source contains `SCHEMAS`s which, in turn, contain `TABLE`s.<br/>
-Those `TABLE`s are virtual, in the sense that only references foreign entities of foreign data sources.
+A VDB contains data sources, each data source contributes a schema, and each
+schema contains tables. Those tables describe remote entities; they do not
+require the source system to use a relational storage model.
 
-This hierarchy allows to create an overlay that redefines (or not) the way you access data by adapting `TABLE`s to your particular needs without having
-to adapt the remote system's entities.
+The VDB is therefore an overlay: it can expose source entities directly or
+adapt them to the names, types and relationships required by clients without
+changing the source systems.
 
 ![Virtual database hierarchy from schemas and tables to remote entities](../../public/img/vdb.svg)
 
-Note that we use the term 'entity' when referring to the remote counterpart of our `TABLE`s since they can be regular RDBMS `TABLE`s, a document database,
-an object repository, an API, etc.<br/>
-That is the core of Kubling: you can create a completely virtual data model, relational or not, based on existing remote entities.
+The term *entity* covers the remote counterpart of a Kubling table, including a
+database table, document collection, object repository, API resource or
+provider-defined object.

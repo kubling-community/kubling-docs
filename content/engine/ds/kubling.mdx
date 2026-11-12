@@ -1,20 +1,46 @@
 import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
 
 # Kubling Data Source (`KUBLING`)
 
-A Kubling instance can serve as a data source for another Kubling instance, facilitating the creation of a decentralized data mesh.
+A Kubling instance can use another Kubling instance as a data source. This
+allows teams to federate independently managed VDBs while exposing a unified
+catalog to clients.
 
-This data source falls under the **database data source** category, meaning it supports features like **passthrough mode** and **additional column configuration**, 
-similar to other [database sources](/engine/ds/db-data-sources).
+`KUBLING` is a [database data source](/engine/ds/db-data-sources), so it
+supports passthrough mode and additional-column configuration.
 
-### When to Use Independent Kubling Instances
-- **Handling Large Data Volumes**:  
-  If the data processed by the Engine is significantly large, it can be beneficial to have separate instances running on different machines. These instances can focus on a subset of data sources, especially for `Script Document` types, which involve executing non-statically compiled code.
+## When to use independent instances
 
-- **Decentralized Management**:  
-  Decentralization allows independent teams to manage their own data domains while maintaining interoperability across the organization.
+- Separate operational or security boundaries between data domains
+- Keep data source configuration and lifecycle under the team that owns it
+- Distribute expensive source access or scripting workloads across instances
+- Compose a higher-level VDB without moving the underlying data
 
 <Callout type='info'>
-  When multiple Kubling instances are connected to each other as data sources, they form a mesh, which should not be confused with a cluster. 
-  This distinction is important because, for example, cache entries are not shared across Kubling instances and remain instance-private.
+  A federation of Kubling instances is not a cluster. Runtime state such as
+  cache entries remains private to each instance.
 </Callout>
+
+## Topology discovery <Tag description={"v26.7+"} />
+
+The query transport and the management endpoint are configured separately.
+Add `managementEndpoint` when this link should be traversable through the
+[federation topology API](/engine/admin/topology):
+
+```yaml copy
+dataSources:
+  - name: "warehouse"
+    dataSourceType: "KUBLING"
+    configObject:
+      dataSourceName: "warehouse-kubling"
+      serverAddress: "warehouse.internal"
+      serverPort: 35482
+      databaseName: "Warehouse"
+      userName: "{{ KUBLING_FEDERATION_USER }}"
+      token: "{{ KUBLING_FEDERATION_TOKEN }}"
+      managementEndpoint: "https://warehouse.internal:8282"
+```
+
+Without `managementEndpoint`, the data source remains queryable but the
+topology API reports the link as not discoverable.

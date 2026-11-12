@@ -1,0 +1,135 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Administration API
+
+Kubling exposes authenticated HTTP endpoints for inspecting an Engine instance
+and performing administrative operations. The generated OpenAPI specification
+for the running instance is available at `/api/v1/openapi`.
+
+The examples on this page assume that the deployment accepts bearer
+authentication:
+
+```shell copy
+export KUBLING_URL="http://localhost:8282"
+export KUBLING_TOKEN="<token>"
+```
+
+<Callout type="warning">
+  Keep administrative endpoints inside the intended trust boundary. They use
+  the Engine's configured HTTP authentication and the permissions of the
+  authenticated caller.
+</Callout>
+
+## Instance information <Tag description={"v26.7+"} />
+
+Use the instance information endpoint to identify the Engine reached by a
+client or load balancer:
+
+```shell copy
+curl --fail-with-body \
+  --header "Authorization: Bearer $KUBLING_TOKEN" \
+  "$KUBLING_URL/api/v1/admin/info"
+```
+
+```json
+{
+  "productName": "Kubling Engine",
+  "version": "<engine-version>",
+  "instanceName": "operations-eu"
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `productName` | Product reported by the connected endpoint. |
+| `version` | Version of the running Engine. |
+| `instanceName` | Configured instance name, or a generated name for the current process. |
+
+Set a stable name in the [main application configuration](/schemas#main-application-configuration)
+when clients or operators need to distinguish deployments:
+
+```yaml copy
+instanceName: "operations-eu"
+```
+
+A generated `instanceName` can change after a restart. Do not use it as a
+persistent deployment identifier.
+
+## Execute SQL <Tag description={"v26.7+"} />
+
+Send a SQL statement as a plain-text request body:
+
+```shell copy
+curl --fail-with-body \
+  --request POST \
+  --header "Authorization: Bearer $KUBLING_TOKEN" \
+  --header "Content-Type: text/plain" \
+  --data-binary 'SELECT name, version FROM SYS.VirtualDatabases' \
+  "$KUBLING_URL/api/v1/admin/query/Operations"
+```
+
+`{vdb}` identifies the target Virtual Database. Use the complete
+`name.version` identity, for example `Operations.2`, when selecting a specific
+deployed version.
+
+Queries that return a result set include column metadata, named rows and
+positional rows:
+
+```json
+{
+  "containsError": false,
+  "containsRows": true,
+  "columns": [
+    { "name": "name", "type": "string" },
+    { "name": "version", "type": "string" }
+  ],
+  "rows": [
+    { "name": "Operations", "version": "1" }
+  ],
+  "positionalRows": [
+    ["Operations", "1"]
+  ]
+}
+```
+
+`INSERT`, `UPDATE`, `DELETE` and `UPSERT` statements return the affected-row
+count:
+
+```json
+{
+  "containsError": false,
+  "containsRows": false,
+  "affectedRows": 1,
+  "rows": []
+}
+```
+
+Kubling parses the statement before choosing the query or mutation path, so
+leading comments and whitespace do not change command classification. DDL and
+other unsupported administrative commands return `400`.
+
+| Status | Meaning |
+| ---: | --- |
+| `200` | The statement completed. Inspect `containsRows` to select the response shape. |
+| `400` | The SQL is invalid, failed during execution or uses an unsupported command type. |
+| `403` | The authenticated caller is not allowed to perform the operation. |
+| `500` | Kubling could not complete the request because of an internal I/O failure. |
+
+### Migrate from the GET endpoint
+
+<Callout type="warning">
+  `GET /api/v1/admin/query/{vdb}/{base64Query}` is deprecated. It remains
+  available for compatibility, but new and updated clients should use the POST
+  endpoint. No removal release has been assigned.
+</Callout>
+
+The POST endpoint preserves the same authentication, authorization, response
+fields and SQL error behavior without placing SQL text in the URL or requiring
+Base64 encoding.
+
+## Federation topology
+
+Use the [federation topology endpoint](/engine/admin/topology) to discover the
+current instance and explicitly configured downstream Kubling instances as a
+bounded graph.

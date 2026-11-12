@@ -7,6 +7,7 @@ export default {
   "aggregators": "Aggregators",
   "cache": "",
   "ep": "Endpoints",
+  "admin": "Administration API",
   "properties": "",
   "tx": "Transactions",
   "buffer-manager": "",

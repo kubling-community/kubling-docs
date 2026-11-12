@@ -1,0 +1,234 @@
+import Tag from '../../../../component/Tag'
+import { Callout } from 'nextra/components'
+
+# JavaScript routing resolver <Tag description={"v26.7+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+A JavaScript resolver selects routes when static routing rules cannot express
+the complete decision. It runs once per routed command and returns an explicit
+routing decision.
+
+Use the lightest input that satisfies the policy:
+
+| Decision source | Use it when |
+| --- | --- |
+| `request.values`, `request.row` or `request.changes` | The command already contains the routing value. |
+| `contextVars` | The mapping is deployment configuration and changes only when the application is reconfigured. |
+| `DBEngine.query` | The mapping is live data that must change independently from application configuration. |
+
+<Callout type="warning">
+  Configure either static `rules` or a JavaScript `resolver` on a `ROUTING`
+  Data Source. A descriptor that contains both is rejected.
+</Callout>
+
+## Configure the resolver
+
+The `resolver` block belongs inside the `ROUTING` Data Source configuration:
+
+```yaml copy
+- name: "tenant_data"
+  dataSourceType: "ROUTING"
+  configObject:
+    dataSourceName: "tenant-routing"
+    imports:
+      - dataSource: "west"
+        tableNamePattern: "ROUTED_ITEM"
+      - dataSource: "east"
+        tableNamePattern: "ROUTED_ITEM"
+    resolver:
+      scriptFilePath: "routing/resolve.js"
+      functionName: "resolve"
+      timeoutMilliseconds: 1000
+      maxDbQueries: 2
+      maxRows: 100
+      maxResultBytes: 262144
+      queryTimeoutSeconds: 2
+    limitEnforcement: "PER_ROUTE_AND_UNION"
+    orderEnforcement: "POST_UNION"
+  schema:
+    type: "PHYSICAL"
+```
+
+`scriptFilePath` addresses a JavaScript file inside the descriptor bundle.
+
+| Field | Default | Scope |
+| --- | ---: | --- |
+| `functionName` | `resolve` | Function called with the resolver request |
+| `timeoutMilliseconds` | `1000` | Total resolver execution time, including read-only queries |
+| `maxDbQueries` | `2` | Total `DBEngine.query` calls |
+| `maxRows` | `100` | Rows returned across all `DBEngine` queries |
+| `maxResultBytes` | `262144` | Result bytes returned across all `DBEngine` queries |
+| `queryTimeoutSeconds` | `2` | Maximum duration of each `DBEngine` query, still bounded by the total resolver timeout |
+
+All numeric limits must be greater than zero. See the
+[generated configuration reference](/schemas#routing-data-source-configuration)
+for the complete schema.
+
+## Use static configuration <Tag description={"v26.7.1+"} />
+
+When a routing table changes only with deployment configuration, expose it
+through application or Data Source properties instead of running a SQL lookup
+for every command. For example, the application can define defaults in its
+properties file:
+
+```yaml copy
+propertiesFilePath: "/etc/kubling/routing.properties"
+```
+
+```properties copy
+ROUTE_ACME=west
+ROUTE_GLOBEX=east
+```
+
+A `ROUTING` Data Source can override an application value for its resolver:
+
+```yaml copy
+- name: "tenant_data"
+  dataSourceType: "ROUTING"
+  properties:
+    ROUTE_ACME: "east"
+  configObject:
+    # imports and resolver configuration
+```
+
+Data Source properties take precedence when the same name exists at both
+levels. The resolver receives the merged values through `contextVars`:
+
+```js copy
+function resolve(request) {
+  const mutation = request.operation !== "SELECT";
+  const tenantKeys = request.operation === "INSERT" || request.operation === "UPSERT"
+    ? request.row.TENANT_KEY == null ? [] : [request.row.TENANT_KEY]
+    : request.values.TENANT_KEY || [];
+
+  if (tenantKeys.length === 0) {
+    return mutation
+      ? Routing.reject("A mutation requires an exact TENANT_KEY.")
+      : Routing.fanOut();
+  }
+
+  const routes = [];
+  for (const tenantKey of tenantKeys) {
+    const variableName = "ROUTE_" + String(tenantKey).toUpperCase();
+    const route = contextVars[variableName];
+
+    if (route == null || !request.candidateRoutes.includes(String(route))) {
+      return mutation
+        ? Routing.reject("No available route is configured for tenant: " + tenantKey)
+        : Routing.fanOut();
+    }
+
+    if (!routes.includes(String(route))) {
+      routes.push(String(route));
+    }
+  }
+
+  if (mutation && routes.length !== 1) {
+    return Routing.reject("A mutation must resolve to exactly one Data Source.");
+  }
+  return Routing.routes(routes);
+}
+```
+
+Application variables can also be declared inline or provided by the
+environment. `contextVars` is a recursive read-only snapshot for the lifetime
+of the resolver; a script cannot mutate shared configuration or observe later
+changes to its source maps and lists. See
+[Application variables](/engine/properties) for precedence and deployment
+options.
+
+<Callout type="warning">
+  Read-only access prevents configuration changes, not reads. Resolver code
+  can see values exposed through `contextVars`; treat it as trusted deployment
+  code and never log or return secrets.
+</Callout>
+
+## Resolver context
+
+The configured function receives one immutable `request` argument. It also has
+access to `contextVars`, `Routing`, the restricted `DBEngine` query API and a
+resolver-specific `logger`.
+
+For most policies:
+
+- use `request.values` for `SELECT`, `UPDATE` and `DELETE` predicate values
+- use `request.row` for `INSERT` and `UPSERT` values
+- use `request.changes` for new values assigned by an `UPDATE`
+- inspect `request.predicate` only when the complete logical structure of the
+  `WHERE` condition matters
+
+The full request contract, the structured predicate tree and every bound
+object are documented under
+[JavaScript routing resolver context](/modules/script-context-members#javascript-routing-resolver).
+
+## Return a routing decision
+
+A resolver must return an object created by one of these APIs:
+
+| Decision | Meaning |
+| --- | --- |
+| `Routing.routes("west")` | Select one exact route |
+| `Routing.routes(["west", "east"])` | Select an ordered exact route set |
+| `Routing.fanOut()` | Select every candidate route; reads only |
+| `Routing.reject("message")` | Stop with an explicit diagnostic |
+
+Exact route names must be unique, non-blank members of
+`request.candidateRoutes`. Unknown routes, duplicate routes, an empty exact
+set, `null` or a plain JavaScript object are rejected before a routed source is
+accessed.
+
+`Routing.fanOut()` uses candidate import order. `Routing.routes(...)` preserves
+the order returned by the resolver. Neither creates a SQL ordering guarantee;
+use `ORDER BY` when result order matters.
+
+## Read dynamic routing state
+
+Use `DBEngine.query(sql, parameters)` only when the decision depends on data
+that must change without reconfiguring the application. For example, a compact
+placement table can map a tenant to its current route:
+
+```js copy
+const result = DBEngine.query(
+  "SELECT TARGET_ROUTE FROM route_index.ROUTE_INDEX WHERE TENANT_KEY = ?",
+  [String(tenantKey)]
+);
+
+if (result.rowCount !== 1) {
+  return Routing.reject("No unique route exists for tenant: " + tenantKey);
+}
+
+return Routing.routes(String(result.rows[0][0]));
+```
+
+Queries run with the current caller's identity and can read only authorized,
+qualified physical tables in the active VDB. Resolver limits bound query
+count, returned rows, returned bytes and duration. See the
+[context member reference](/modules/script-context-members#javascript-routing-resolver) for the
+complete restrictions and result members.
+
+## Reads and mutations
+
+| Operation | Allowed decision |
+| --- | --- |
+| `SELECT` | One or more exact routes, or explicit fan-out |
+| `INSERT` / `UPSERT` | Exactly one route, normally selected from `request.row` |
+| `UPDATE` | Exactly one route; routing-key changes must be rejected explicitly |
+| `DELETE` | Exactly one route |
+
+A mutation with no route, fan-out or several routes fails before child I/O.
+The common [Routing mutation boundary](/engine/ds/routing#mutations) still
+applies, including transaction participation and the rejection of bulk or
+multi-route writes.
+
+`UPDATE` never moves a row between Data Sources automatically. If the routing
+key changes, reject the update and require an explicit delete followed by an
+insert.
+
+## Failure behavior
+
+Resolver failures do not fall back to a static or default route. Script errors,
+timeouts, exhausted limits, authorization failures, invalid decisions and
+routing cycles produce a routing error. Target Data Sources are not accessed
+until the resolver returns a valid decision.
+
+For direct value-based routing without JavaScript, use
+[static routing rules](/engine/ds/routing).

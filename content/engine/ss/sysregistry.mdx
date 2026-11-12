@@ -23,7 +23,21 @@ This table provides a general overview of the current engine instance and its co
 | `bufferDirectory`        | `string`  | Path to the buffer data directory                                  |
 | `propertiesFilePath`     | `string`  | Path to the `properties` file referenced in the application config |
 | `propertiesFileChecksum` | `string`  | SHA-256 checksum of the file at `propertiesFilePath`               |
+| `version`                | `string`  | <Tag description={"v26.7.1+"} /> Version of the running Kubling Engine |
 
+Use the runtime version when a SQL client needs to identify the connected
+Engine without calling the Administration API:
+
+```sql copy
+SELECT version
+FROM SYSREGISTRY.ENGINE;
+```
+
+The value matches the version returned by
+[`GET /api/v1/admin/info`](/engine/admin#instance-information).
+The column is appended to the table, so named-column queries remain compatible;
+consumers that bind every `SELECT *` column positionally must accept the new
+trailing value.
 
 ### `SYSREGISTRY.DESCRIPTOR_BUNDLE`
 

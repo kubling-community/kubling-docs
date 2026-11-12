@@ -1,86 +1,45 @@
-# Row Locking
+import { Callout } from 'nextra/components'
 
-Row locking in Kubling exists to ensure **correctness under concurrency**, not to optimize throughput.
+# Row locking
 
-Because Kubling operates across:
-- Multiple data sources
-- Resources without native transactional support
-- Mixed execution strategies
+Kubling uses row locks to prevent conflicting mutations when it owns the Soft
+Transaction behavior for a data source. Locks are derived from the stable row
+identity described in [Row identity](/engine/tx/identity).
 
-the engine cannot rely on underlying systems to prevent conflicting updates. Row-level locking is therefore enforced **globally 
-by the Kubling engine** to avoid anomalies such as:
-- Lost updates
-- Write skew
-- Non-deterministic rollback outcomes
+## Scope
 
-Row locking is a foundational mechanism that enables Soft Transactions and consistent execution semantics.
+A lock is scoped to the data source, row identity and owning execution context.
+Kubling acquires the required locks before it registers or executes a
+mutation. If a lock is unavailable, the operation fails before external writes
+begin.
 
-## What Kubling Locks
+When Soft Transactions are enabled for an emulated participant, this protection
+also applies to mutation paths outside an explicit client transaction. This
+prevents a non-transactional write from bypassing an active Soft Transaction's
+lock.
 
-Kubling applies locks at the **row level**, based on a deterministic row identity derived from the operation being executed.
+## Lifetime
 
-Locks are acquired for operations that may mutate state, including:
-- `UPDATE`
-- `DELETE`
-- Any operation that results in a write-side effect on a data source
+Inside a transaction, locks remain owned by the same participant until the
+transaction commits, rolls back or times out. Kubling releases them after the
+terminal path completes, including compensation where required.
 
-Read-only operations do not acquire locks unless explicitly required by the execution plan.
+If a crash leaves a Soft Transaction outcome unresolved, its durable row locks
+are retained. Kubling does not release them and continue with an uncertain
+external state. See [Timeouts and recovery](/engine/tx/recovery).
 
-## Lock Acquisition Timing
+## Conflict behavior
 
-Locks are acquired **before an operation is executed or enlisted**, regardless of whether a Soft Transaction is active.
+When another execution already owns one of the required rows:
 
-This ensures that:
-- Conflicting operations are rejected early
-- Execution remains deterministic
-- Rollback and compensation paths remain safe
+- Kubling rejects the new mutation
+- no external mutation request is sent
 
-Once acquired, locks are held until the owning execution context reaches a terminal state.
+There is no table-level lock escalation. Large multi-row mutations can therefore
+claim many row locks and should be bounded by application predicates.
 
-## Lock Scope and Granularity
-
-Locks are scoped to:
-- The specific data source
-- The computed row identity
-- The lifetime of the owning execution context
-
-Row locking is enforced uniformly:
-- Inside Soft Transactions
-- Outside Soft Transactions
-- Across all connections handled by the engine
-
-There is no lock escalation to table-level locks.  
-Kubling intentionally favors strict row-level locking to preserve correctness.
-
-## Concurrency Behavior
-
-When an execution context holds a lock on a given row identity:
-
-- Any other operation targeting the same row identity is rejected
-- This applies even if the second operation is executed outside a Soft Transaction
-
-This behavior mirrors traditional database engine semantics:  
-locking is global, not scoped to transactional boundaries.
-
-## Interaction with Soft Transactions
-
-Row locking is **independent of Soft Transaction existence**.
-
-- A lock may be acquired without an active Soft Transaction.
-- A Soft Transaction may span multiple locked rows across multiple data sources.
-
-Within a Soft Transaction, locks ensure that:
-- Conflicting operations cannot be interleaved
-- Execution order remains deterministic
-- Rollback or compensation remains feasible
-
-## Failure Modes and Diagnostics
-
-If Kubling cannot safely derive a row identity for an operation, or if a required lock cannot be acquired, execution fails deterministically.
-
-This strict behavior is intentional:
-- Silent degradation would compromise correctness
-- Partial execution would make rollback or compensation unsafe
-
-Details on how row identity is derived—and how to configure it correctly—are described in the next section.
-
+<Callout type="info">
+  Kubling does not add this lock layer when a provider advertises native
+  transactions. The provider and its native system own isolation and conflict
+  handling for that path.
+</Callout>

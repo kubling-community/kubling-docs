@@ -1,0 +1,181 @@
+import { Callout, Steps } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Federation Topology <Tag description={"v26.7+"} />
+
+The topology endpoint discovers the current Kubling instance and recursively
+follows configured `KUBLING` data sources. It returns a graph of Engine
+instances and federation links, including usable partial results when a branch
+cannot be traversed.
+
+Discovery is explicit and disabled by default. Kubling does not infer
+management URLs from query-transport settings.
+
+## Enable discovery
+
+<Steps>
+
+### Enable the endpoint on each discoverable instance
+
+Add the management setting to the main application configuration:
+
+```yaml copy
+management:
+  enableTopologyEndpoint: true
+```
+
+An instance with the setting disabled returns `404` for topology requests.
+Enable it on every downstream instance that should participate in recursive
+discovery.
+
+### Configure each downstream management URL
+
+Add `managementEndpoint` to the existing `KUBLING` data source configuration:
+
+```yaml copy
+dataSources:
+  - name: "warehouse"
+    dataSourceType: "KUBLING"
+    configObject:
+      dataSourceName: "warehouse-kubling"
+      serverAddress: "warehouse.internal"
+      serverPort: 35482
+      databaseName: "Warehouse"
+      userName: "{{ KUBLING_FEDERATION_USER }}"
+      token: "{{ KUBLING_FEDERATION_TOKEN }}"
+      managementEndpoint: "https://warehouse.internal:8282"
+```
+
+`managementEndpoint` is the HTTP or HTTPS base URL of the downstream Engine.
+Do not include `/api/v1/admin/topology`, credentials, a query string or a URL
+fragment.
+
+</Steps>
+
+The native query connection and the HTTP management endpoint are separate
+connections. Omitting `managementEndpoint` does not prevent queries through
+the data source; the link appears in the graph as `NOT_DISCOVERABLE` and is not
+traversed.
+
+## Request a topology
+
+`POST /api/v1/admin/topology` accepts an optional JSON body:
+
+```shell copy
+curl --fail-with-body \
+  --request POST \
+  --header "Authorization: Bearer $KUBLING_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{"metadata":"SUMMARY","maxDepth":4,"maxNodes":100,"timeoutMillis":5000}' \
+  "$KUBLING_URL/api/v1/admin/topology"
+```
+
+| Field | Default | Allowed range or value | Purpose |
+| --- | ---: | --- | --- |
+| `metadata` | `NONE` | `NONE`, `SUMMARY`, `CATALOG` | Controls catalog detail returned for each node. |
+| `maxDepth` | `6` | `0` to `16` | Limits recursive downstream traversal. |
+| `maxNodes` | `200` | `1` to `1000` | Limits the complete graph size. |
+| `timeoutMillis` | `10000` | `1` to `60000` | Sets the deadline for the complete request. |
+
+Values outside the supported numeric ranges are bounded to the nearest limit.
+Clients initiating discovery should omit the `traversal` field shown in the
+OpenAPI contract; Kubling uses it to propagate the remaining budget between
+instances.
+
+### Metadata levels
+
+| Level | Returned node metadata |
+| --- | --- |
+| `NONE` | Instance identity and federation links only. |
+| `SUMMARY` | VDBs and data sources, including type, description and table count. |
+| `CATALOG` | Summary data plus table and field metadata. |
+
+Use `NONE` for reachability and graph visualization, `SUMMARY` for operational
+inventory and `CATALOG` only when the client needs complete catalog detail.
+Catalog responses can be large. Properties whose names indicate credentials,
+tokens, secrets or keys are omitted, but catalog names and descriptions can
+still be sensitive.
+
+## Read the graph
+
+For a request with `metadata: NONE`, a complete two-instance response has this
+shape:
+
+```json
+{
+  "format": "kubling-federation-topology",
+  "formatVersion": 1,
+  "traversalId": "<traversal-id>",
+  "rootNodeId": "node-a",
+  "complete": true,
+  "generatedAt": "2026-11-11T10:00:00Z",
+  "nodes": [
+    {
+      "id": "node-a",
+      "name": "operations-eu",
+      "version": "<engine-version>",
+      "status": "AVAILABLE",
+      "observedAt": "2026-11-11T10:00:00Z"
+    },
+    {
+      "id": "node-b",
+      "name": "warehouse-eu",
+      "version": "<engine-version>",
+      "status": "AVAILABLE",
+      "observedAt": "2026-11-11T10:00:00Z"
+    }
+  ],
+  "edges": [
+    {
+      "fromNodeId": "node-a",
+      "toNodeId": "node-b",
+      "vdbName": "Operations",
+      "vdbVersion": "1",
+      "dataSourceName": "warehouse",
+      "status": "AVAILABLE"
+    }
+  ],
+  "diagnostics": []
+}
+```
+
+The response contains:
+
+- `rootNodeId`, identifying the instance that received the request
+- `nodes`, with the observed instance name and Engine version
+- `edges`, with the owning VDB name, VDB version and data source name
+- `complete`, which is `false` when any branch could not be fully traversed
+- `diagnostics`, with graph-level limit, metadata and traversal information
+
+An incomplete response is still usable. Inspect each edge's `status` and
+`diagnostic` before treating the graph as complete.
+
+| Edge status | Meaning |
+| --- | --- |
+| `AVAILABLE` | The downstream instance was reached and merged into the graph. |
+| `NOT_DISCOVERABLE` | The data source has no `managementEndpoint`. |
+| `CYCLE` | The traversal reached an instance already present in its current path. |
+| `TRUNCATED` | The depth or node budget prevented further traversal. |
+| `TIMEOUT` | The request deadline expired for this branch. |
+| `UNAUTHORIZED` | The downstream instance rejected the configured credentials. |
+| `UNSUPPORTED` | The downstream instance does not expose the topology endpoint. |
+| `UNREACHABLE` | The endpoint could not be reached or returned another HTTP failure. |
+| `INVALID_RESPONSE` | The downstream response was malformed, too large or incompatible. |
+| `IDENTITY_CONFLICT` | Two responses used the same node identity inconsistently. |
+
+## Authentication and security
+
+The caller must authenticate to the instance receiving the request. For every
+downstream link, Kubling uses the `userName` and `token` configured on that
+`KUBLING` data source. It never forwards the caller's `Authorization` header.
+
+<Callout type="warning">
+  Topology discovery can expose instance names, federation structure and, at
+  higher metadata levels, catalog details. Enable the endpoint only where
+  authenticated operators and approved clients can reach it. Inject
+  downstream credentials through the deployment's secret mechanism rather
+  than committing them to the VDB document.
+</Callout>
+
+Each request performs a new bounded traversal. A failure on one branch does
+not discard nodes and edges already collected from other branches.

@@ -1,7 +1,17 @@
 import Tag from '../../../../component/Tag'
 import { Callout } from 'nextra/components'
 
-# SNMP Data Source (`SNMP`) <Tag description={"v25.4+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+# SNMP Data Source (`SNMP`) <Tag description={"v25.4+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"DEPRECATED"} txtFont={"font-gilroyBold"} />
+
+<Callout type="warning">
+  The built-in `SNMP` Data Source is deprecated since Kubling 26.7.1. It
+  remains available for existing deployments during the transition, but is
+  planned for removal in a future major release cycle. Kubling emits one
+  startup warning when this Data Source is configured; the warning does not
+  prevent it from initializing. Avoid starting new integrations with this Data
+  Source. Migration guidance will be published when its external provider
+  replacement is available.
+</Callout>
 
 Simple Network Management Protocol (SNMP) is a widely adopted protocol used to monitor and manage devices on IP networks—such as switches, routers, servers, 
 and embedded systems. It allows querying and mutation of managed device state via lightweight, request-response messages over UDP and TCP.

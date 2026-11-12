@@ -71,6 +71,18 @@ jdbc:kubling:<vdb-name>[@mm[s]://<host>:<port>][;prop-name=prop-value]*
 | `reportAsViews`             | `boolean` | Indicates whether `DatabaseMetaData` must report views as `VIEW` table type. If `false` then views will be reported as `TABLE`. Default `true`.                                                                                                                                                                                                                                                                                                    |
 | `connectionPropsFilePath`   | `string`  | Path to the **client** connection properties file, also known as client settings. These properties are related to networking and transport, so please do not confuse with connection string (URL) properties listed in this table.                                                                                                                                                                                                                 |
 
+## System-table metadata <Tag description={"v26.7.1+"} />
+
+JDBC metadata reports tables in `SYS`, `SYSMETRICS`, `SYSREGISTRY` and
+`SOFT_TRANSACTIONS` as `SYSTEM TABLE`. Application and Data Source tables
+remain `TABLE`.
+
+Metadata consumers that request only `TABLE` must also request `SYSTEM TABLE`
+to discover Kubling's operational schemas. Database tools that hide system
+objects by default may require their system-object visibility option to be
+enabled; the tables remain queryable even when they are hidden from the object
+explorer.
+
 ## Create a Connection
 ```java copy
 import java.sql.Connection;

@@ -91,6 +91,8 @@ properties:
     properties:
       enableRestartEndpoint:
         type: "boolean"
+      enableTopologyEndpoint:
+        type: "boolean"
   vdb:
     type: "object"
     id: "schema:kubling:service:config:app:VirtualDatabase"
@@ -132,6 +134,24 @@ properties:
         description: "Browser origins allowed to access the HTTP API through CORS."
         items:
           type: "string"
+  outboundHttp:
+    type: "object"
+    id: "schema:kubling:service:config:app:OutboundHttpProperties"
+    properties:
+      maxResponseBytes:
+        type: "integer"
+        description: "Maximum response body size, in bytes, materialized by an outbound\
+          \ HTTP client."
+      trustStoreType:
+        type: "string"
+        description: "Private trust store type."
+      trustStoreFilePath:
+        type: "string"
+        description: "Path to a private trust store added to the platform trust roots\
+          \ for TLS validation."
+      trustStorePassword:
+        type: "string"
+        description: "Password used to open the private trust store."
   console:
     type: "object"
     id: "schema:kubling:service:config:app:Console"
@@ -151,15 +171,15 @@ properties:
           \ Default is false."
       maxEntries:
         type: "integer"
-        description: "Maximum number of entries allowed in the cache, used when maxMemorySizeMB\
-          \ is not defined. Default is 1024."
+        description: "Maximum number of entries allowed in each Engine cache. This\
+          \ limit remains active when maxMemorySizeMB is configured. Default is 1024."
       maxMemorySizeMB:
         type: "integer"
-        description: "Maximum allowed memory size for this cache. By default, the\
-          \ Engine ignores this setting and limits the cache solely by maxEntries.\
-          \ However, when enabled, the Engine estimates the memory size of each cache\
-          \ entry, which may significantly impact cache performance. Use this option\
-          \ only when strict memory constraints are necessary."
+        description: "Maximum estimated logical result volume, in MiB, allowed independently\
+          \ in each Engine cache. This is not a JVM heap or Buffer Manager limit.\
+          \ When enabled, the Engine samples cached results and projects their logical\
+          \ size across the complete row count. Size estimation adds work when an\
+          \ entry is cached."
       enableInvalidateEndpoint:
         type: "boolean"
         description: "Enables the endpoint to invalidate the cache for specified table\
@@ -181,6 +201,15 @@ properties:
         description: "Directory for buffer storage. If useDisk is activated and directory\
           \ not specified, the engine will use the system-defined temporary directory\
           \ path."
+      memoryBufferSpaceMb:
+        type: "integer"
+        description: "Fixed memory budget, in MiB, for the engine buffer. When omitted,\
+          \ the engine calculates the memory budget automatically."
+      maxReservedHeapMb:
+        type: "integer"
+        description: "Maximum heap, in MiB, reserved for intermediate query processing\
+          \ before the engine spills to disk. When omitted, the engine calculates\
+          \ the reservation automatically."
       rocksBackedBuffer:
         type: "object"
         id: "schema:kubling:service:config:app:RocksBackedBufferConfig"
@@ -216,6 +245,18 @@ properties:
             description: "Maximum size (in bytes) for LOB values that may be inlined\
               \ inside RocksDB-backed tuple batches. LOBs larger than this threshold\
               \ will be streamed to file store instead."
+  internalQueryPool:
+    type: "object"
+    id: "schema:kubling:service:config:app:InternalQueryPoolProperties"
+    properties:
+      maxConnectionsPerVdb:
+        type: "integer"
+        description: "Maximum number of concurrent internal query connections for\
+          \ each active VDB. Default is 10."
+      maxWaitMilliseconds:
+        type: "integer"
+        description: "Maximum time in milliseconds to wait for an internal query connection.\
+          \ Default is 30000."
   maxConcurrentJSContexts:
     type: "integer"
     description: "Maximum allowed concurrent script contexts for query resolution."
@@ -240,6 +281,43 @@ properties:
         type: "boolean"
       transactionsDBPath:
         type: "string"
+      transactionManager:
+        type: "object"
+        id: "schema:kubling:service:config:app:TransactionManagerProperties"
+        properties:
+          defaultTimeoutSeconds:
+            type: "integer"
+            description: "Default timeout in seconds for transactions that do not\
+              \ specify one. When omitted, Kubling retains the engine default, which\
+              \ is 60 seconds by default."
+          timeoutRollbackGracePeriodSeconds:
+            type: "integer"
+            description: "Time in seconds allowed for rollback after a transaction\
+              \ expires before Kubling interrupts it. When omitted, Kubling uses 35\
+              \ seconds. Configure a value greater than the longest participant rollback\
+              \ deadline."
+          recovery:
+            type: "object"
+            id: "schema:kubling:service:config:app:TransactionRecoveryProperties"
+            properties:
+              enabled:
+                type: "boolean"
+                description: "Enables periodic recovery scans. When omitted, the legacy\
+                  \ ENABLE_TX_RECOVERY setting remains effective."
+              stateFilePath:
+                type: "string"
+                description: "File used to persist transaction-coordinator state.\
+                  \ When recovery is enabled and this value is omitted, Kubling uses\
+                  \ kubling-transaction-recovery.db in the process working directory.\
+                  \ Configuring an explicit path activates the Kubling state store\
+                  \ independently of periodic recovery scans."
+              scanIntervalSeconds:
+                type: "integer"
+                description: "Interval in seconds between transaction recovery scans."
+              backoffSeconds:
+                type: "integer"
+                description: "Delay in seconds between the two phases of a recovery\
+                  \ scan."
       flushRemovalTaskCron:
         type: "string"
         description: "Cron expression for periodic transaction DB flush of removed\
@@ -768,7 +846,6 @@ properties:
         - "failStartup"
 ```
 
-
 ---
 
 # Bundles
@@ -912,9 +989,8 @@ virtualDatabases:
   - 'vdb/AppModelVDB.yaml'
 actionsDirectory: 'endpoint/actions'
 queryEndpointsDirectory: 'endpoint/queries'
-actionTemplatesFunctionModules:
-  - name: action-templates
-    zipFilePath: "{{ FUNCTIONS_BUNDLE }}"
+actionTemplatesFunctionModule:
+  zipFilePath: "{{ FUNCTIONS_BUNDLE }}"
 ```
 
 ## Script Module bundle information file (`bundle-script-info.yaml`)
@@ -1087,6 +1163,7 @@ properties:
           - "SCRIPT_DOCUMENT_JS"
           - "EMBEDDED_INMEM"
           - "PORTABLE_LOCAL"
+          - "ROCKSDB"
           - "PROVIDER_GRPC"
           - "CASSANDRA"
           - "H2"
@@ -1097,7 +1174,6 @@ properties:
           - "KUBERNETES"
           - "COMPOSITE"
           - "ROUTING"
-          - "ROUTING_JS"
           - "SNMP"
           - "MODBUS"
         properties:
@@ -2387,6 +2463,77 @@ properties:
       \ ddlFilePaths configuration option is ignored."
 ```
 
+## RocksDB Data Source Configuration
+Applies to the following preview Data Source type:
+
+- `ROCKSDB`
+
+```yaml
+---
+type: "object"
+id: "schema:kubling:model:vdb:sources:RocksDBSourceConfig"
+properties:
+  storagePath:
+    type: "string"
+    description: "Filesystem directory owned exclusively by this relational RocksDB\
+      \ data source."
+  fullScanAllowed:
+    type: "boolean"
+    description: "Allows queries and mutations that require scanning a whole table.\
+      \ Default: false"
+  schemaManagement:
+    type: "string"
+    description: "Controls how an existing relational catalog is handled. VALIDATE\
+      \ rejects schema differences. MIGRATE_SAFE applies supported non-destructive\
+      \ changes before the data source becomes available. Default: VALIDATE"
+    enum:
+    - "VALIDATE"
+    - "MIGRATE_SAFE"
+  softTransactions:
+    type: "object"
+    id: "schema:kubling:model:vdb:sources:SoftTransactionsMvccSupportConfig"
+    description: "Configures Kubling soft transactions for this data source. Default:\
+      \ disabled"
+    properties:
+      enabled:
+        type: "boolean"
+        description: "Enables soft-transaction processing. When enabled, write operations\
+          \ are captured and applied at transaction boundaries (prepare/commit), without\
+          \ requiring the underlying system to provide transactional guarantees. Defaults\
+          \ to false."
+      strategy:
+        type: "string"
+        description: "Defines how soft transactions should be handled for this data\
+          \ source. DEFER_OPERATION: write operations are staged and executed only\
+          \ at commit time. IMMEDIATE_OPERATION: write operations are executed immediately\
+          \ but also recorded in the transaction log for potential rollback. Exact\
+          \ semantics vary by data source type. See source type-specific documentation.Defaults\
+          \ to DEFER_OPERATION."
+        enum:
+        - "IMMEDIATE_OPERATION"
+        - "DEFER_OPERATION"
+      mvcc:
+        type: "object"
+        id: "schema:kubling:model:vdb:sources:MVCCSimConfig"
+        description: "Enables the simulated MVCC engine for the data source. When\
+          \ enabled, Kubling maintains per-transaction visibility using an internal\
+          \ RocksDB-backed MVCC store. This allows DELETE/UPDATE/INSERT operations\
+          \ within a transaction to override rows returned by your scripts. Defaults\
+          \ to disabled."
+        properties:
+          enabled:
+            type: "boolean"
+            description: "Enables the MVCC simulation layer. When enabled, Kubling\
+              \ maintains transaction-local visibility using versioned records. Rows\
+              \ inserted, deleted or updated inside the transaction will override\
+              \ values returned by the remote data source. Defaults to false."
+          dbBasePath:
+            type: "string"
+            description: "Optional path to the RocksDB directory used to store MVCC\
+              \ state locally. If not provided, Kubling will allocate an isolated\
+              \ temporary directory."
+```
+
 ## Composite Data Source Configuration
 Applies to the following Data Source types:
 
@@ -2474,6 +2621,9 @@ properties:
 ```
 
 ## SNMP Data Source Configuration
+Built-in SNMP data sources are deprecated since Kubling 26.7.1 and are moving to the provider mechanism.
+Existing configurations continue to work during the transition.
+
 Applies to the following Data Source types:
 
 - `SNMP`
@@ -2670,6 +2820,9 @@ properties:
 ```
 
 ## Modbus Data Source Configuration
+Built-in Modbus data sources are deprecated since Kubling 26.7.1 and are moving to the provider mechanism.
+Existing configurations continue to work during the transition.
+
 Applies to the following Data Source types:
 
 - `Modbus`
@@ -2803,6 +2956,38 @@ properties:
     description: "Specifies the schema to which the command should be routed if no\
       \ rule matches, when in non-strict mode. If this value is not provided, the\
       \ engine defaults to routing the command to the first schema in the import list."
+  resolver:
+    type: "object"
+    id: "schema:kubling:model:vdb:sources:JavaScriptRoutingResolverConfig"
+    description: "Optional JavaScript resolver. When present, static rules must be\
+      \ empty. Mutations require a decision with exactly one destination."
+    properties:
+      scriptFilePath:
+        type: "string"
+        description: "Path to the JavaScript resolver inside the descriptor bundle."
+      functionName:
+        type: "string"
+        description: "Resolver function name. Default: resolve"
+      timeoutMilliseconds:
+        type: "integer"
+        description: "Maximum duration of one routing decision in milliseconds. Default:\
+          \ 1000"
+      maxDbQueries:
+        type: "integer"
+        description: "Maximum number of read-only DBEngine queries per routing decision.\
+          \ Default: 2"
+      maxRows:
+        type: "integer"
+        description: "Maximum total rows returned by DBEngine queries during one routing\
+          \ decision. Default: 100"
+      maxResultBytes:
+        type: "integer"
+        description: "Maximum total result bytes returned by DBEngine queries during\
+          \ one routing decision. Default: 262144"
+      queryTimeoutSeconds:
+        type: "integer"
+        description: "Maximum duration of each DBEngine query in seconds. Default:\
+          \ 2"
   limitEnforcement:
     type: "string"
     description: "Controls how LIMIT clauses are enforced across routed branches.\n\
