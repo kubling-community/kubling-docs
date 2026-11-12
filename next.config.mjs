@@ -36,6 +36,16 @@ export default withNextra({
         source: '/clients/dataviz/:path*',
         destination: '/clients/drivers/python',
         permanent: true
+      },
+      {
+        source: '/engine/tx/crash',
+        destination: '/engine/tx/recovery',
+        permanent: true
+      },
+      {
+        source: '/engine/ds/routing-js',
+        destination: '/engine/ds/routing/javascript',
+        permanent: true
       }
     ]
   },

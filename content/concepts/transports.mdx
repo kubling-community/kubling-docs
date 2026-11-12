@@ -1,5 +1,4 @@
 import { Callout } from 'nextra/components'
-import Tag from '../../component/Tag'
 
 # Transports
 
@@ -16,7 +15,7 @@ Kubling currently provides three transports:
 Transport selection does not change the Virtual Database being accessed or the authorization rules applied by the Engine. 
 It determines the connection protocol, the client model, and how commands and results are represented on the wire.
 
-## gRPC <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+## gRPC
 
 The gRPC transport is the recommended standard for new clients and service-to-service communication.
 
@@ -35,9 +34,10 @@ The current contract covers:
 Query results are returned as protobuf messages containing column metadata and positional row values. 
 Large result sets can be delivered as a stream of independent batches instead of requiring the entire result set to be materialized in a single response.
 
-<Callout type="warning">
-The gRPC transport is currently available as Preview. It is already the recommended direction for new client applications, 
-but its public contract may still receive compatibility-affecting changes before being declared stable.
+<Callout type="info">
+Generate clients from a released protocol tag or use a released SDK version.
+Kubling negotiates session capabilities so clients can use only the contract
+features supported by both sides.
 </Callout>
 
 Use the [gRPC client guide](/clients/grpc) to enable the listener, run the

@@ -175,8 +175,9 @@ the provider; unsupported expressions remain in the engine. A provider may
 still reject an operation that is invalid for a specific table or native
 model, so metadata should also describe table and column mutability precisely.
 
-These optional capabilities have dedicated references:
+Related provider contracts have dedicated references:
 
+- [Provider mutations](/providers/execution)
 - [Semantic fragments](/providers/semantics)
 - [Value capabilities and LOB reads](/providers/values)
 - [Aggregate pushdown](/providers/pushdown)
@@ -233,7 +234,7 @@ constant columns, define aggregators or place virtual models above it.
 | `securityConfig.clientPrivateKeyFilePath` | none | PEM private key required for `MTLS`. |
 | `securityConfig.clientPrivateKeyPassword` | none | Password for an encrypted client private key. |
 | `cache` | disabled | Engine-side data-source cache configuration. |
-| `softTransactions` | disabled | Engine-side Soft Transaction and simulated MVCC configuration. |
+| `softTransactions` | disabled | Enrolls the provider in coordinated transactions. Kubling uses provider-native transactions when available; otherwise the Soft Transaction strategy and simulated MVCC settings apply. |
 | `contributesToHealth` | `true` | Makes provider health part of the overall engine health. |
 
 `timeoutMillis` must be greater than zero. It applies to an individual provider
@@ -291,11 +292,17 @@ Query results are streamed as batches so a provider does not need to construct
 the entire result in memory. The request's batch size is a preference; the
 provider selects the actual batching strategy.
 
-Native transactions are optional and scoped to a logical connection. If a
-provider does not advertise them, Kubling never treats the provider as if it
-had committed or rolled back native source state. Kubling's Soft Transactions
-are a separate engine mechanism and should be enabled only after validating
-the provider's mutation and row-identity semantics.
+#### Durable transaction recovery <Tag description={"v26.7+"} />
+
+Native transactions are optional and execute through the logical connection
+bound to the Kubling transaction. Durable restart recovery is a separate
+capability: a recoverable provider retains a provider-owned branch that Kubling
+can resolve after the original connection is gone. If a provider does not
+advertise native transactions, Kubling uses its Soft Transaction mechanism and
+the configured row-identity and compensation semantics.
+
+See [Transactions](/engine/tx/intro) for path selection and
+[Timeouts and recovery](/engine/tx/recovery) for the durable recovery boundary.
 
 ## Build a provider
 

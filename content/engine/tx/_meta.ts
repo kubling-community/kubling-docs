@@ -1,9 +1,9 @@
 export default {
-  "intro": "Introduction",
+  "intro": "Overview",
   "model": "Soft Transaction Model",
+  "identity": "Row Identity",
   "rowlocking": "Row Locking",
-  "identity": "Row Identity & Lock Derivation",
-  "finalization": "Commit, Rollback & Compensation",
   "smvcc": "Simulated MVCC",
-  "crash": "Crash Recovery & Pending Compensations",
+  "finalization": "Commit, Rollback & Compensation",
+  "recovery": "Timeouts & Recovery",
 }

@@ -1,0 +1,199 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Embedded RocksDB <Tag description={"v26.7+"} /> <Tag bgColor={"bg-kubling-dark-violet"} txtColor={"text-white"} description={"PREVIEW"} txtFont={"font-gilroyBold"} />
+
+The `ROCKSDB` Data Source stores relational tables in a local filesystem
+directory owned by Kubling. It is intended for persistent local state that
+needs declared keys and indexes without running a separate database or
+provider.
+
+<Callout type="warning">
+  This Data Source is a preview. Backup and restore, native Data Source
+  transactions, destructive schema migration and certified production-scale
+  limits are not part of the current contract.
+</Callout>
+
+## Which RocksDB feature is this?
+
+Kubling uses RocksDB in three independent places:
+
+| Feature | Stores | Configuration |
+| --- | --- | --- |
+| `ROCKSDB` Data Source | Persistent application tables defined by Kubling DDL | `dataSources[].configObject.storagePath` |
+| [RocksDB-backed Buffer Manager](/engine/buffer-manager#rocksdb-backed-buffer) | Temporary batches produced while queries execute | `buffer.rocksBackedBuffer` |
+| [Simulated MVCC](/engine/tx/smvcc) | Transaction-local versions used by Soft Transactions | `softTransactions.mvcc.dbBasePath` |
+
+The directories are not interchangeable. Do not point these features at the
+same path.
+
+## Configure the Data Source
+
+Declare one physical schema and provide its DDL:
+
+```yaml copy
+dataSources:
+  - name: "local_state"
+    dataSourceType: "ROCKSDB"
+    configObject:
+      storagePath: "{{ ROCKSDB_STORAGE_PATH }}"
+      fullScanAllowed: false
+      schemaManagement: "VALIDATE"
+    schema:
+      type: "PHYSICAL"
+      ddlFilePaths:
+        - "bundle:local-state.ddl"
+```
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `storagePath` | — | Filesystem directory owned exclusively by this Data Source. |
+| `fullScanAllowed` | `false` | Allows operations that cannot use a complete primary key or declared index. |
+| `schemaManagement` | `VALIDATE` | Chooses whether an existing catalog must match exactly or may receive supported safe changes. |
+| `softTransactions.enabled` | `false` | Enrolls the Data Source in Kubling Soft Transactions. |
+
+Use a separate `storagePath` for every RocksDB Data Source. The mounted
+filesystem defines the capacity and durability boundary.
+
+## Define tables and indexes
+
+The DDL is the authoritative relational catalog:
+
+```sql copy
+CREATE FOREIGN TABLE DEVICE_STATE (
+    DEVICE_ID string(64) NOT NULL,
+    SITE string(64) NOT NULL,
+    STATUS string(32) NOT NULL,
+    UPDATED_AT timestamp NOT NULL,
+    PRIMARY KEY (DEVICE_ID),
+    CONSTRAINT IX_DEVICE_SITE INDEX (SITE),
+    CONSTRAINT IX_DEVICE_STATUS INDEX (STATUS)
+)
+OPTIONS (UPDATABLE TRUE);
+```
+
+A writable table must declare a primary key. A table intended only for reads
+can omit it when declared with `OPTIONS (UPDATABLE FALSE)`.
+
+Named unique keys and ordinary indexes provide equality access paths. The
+preview supports scalar strings, booleans, integer and decimal numbers,
+floating-point numbers, date/time values and `varbinary`. Procedures,
+functions, foreign keys, views and other non-table schema objects are not
+supported by this Data Source.
+
+## Indexed access and full scans
+
+With the default `fullScanAllowed: false`, a query, `UPDATE` or `DELETE` must
+provide equality values for every column of a primary key or one declared
+index. For example, the index above makes this access bounded:
+
+```sql copy
+SELECT DEVICE_ID, STATUS, UPDATED_AT
+FROM local_state.DEVICE_STATE
+WHERE SITE = 'madrid';
+```
+
+A filter that does not satisfy a complete key fails instead of scanning the
+table. Enable `fullScanAllowed` only after evaluating the maximum table size,
+query concurrency and latency impact.
+
+Joins and aggregations remain Kubling operations. Each physical table access
+must still satisfy the configured scan policy.
+
+## Mutation and transaction boundary
+
+By default, `INSERT`, `UPDATE` and `DELETE` statements are committed
+synchronously and atomically as individual SQL statements.
+
+### Explicit transactions <Tag description={"v26.7.1+"} />
+
+Explicit multi-statement transactions require Soft Transactions to be enabled
+both in the application configuration and for this Data Source:
+
+```yaml copy
+# Application configuration
+softTransactions:
+  enabled: true
+```
+
+```yaml copy
+# ROCKSDB Data Source configObject
+softTransactions:
+  enabled: true
+  strategy: "DEFER_OPERATION"
+  mvcc:
+    enabled: true
+    dbBasePath: "/var/lib/kubling/mvcc/local-state"
+```
+
+With `DEFER_OPERATION`, mutations are applied at commit. Simulated MVCC is
+optional and provides transaction-local read-your-writes visibility before
+that commit. See [Soft Transactions](/engine/tx/model) and
+[Simulated MVCC](/engine/tx/smvcc) for the complete behavior and limitations.
+
+<Callout type="info">
+  Without Soft Transactions, two statements sent one after another are two
+  independent commits. If the second fails, Kubling does not roll back the
+  first.
+</Callout>
+
+<Callout type="warning">
+  Soft Transactions do not turn the embedded store into a native transaction
+  participant. Keep their documented restart and recovery boundaries in mind
+  when using the preview for durable state.
+</Callout>
+
+## Reopen an existing store
+
+The configured DDL is checked every time Kubling opens `storagePath`.
+
+### `VALIDATE`
+
+`VALIDATE` is the default. Any difference between the requested DDL and the
+persisted catalog prevents the Data Source from becoming available. Use it
+when schema changes must be applied through an application-managed migration.
+
+### `MIGRATE_SAFE`
+
+`MIGRATE_SAFE` applies only changes that can preserve the existing rows:
+
+| Supported | Rejected |
+| --- | --- |
+| Add a table | Remove a table or column |
+| Append a nullable column | Add a non-null column or insert a column between existing columns |
+| Apply compatible metadata changes | Reorder columns or change a column type |
+| Validate compatible nullability, length, precision or scale changes | Change the primary key |
+| Add, rebuild or remove an index | Any change that requires rewriting or discarding rows |
+
+Index work is checkpointed and resumes after an interrupted startup. The new
+catalog becomes active only after required indexes are complete. A validation
+or uniqueness failure leaves the previous catalog active and prevents the
+requested schema from being published.
+
+Changes outside this matrix require a new `storagePath` or an
+application-managed data migration.
+
+## Deploy and operate
+
+- Mount `storagePath` on storage sized for the expected rows and indexes.
+- Keep the path stable across restarts.
+- Do not let two running Kubling instances open the same path for writing.
+- Treat a storage-lock error as evidence of another owner or an unclean
+  deployment boundary; do not bypass the lock by sharing the directory.
+- Test DDL changes against a copy of the store before using `MIGRATE_SAFE` on
+  important data.
+- Define an application-level backup procedure before relying on the preview
+  for state that cannot be recreated.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| An operation reports that a full scan is disabled | Supply a complete primary-key or index equality, add an appropriate index, or explicitly enable full scans. |
+| Startup reports an incompatible catalog | Compare the persisted catalog with the DDL and the `schemaManagement` policy. |
+| A safe migration fails while building an index | Check existing rows for duplicate unique-key values or values that violate the requested constraint. |
+| The storage directory is locked | Confirm that no other Kubling process owns the same `storagePath`. |
+| An explicit transaction is rejected | Enable Soft Transactions in both the application and this Data Source, or execute one atomic statement at a time. |
+
+The generated field reference is available under
+[RocksDB Data Source Configuration](/schemas#rocksdb-data-source-configuration).

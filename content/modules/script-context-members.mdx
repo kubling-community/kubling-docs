@@ -3,17 +3,14 @@ import Tag from '../../component/Tag'
 
 # Script Context Members
 
-When your scripts are executed, specific objects, known as bound objects, are automatically injected into the execution context. 
-These objects allow your scripts to interact directly with the Engine, enabling more complex operations than simply returning a single value. 
-Instead of limiting scripts to basic functions, you can write robust programs that populate data or perform tasks using these member objects. 
-After execution, the Engine evaluates these objects to retrieve the necessary results.
+Kubling injects bound objects into a script according to the contract of that
+script type. They provide controlled access to input values, result builders,
+logging, HTTP calls or Engine operations without exposing unrestricted host
+access.
 
-This reference covers the objects available to Script Data Sources, script
-functions, authentication delegates and Endpoint Scripts. Each script type
-receives only the members that apply to its execution contract.
-
-Besides, some bounds are meant to support your scripts with the most common tasks and, since they are statically compiled, you can expect much better performance
-compared to having them as code in your scripts. 
+This reference covers Script Data Sources, functions, authentication delegates,
+Endpoint Scripts, scheduled scripts and JavaScript routing resolvers. A script
+receives only the members listed for its execution context.
 
 ## Script Data Source
 
@@ -23,9 +20,12 @@ For more information [see here](/schemas#script-module-bundle-information-file-b
 
 #### `contextVars`
 
-An `object` whose properties are the combination of: environment variables + variables defined in properties file.
+An `object` whose properties combine environment variables and application
+properties.
 
-In JavaScript, properties can be accessed using dot-notation since it is injected as a regular JavaScript `object`.
+In JavaScript, properties can be accessed with dot notation or computed property
+names. See [Application variables](/engine/properties) for configuration and
+precedence.
 
 #### `global`
 
@@ -102,140 +102,168 @@ Allows to perform basic operations using [JSON Path](https://datatracker.ietf.or
 
 #### `httpCli`
 
-Built-in HTTP/s client, designed to be faster than a client implementation within a Module.
+`httpCli` executes HTTP and HTTPS requests from Script Data Sources, functions,
+endpoints, authentication delegates and scheduled scripts. Requests reuse
+process-owned outbound transports and release their responses after the body is
+materialized.
 
-| Function                                                                       | Description                                                                                                                |
-|--------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `exec(rawRequestParam : object<HTTPRequestParam>) : object<HTTPRequestReturn>` | Executes an HTTP request. See [how to build a request](#httpclihttprequestparam) and the [schema of the returned object](#httpclihttprequestreturn). |
-| `newFileWrapper(name : string) : FileWrapper`                                  | Creates and returns a new [`FileWrapper`](#httpclifilewrapper) that can be added to the `form` KV.                         |
+```js copy
+const request = httpCli.request()
+  .url("https://inventory.example.com/v1/devices")
+  .method("POST")
+  .header("X-Tenant", contextVars.TENANT_ID)
+  .basicAuth(contextVars.API_USER, contextVars.API_PASSWORD)
+  .contentType("application/json")
+  .contentCharset("utf-8")
+  .body({ status: "active" })
+  .timeout(15000);
 
-##### `httpCli.HTTPRequestParam`
+const response = httpCli.execRequest(request);
 
-A native language `object`, for example, in JavaScript it is a regular object created using the standard way:
-
-```js
-var request = {
-  "url": url,
-  "method": httpMethod,
-  "headers": headerParams
+if (response.statusCode < 200 || response.statusCode >= 300) {
+  throw new Error(`Inventory request failed: ${response.statusCode}`);
 }
-...
-request.timeout = 15000;
-request.body = ...
+
+return response.content;
 ```
 
-When sending a form, the value can be an `object`, in which case is transformed to its `string` representation, or a [`FileWrapper`](#httpclifilewrapper).
+Non-success HTTP responses are returned as `HTTPResponse` objects; they do not
+raise an exception solely because of their status code.
 
-Full Schema:
-```yaml
-type: "object"
-id: "schema:kubling:connectors:translation:scripting:base:member:client:http:HTTPRequestParam"
-properties:
-  url:
-    type: "string"
-    description: "The URL to be invoked."
-  decodeUrl:
-    type: "boolean"
-    description: "Indicates whether the URL must be decoded (only useful when url\
-      \ param is encoded."
-  method:
-    type: "string"
-    description: "HTTP Method to use."
-  timeout:
-    type: "integer"
-    description: "Timeout in milliseconds to read data from an established connection.\
-      \ Value 0 means infinite."
-  params:
-    type: "object"
-    description: "Key-Value list of parameters."
-    additionalProperties:
-      type: "string"
-  headers:
-    type: "object"
-    description: "Key-Value list of headers."
-    additionalProperties:
-      type: "string"
-  followRedirects:
-    type: "boolean"
-    description: "Indicates whether to follow redirects automatically."
-  credentials:
-    type: "object"
-    id: "schema:kubling:connectors:translation:scripting:base:member:client:http:HTTPRequestParam:Credentials"
-    description: "Basic credentials appended to the request."
-    properties:
-      username:
-        type: "string"
-      password:
-        type: "string"
-  body:
-    type: "object"
-    id: "schema:kubling:InnerObject"
-    description: "Request body put as raw type."
-  form:
-    type: "object"
-    description: "Key-Value list used as request body of form-data type."
-    additionalProperties:
-      type: "object"
-      $ref: "schema:kubling:InnerObject"
-  formUrlEncoded:
-    type: "boolean"
-  contentType:
-    type: "string"
-    description: "Content type of the body. Default: \"application/json\""
-  contentCharset:
-    type: "string"
-    description: "Charset of the body. Default: \"utf-8\""
-  userAgent:
-    type: "string"
-    description: "Sets the \"User-Agent\" header. Default: \"kubling\""
-  accept:
-    type: "string"
-    description: "Sets the \"Accept\" header"
-  username:
-    type: "string"
-  password:
-    type: "string"
+| Function | Description |
+| --- | --- |
+| `request() : HTTPRequest` | Creates a fluent request object. |
+| `execRequest(request : HTTPRequest) : HTTPResponse` | Executes the request and returns its response. |
+| `newFileWrapper(name : string) : FileWrapper` | Creates a file part for a multipart form. |
+| `exec(request : object) : HTTPResponse` | Compatibility API based on a plain object. Deprecated since 26.2; use `request()` and `execRequest()`. |
+
+##### `HTTPRequest`
+
+Request methods return the same object, so they can be chained:
+
+| Method | Default | Purpose |
+| --- | --- | --- |
+| `url(value)` | required | Sets the target URL. |
+| `method(value)` | `GET` | Sets the HTTP method. A `GET` request cannot contain a body. |
+| `timeout(milliseconds)` | `30000` | Sets the response read timeout. `0` means no timeout. |
+| `followRedirects(enabled)` | `false` | Controls automatic redirects. |
+| `param(name, value)` | — | Adds a query parameter. |
+| `header(name, value)` | — | Adds a request header. |
+| `body(value)` | — | Sets a raw string or serializable request body. |
+| `form(name, value)` | — | Adds a multipart or URL-encoded form field. |
+| `formUrlEncoded(enabled)` | `false` | Uses `application/x-www-form-urlencoded` instead of multipart form data. |
+| `basicAuth(username, password)` | — | Adds HTTP Basic credentials. |
+| `contentType(value)` | `application/json` | Sets the request body media type. |
+| `contentCharset(value)` | `utf-8` | Sets the charset used to encode the request body. |
+| `userAgent(value)` | `kubling` | Sets the `User-Agent` header. |
+| `accept(value)` | — | Sets the `Accept` header. |
+| `decodeUrl(enabled)` | `true` | Controls decoding of an already encoded URL. |
+| `doNotValidateCertificate(enabled)` | `false` | Disables certificate and hostname validation for this request only. |
+
+`headers()`, `params()` and `form()` expose their corresponding mutable maps
+when a script needs direct map-style access.
+
+##### `HTTPResponse`
+
+| Property | Meaning |
+| --- | --- |
+| `statusCode` | Numeric HTTP status. |
+| `statusMessage` | HTTP status text. |
+| `contentType` | Response media type, including its declared charset when present. |
+| `headers` | Read-only response headers. |
+| `content` | Complete response body decoded with the declared charset, or UTF-8 when none is declared. |
+
+##### TLS and response limits <Tag description={"v26.7+"} />
+
+HTTPS certificate and hostname validation is enabled by default. Configure a
+private trust store at application level when a service uses a private
+certificate authority:
+
+```bash copy
+keytool -importcert \
+  -alias internal-root \
+  -file internal-root.pem \
+  -keystore private-roots.p12 \
+  -storetype PKCS12
 ```
 
-##### `httpCli.HTTPRequestReturn`
+`keytool` prompts for the store password and certificate confirmation. Mount
+the resulting file into Kubling, then configure the shared outbound client:
 
-A native language `object` with the relevant information of an HTTP response.
-
-Full Schema:
-```yaml
-type: "object"
-id: "schema:kubling:connectors:translation:scripting:base:member:client:http:HTTPRequestReturn"
-properties:
-  statusCode:
-    type: "integer"
-    description: "HTTP status code."
-  statusMessage:
-    type: "string"
-    description: "HTTP status message."
-  contentType:
-    type: "string"
-    description: "Response content type."
-  headers:
-    type: "object"
-    description: "Response headers."
-    additionalProperties:
-      type: "object"
-      id: "schema:kubling:InnerObject"
-  content:
-    type: "string"
-    description: "Response content."
+```yaml copy
+outboundHttp:
+  maxResponseBytes: 16777216
+  trustStoreType: "PKCS12"
+  trustStoreFilePath: "/etc/kubling/certs/private-roots.p12"
+  trustStorePassword: "{{ OUTBOUND_HTTP_TRUST_STORE_PASSWORD }}"
 ```
 
-##### `httpCli.FileWrapper`
+The private roots are added to the platform trust roots; they do not replace
+them. `trustStoreType` defaults to `PKCS12`. Mount the store read-only and
+provide its password through the deployment's secret mechanism rather than
+committing it with application configuration.
 
-A wrapper `object` that contains information about a file being added in the body form-data of a request.
+`maxResponseBytes` defaults to `16777216` bytes (16 MiB) and must be between
+`1` and `2147483647`. It limits the complete response body materialized by an
+outbound request. Increase it only when the script genuinely needs a larger
+response and the process has sufficient memory.
 
-| Function                      | Description                                                                                                                |
-|-------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `setContent(content: byte[])` | Sets the file content.                                                                                                     |
-| `addContent(content: byte[])` | Adds additional content to the file content. Please note that the content is added at the end of the current file content. |
-| `getContent() : byte[]`       | Returns the current file content.                                                                                          |
-| `setType(type : string)`      | Set the file type.                                                                                                         |
+<Callout type="warning">
+  `doNotValidateCertificate(true)` disables both certificate and hostname
+  validation for one request and emits a warning when insecure mode is first
+  used. Treat it only as a temporary migration aid. A private trust store does
+  not fix a hostname mismatch; the certificate must also identify the URL's
+  host.
+</Callout>
+
+Scripts that previously depended on an untrusted certificate must add its CA
+to the trust store or opt into insecure mode on the individual request.
+Responses larger than 16 MiB must be reduced at the remote API or allowed by a
+deliberately higher `maxResponseBytes` value.
+
+| Failure | Check |
+| --- | --- |
+| TLS validation fails | Verify the certificate chain, trust-store path, password, type and hostname. |
+| Basic authentication is rejected | Verify the credentials and use `basicAuth()` instead of constructing the header manually. |
+| Response exceeds the configured limit | Request a smaller representation or review `outboundHttp.maxResponseBytes`. |
+| Text is decoded incorrectly | Confirm the response charset and the request's `contentCharset`. |
+
+The generated application fields are available under
+[Main Application Configuration](/schemas#main-application-configuration).
+
+##### Legacy `exec()` request
+
+Existing scripts may continue passing a plain object to `exec()`:
+
+```js copy
+const response = httpCli.exec({
+  url: "https://inventory.example.com/v1/devices",
+  method: "GET",
+  timeout: 15000,
+  followRedirects: false,
+  doNotValidateCertificate: false,
+  headers: { "X-Tenant": contextVars.TENANT_ID },
+  credentials: {
+    username: contextVars.API_USER,
+    password: contextVars.API_PASSWORD
+  }
+});
+```
+
+The object also accepts `params`, `body`, `form`, `formUrlEncoded`,
+`contentType`, `contentCharset`, `userAgent` and `accept`. New scripts should
+use the fluent API shown above.
+
+##### `FileWrapper`
+
+A `FileWrapper` represents one file in a multipart form:
+
+| Function | Description |
+| --- | --- |
+| `setContent(content: byte[])` | Replaces the file content. |
+| `addContent(content: byte[])` | Appends bytes to the file content. |
+| `getContent() : byte[]` | Returns the current content. |
+| `setType(type : string)` | Sets the file media type. |
 
 #### `logger`
 
@@ -400,6 +428,122 @@ is intentionally owned by the deployment.
   Privileged calls run with Kubling's deployment-level identity. Until a
   dedicated identity is available, descriptor-bundle review and deployment
   controls are the security boundary.
+</Callout>
+
+## JavaScript routing resolver <Tag description={"v26.7+"} />
+
+A resolver configured on a `ROUTING` Data Source runs in an isolated
+JavaScript context. The configured function receives `request` as its only
+argument and can use these bound objects:
+
+| Member | Purpose |
+| --- | --- |
+| `contextVars` | Reads application and Data Source variables. |
+| `Routing` | Creates the routing decision returned by the function. |
+| `DBEngine` | Runs bounded, read-only SQL when the decision depends on current data. |
+| `logger` | Writes `debug`, `info` or `warn` messages. |
+
+### `request`
+
+`request` is read-only and describes the command currently being routed:
+
+| Member | Content |
+| --- | --- |
+| `operation` | `SELECT`, `INSERT`, `UPSERT`, `UPDATE` or `DELETE` |
+| `vdbName`, `vdbVersion` | Active VDB identity |
+| `schemaName`, `tableName` | Routed schema and canonical table name |
+| `values` | Canonical column names mapped to literal, prepared or dependent values found in the predicate |
+| `row` | Values of an `INSERT` or `UPSERT`; empty for other operations |
+| `changes` | Values assigned by an `UPDATE`; empty for other operations |
+| `predicate` | Structured tree representing the complete command predicate |
+| `session` | Available `requestId`, `sessionId`, `userName` and `transactional` state |
+| `candidateRoutes` | Imported Data Source names for this table, in configuration order |
+
+For ordinary routing policies, use `values`, `row` and `changes`. Inspect
+`predicate` only when the logical structure of the complete `WHERE` condition
+affects the decision.
+
+<details>
+<summary>Advanced: complete predicate tree</summary>
+
+`predicate` is a structured representation of the SQL condition, not SQL text.
+For example, `tenant_id = 'acme' AND active = true` is represented as an `and`
+node whose left and right members are comparison nodes.
+
+Boolean nodes use `kind: "and"`, `kind: "or"` or `kind: "not"`. Predicate
+nodes use `comparison`, `in`, `isNull` or `like`. Their expressions are column
+or literal nodes containing the canonical name, type and value. A condition
+that cannot be represented safely uses `kind: "unsupported"`.
+
+When an advanced policy depends on this tree, reject or fan out on an
+`unsupported` node instead of inferring a route.
+
+</details>
+
+### `contextVars` <Tag description={"v26.7.1+"} />
+
+`contextVars` combines the application variable set with the `properties`
+declared on the `ROUTING` Data Source. A Data Source value takes precedence
+when both scopes use the same name. A static routing table can therefore be
+maintained outside the descriptor script:
+
+```yaml copy
+propertiesFilePath: "/etc/kubling/routing.properties"
+```
+
+```properties copy
+ROUTE_ACME=clients_eu
+ROUTE_GLOBEX=clients_us
+```
+
+The resolver can read a value with dot notation or a computed property name,
+for example `contextVars.ROUTE_ACME` or `contextVars[variableName]`. Maps and
+lists are exposed as a recursive read-only snapshot for the lifetime of the
+resolver. See [Application variables](/engine/properties) for inline properties,
+environment variables, files and precedence.
+
+Use `contextVars` when the mapping changes only with deployment configuration.
+It avoids a SQL query for every routing decision. Use `DBEngine` when the
+mapping is live data that must change without reconfiguring the application.
+
+### `Routing`
+
+| Function | Decision |
+| --- | --- |
+| `routes(name)` | Selects one exact candidate route. |
+| `routes(names)` | Selects an ordered array of exact candidate routes. |
+| `fanOut()` | Selects every candidate route for a read. |
+| `reject(message)` | Stops the command with an explicit diagnostic. |
+
+The function must return one of these decision objects. A plain JavaScript
+object is not a routing decision.
+
+### `DBEngine`
+
+`DBEngine.query(sql, parameters)` executes a bounded, read-only query against
+authorized physical tables in the active VDB. It returns:
+
+| Member | Content |
+| --- | --- |
+| `columns` | Result column metadata |
+| `rows` | Result rows as positional arrays |
+| `rowCount` | Number of returned rows |
+
+Tables must be qualified as `schema.table`. The API rejects writes, DDL,
+procedures, functions, views, temporary and system objects, the routing schema
+currently being resolved and direct or transitive routing cycles. Resolver
+configuration bounds query count, rows, bytes and execution time.
+
+### `logger`
+
+The routing logger exposes `debug(message)`, `info(message)` and
+`warn(message)`. It does not expose the two-argument overloads available to
+other script types.
+
+<Callout type="info">
+  The resolver context does not include `global`, `helper` or `httpCli`, and it
+  has no generic filesystem, process, thread, native, host-class or unrestricted
+  polyglot access.
 </Callout>
 
 ## Template function

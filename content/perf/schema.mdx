@@ -1,3 +1,5 @@
+import Tag from '../../component/Tag'
+
 ## Performance Tracer Event Schema
 
 Performance Tracer events represent low-level execution activity captured while a Kubling request is being processed, delegated to external sources, 
@@ -125,9 +127,8 @@ BUFFER_EVENT:
 
 Buffer events describe activity within the buffer manager.
 
-`bytes` represents the amount of data involved in the operation.
-
-`elements` represents the number of affected elements or pages depending on the implementation path emitting the event.
+`bytes` and `elements` describe the amount of data involved. Their exact
+meaning depends on the event family.
 
 Supported buffer event types:
 
@@ -147,8 +148,20 @@ Where:
 | READ | Read operation against the buffer |
 | LOGICAL_WRITE | Logical insertion or update of buffer contents |
 | LOGICAL_READ | Logical access to existing contents |
-| PHYSICAL_WRITE | Data persisted to underlying storage |
-| SPILL | Memory contents moved to secondary storage |
+| PHYSICAL_WRITE | First successful persistence of a batch due to aging |
+| SPILL | First successful persistence of a batch due to memory pressure |
+
+#### Physical persistence events <Tag description={"v26.7+"} />
+
+For `PHYSICAL_WRITE` and `SPILL`, `bytes` is Kubling's batch-size estimate and
+`elements` is the number of rows in the batch. Both events retain the original
+query and tracer-run correlation fields.
+
+Kubling emits either event after the first successful persistence of the batch.
+
+Use these events to distinguish physical persistence from logical buffer
+activity. See [Buffer Manager](/engine/buffer-manager) for the corresponding
+configuration and metrics.
 
 ### Conceptual event hierarchy
 

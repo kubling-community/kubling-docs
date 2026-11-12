@@ -1,0 +1,184 @@
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
+
+# Timeouts and recovery <Tag description={"v26.7+"} />
+
+Kubling can persist the transaction coordinator and reconnect supported native
+participants after a process restart. Soft Transactions use a separate journal
+for compensation and fail-closed handling of uncertain external effects.
+
+Recovery for database and provider-native participants is disabled by default.
+
+## Configuration
+
+```yaml
+softTransactions:
+  transactionsDBPath: "/var/lib/kubling/soft-transactions.db"
+  crashCompensationEnabled: true
+  crashCompensationMaxAgeMinutes: 5
+  transactionManager:
+    defaultTimeoutSeconds: 60
+    timeoutRollbackGracePeriodSeconds: 35
+    recovery:
+      enabled: true
+      stateFilePath: "/var/lib/kubling/transaction-coordinator.db"
+      scanIntervalSeconds: 120
+      backoffSeconds: 10
+```
+
+### Soft Transaction journal
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `transactionsDBPath` | `kubling-stx.db` in the process working directory | Stores Soft Transaction lifecycle, compensation and retained row-lock state. |
+| `crashCompensationEnabled` | `true` | Evaluates the journal during startup and runs only compensations whose outcome is safe to infer. |
+| `crashCompensationMaxAgeMinutes` | `5` | Maximum age of a compensation that Kubling may execute automatically after a crash. |
+
+### Timeouts
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `defaultTimeoutSeconds` | `60` | Deadline for transactions that do not specify one. |
+| `timeoutRollbackGracePeriodSeconds` | `35` | Maximum additional time allowed for rollback after the transaction expires. |
+
+Both values must be greater than zero. Set the rollback grace period above the
+longest database or provider rollback deadline. Increasing it gives a slow
+participant more time to clean up, but also lets that rollback occupy its worker
+for longer.
+
+### Recovery coordinator
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `recovery.enabled` | `false` | Starts periodic recovery scans. |
+| `recovery.stateFilePath` | `kubling-transaction-recovery.db` in the process working directory when recovery is enabled | Persists the coordinator identity and transaction decisions. |
+| `recovery.scanIntervalSeconds` | `120` | Interval between recovery scans. |
+| `recovery.backoffSeconds` | `10` | Delay between the two phases of a recovery scan. |
+
+An explicit `stateFilePath` enables the persistent coordinator store even when
+periodic scans are disabled. The scan and backoff values must be greater than
+zero. If `recovery.enabled` is omitted, the legacy `ENABLE_TX_RECOVERY`
+environment setting remains effective; an explicit descriptor value takes
+precedence.
+
+<Callout type="warning">
+  `recovery.stateFilePath` and `softTransactions.transactionsDBPath` are
+  different stores and must point to different files. Each file requires
+  exclusive writable ownership by one Kubling instance. Mount both paths on
+  durable storage and protect them with filesystem access controls and storage
+  encryption appropriate for the deployment.
+</Callout>
+
+## Recovery paths
+
+| Participant | What Kubling can recover | Requirements |
+| --- | --- | --- |
+| Supported database data source | A prepared native transaction after Kubling restarts. | Persistent coordinator state, periodic recovery and a source that preserves prepared branches. |
+| Native gRPC provider | A provider-owned prepared branch after the original logical connection is gone. | Persistent coordinator state, periodic recovery, native transaction support, durable recovery and a stable provider resource identity. |
+| Soft Transaction | A known rollback with eligible pending compensations. | Stable Soft Transaction journal and `crashCompensationEnabled: true`. Ambiguous work requires operator intervention. |
+
+Persistent coordinator state alone does not make a participant recoverable.
+Every participant must preserve and expose its own prepared work.
+
+### Database data sources
+
+The supported recovery boundary covers:
+
+| Data source | Restart behavior |
+| --- | --- |
+| File-backed H2 and Portable Local | Preserve prepared work in the database file. |
+| Embedded in-memory H2 | Can join a live transaction, but data and prepared work do not survive restart. |
+| PostgreSQL | Recovers prepared transactions when the server permits them and the recovery account has the required access. |
+| MySQL | Recovers prepared transactions when the recovery account has the database privileges required to inspect them. |
+| Kubling | Reconnects to the remote Kubling instance through a new connection; both instances need durable transaction state for an end-to-end restart. |
+
+A data source using Soft Transaction emulation remains on the compensation path
+and is not enlisted simultaneously through native database recovery.
+
+### Native providers
+
+A provider must separately advertise native transactions, durable recovery and
+a stable resource identity. Kubling then keeps the provider branch in the
+coordinated transaction and can discover and resolve it after restart.
+
+Providers that advertise only live native transactions retain commit and
+rollback behavior while their transaction is active, but do not gain a restart
+guarantee. Kubling does not place native provider branches in the Soft
+Transaction compensation journal.
+
+## Soft Transaction restart behavior
+
+The Soft Transaction journal records the participant, lifecycle state,
+coordinator decision, timestamps, recoverability and remaining compensation
+count without exposing statement values.
+
+On startup, Kubling:
+
+1. removes work whose terminal outcome is already known
+2. resumes an eligible compensation only when rollback was durably selected
+3. retains failed, expired or ambiguous work and its row locks
+4. aborts startup if resolving an external effect would require guessing
+
+`crashCompensationMaxAgeMinutes` limits the age of a compensation that Kubling
+may execute automatically. An older entry is retained as unresolved; it is not
+silently discarded.
+
+Use [`SOFT_TRANSACTIONS.TXDB`](/engine/ss/stx) while the instance is running to
+inspect the redacted lifecycle state.
+
+### Upgrade from an earlier journal
+
+Before upgrading, verify that `SOFT_TRANSACTIONS.TXDB` is empty. Records written
+before the durable lifecycle fields were introduced remain readable, but
+Kubling marks them `UNRESOLVED` because their external outcome cannot be
+inferred safely.
+
+## Unresolved startup procedure
+
+An unresolved Soft Transaction is an incident boundary, not a retry prompt.
+Kubling does not expose an API that guesses or marks the external outcome.
+
+1. Stop automatic restart attempts and keep the affected instance offline.
+2. Preserve a copy of the Soft Transaction journal and, when enabled, the
+   coordinator state file before changing either one.
+3. Use the redacted startup diagnostic to identify the transaction,
+   participant, lifecycle state, decision and age. Correlate it with source-side
+   audit data; SQL text and mutation values are intentionally omitted.
+4. Determine whether the external side effect occurred and reconcile the source
+   according to the application's incident procedure. Do not replay a mutation
+   or compensation unless its idempotency is established.
+5. Account for every retained operation before retiring a journal. If the
+   reconciled journal is replaced, archive the original and configure a new,
+   empty `transactionsDBPath`; never delete it merely to bypass the startup
+   guard.
+6. Restart the instance and verify transaction recovery health and the source
+   state before returning traffic.
+
+<Callout type="warning">
+  Replacing the journal releases Kubling's retained recovery evidence and row
+  locks. It is safe only after the external outcome of every retained operation
+  has been resolved outside Kubling.
+</Callout>
+
+## Monitor recovery
+
+```http
+GET http[s]://[address]:8282/observe/health/transaction-recovery
+```
+
+The response uses these availability values:
+
+| Value | Meaning |
+| --- | --- |
+| `disabled` | Periodic native-participant recovery is disabled. |
+| `initializing` | Recovery is enabled and no scan has completed yet. |
+| `recovering` | A scan is active. |
+| `available` | The last scan completed successfully with no unresolved work. |
+| `degraded` | The last scan failed or left unresolved work. |
+
+The recovery health group remains `UP` when availability is `degraded`. This
+keeps an unresolved participant from triggering an automatic restart loop; alert
+on `recoveryAvailability` and the recovery metrics instead.
+
+See [Metrics](/observability/metrics#transaction-metrics) for transaction and
+recovery metric names.

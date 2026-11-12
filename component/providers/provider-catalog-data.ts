@@ -1,5 +1,6 @@
 export const providerCategories = [
   'Infrastructure & orchestration',
+  'Industrial & building automation',
   'Databases & storage',
   'APIs & services',
   'Development & testing'
@@ -47,6 +48,43 @@ export type ProviderCatalogEntry = {
 }
 
 export const providerCatalog: ProviderCatalogEntry[] = [
+  {
+    name: 'BACnet',
+    description:
+      'Discovers BACnet/IP devices and exposes building-management objects and points through profile-driven tables, with opt-in updates.',
+    category: 'Industrial & building automation',
+    kind: 'Integration',
+    status: 'Official',
+    publisher: 'Kubling',
+    capabilities: ['Semantic fragment', 'Rich values', 'Access patterns'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/bacnet-provider',
+        identifier: 'kubling/bacnet-provider'
+      },
+      {
+        channel: 'Debian package',
+        href: '/install/debian',
+        identifier: 'kubling-bacnet-provider'
+      }
+    ],
+    sourceUrl:
+      'https://github.com/kubling-community/kubling-providers/tree/main/providers/bacnet',
+    keywords: [
+      'automation',
+      'bacnet',
+      'bacnet/ip',
+      'bas',
+      'bms',
+      'building management',
+      'controls',
+      'facilities',
+      'hvac',
+      'ot',
+      'points'
+    ]
+  },
   {
     name: 'Cassandra',
     description:
@@ -161,6 +199,35 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     sourceUrl:
       'https://github.com/kubling-community/kubling-providers/tree/main/providers/openapi',
     keywords: ['api', 'http', 'json', 'rest', 'openapi 3']
+  },
+  {
+    name: 'Object Storage',
+    description:
+      'Exposes S3-compatible, Azure Blob, Google Cloud Storage and filesystem buckets through one relational object model.',
+    category: 'Databases & storage',
+    kind: 'Integration',
+    status: 'Official',
+    publisher: 'Kubling',
+    capabilities: ['Semantic fragment', 'Rich values', 'Access patterns'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/object-storage-provider',
+        identifier: 'kubling/object-storage-provider'
+      }
+    ],
+    sourceUrl:
+      'https://github.com/kubling-community/kubling-providers/tree/main/providers/object-storage',
+    keywords: [
+      'azure blob',
+      'blob',
+      'filesystem',
+      'gcs',
+      'google cloud storage',
+      'object storage',
+      's3',
+      'storage'
+    ]
   },
   {
     name: 'Redfish',

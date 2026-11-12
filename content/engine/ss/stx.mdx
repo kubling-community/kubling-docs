@@ -1,26 +1,57 @@
+import { Callout } from 'nextra/components'
 import Tag from '../../../component/Tag'
 
-# SOFT_TRANSACTIONS Schema <Tag description={"v24.6+"} />
+# SOFT_TRANSACTIONS schema <Tag description={"v24.6+"} />
 
-The `SOFT_TRANSACTIONS` schema provides visibility into the internal Soft Transaction subsystem.  
-It is mainly used for inspection, debugging, and monitoring purposes.
+The `SOFT_TRANSACTIONS` schema exposes redacted operational state for Kubling's
+Soft Transaction mechanism.
 
-## Tables and Views
+## `SOFT_TRANSACTIONS.TXDB`
 
-### `SOFT_TRANSACTIONS.TXDB`
+`TXDB` contains one row for each operation currently retained in the Soft
+Transaction journal. Rows can represent active work, pending removal or an
+operation preserved for recovery.
 
-This table exposes a row for each Soft Transaction **operation** currently registered in the system.  
-It reflects both in-progress and already-applied operations.
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `stx_id` | `string` | Identifier of the participating Soft Transaction resource. |
+| `registration_epoch_milli` | `long` | Registration time in milliseconds since the Unix epoch. |
+| `registration_date` | `timestamp` | Registration time as a timestamp. |
+| `operation_id` | `string` | Operation identifier within the participant. |
+| `vdb` | `string` | VDB name associated with the operation. |
+| `is_applied` | `boolean` | Compatibility view of whether the mutation was applied. Prefer `state` and `decision` for recovery diagnostics. |
+| `command` | `string` | Compatibility column. Returns `NULL` so statement contents are not exposed. |
+| `compensation_command` | `string` | Compatibility column. Returns `NULL` so compensation contents are not exposed. |
+| `expiration_epoch_milli` | `long` | Automatic-compensation expiration time in milliseconds since the Unix epoch. |
+| `expiration_date` | `timestamp` | Automatic-compensation expiration time as a timestamp. |
 
-| Column Name                | Type        | Description                                                                                               |
-|----------------------------|-------------|-----------------------------------------------------------------------------------------------------------|
-| `stx_id`                   | `string`    | Soft Transaction ID                                                                                       |
-| `registration_epoch_milli` | `long`      | Registration timestamp (in milliseconds since epoch)                                                      |
-| `registration_date`        | `timestamp` | Human-readable registration timestamp                                                                     |
-| `operation_id`             | `string`    | Operation ID within the transaction (a single transaction may contain multiple operations)                |
-| `vdb`                      | `string`    | Name of the virtual database where the transaction applies                                                |
-| `is_applied`               | `boolean`   | Indicates whether the transaction was already applied and marked for removal in the transaction store     |
-| `command`                  | `string`    | Command executed as part of the operation                                                                 |
-| `compensation_command`     | `string`    | Compensation command to reverse the operation (used when the source does not support native transactions) |
-| `expiration_epoch_milli`   | `long`      | Expiration timestamp (in milliseconds since epoch)                                                        |
-| `expiration_date`          | `timestamp` | Human-readable expiration timestamp                                                                       |
+### Recovery fields <Tag description={"v26.7+"} />
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `transaction_id` | `string` | Coordinating transaction identifier. |
+| `participant` | `string` | Data-source participant associated with the operation. |
+| `state` | `string` | Durable operation lifecycle state. |
+| `decision` | `string` | Durable coordinator decision. |
+| `last_update_epoch_milli` | `long` | Last lifecycle update in milliseconds since the Unix epoch. |
+| `last_update_date` | `timestamp` | Last lifecycle update as a timestamp. |
+| `crash_recoverable` | `boolean` | Whether Kubling can safely run this operation's logical compensation after a crash. |
+| `pending_compensation_count` | `integer` | Number of compensation steps still retained. |
+
+The legacy statement columns remain present but are redacted.
+
+#### Lifecycle values
+
+`state` can be `REGISTERED`, `EXECUTING`, `APPLIED`, `COMPENSATING`,
+`COMPENSATED`, `COMPLETED` or `UNRESOLVED`.
+
+`decision` can be `UNDECIDED`, `COMMIT` or `ROLLBACK`.
+
+<Callout type="warning">
+  `UNRESOLVED` means Kubling cannot infer the external outcome safely. Do not
+  replay the original mutation or its compensation from the system table. Follow
+  the [unresolved startup procedure](/engine/tx/recovery#unresolved-startup-procedure).
+</Callout>
+
+The table is read-only. It does not provide an operator action for changing a
+transaction outcome.

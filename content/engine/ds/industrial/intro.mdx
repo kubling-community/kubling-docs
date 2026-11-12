@@ -2,6 +2,15 @@ import { Callout } from 'nextra/components'
 
 # Industrial Data Sources
 
+<Callout type="warning">
+  The built-in `SNMP` and `MODBUS` Data Sources are deprecated since Kubling
+  26.7.1 and intended only for existing deployments. They are planned for
+  removal in a future major release cycle and replacement by external
+  providers, allowing protocol integrations to evolve independently while
+  keeping the Kubling core focused on federation. No removal version has been
+  announced.
+</Callout>
+
 Kubling provides support for select industrial protocols, including **SNMP** and **Modbus**, enabling you to access and model operational technology (OT) data sources with minimal configuration effort.
 
 These protocols were originally designed for control and monitoring, not for analytics or schema-based access. Yet, Kubling makes it possible to treat these sources like any other data system, using familiar SQL constructs to define tables and query live device data.
@@ -21,7 +30,7 @@ Kubling changes that. It lets you expose industrial data sources—such as PLCs,
 - **Operational Modeling:** Describe your physical assets with schema-first definitions, bringing structure to previously opaque systems.
 
 <Callout type="info">
-Kubling currently supports **SNMP** and **Modbus**. Support for additional industrial protocols may be added in future releases.
+New industrial protocol integrations are expected to be delivered as external providers rather than built into the Kubling core.
 </Callout>
 
 ## Deployment Considerations

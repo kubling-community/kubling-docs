@@ -151,6 +151,25 @@ engine `DOWN`. A startup-blocking semantic failure reports `unavailable` and
 does contribute `DOWN`. Use the
 [semantic admin endpoints](/semantics/operations) for per-VDB diagnostics.
 
+### Transaction recovery health <Tag description={"v26.7+"} />
+
+The dedicated recovery health group is available at:
+
+```http
+GET http[s]://[address]:8282/observe/health/transaction-recovery
+```
+
+`recoveryAvailability` can be `disabled`, `initializing`, `recovering`,
+`available` or `degraded`. The response also reports whether periodic recovery
+is enabled, whether a scan is active, whether unresolved work remains, the last
+scan outcome and timestamps, and the number of transactions recovered by the
+last scan.
+
+A degraded recovery state remains `UP` so it does not trigger an automatic
+restart loop. Monitor the recovery details and the transaction recovery metrics
+below. See [Timeouts and recovery](/engine/tx/recovery) for the operating
+procedure.
+
 ---
 # Metrics
 
@@ -343,41 +362,61 @@ This is a per-transport metric. Use the attached tags (`transport=native` and `t
 Total number of outbound network bytes sent since the current instance started.
 As with inbound metrics, this is collected per transport. Use the `transport` tag to filter and attribute usage correctly.
 
-### `kubling.bm.mem.usage` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
-Estimated memory currently used by the Buffer Manager.
+### Buffer Manager metrics <Tag description={"v25.6+"} />
 
-### `kubling.bm.disk.write.total` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
-Total number of write operations performed by the Buffer Manager to disk.
+| Metric | Type | Unit | Meaning |
+| --- | --- | --- | --- |
+| `kubling.bm.mem.usage` | Gauge | MiB | Estimated memory currently used by the Buffer Manager. |
+| `kubling.bm.disk.write.total` | Counter | operations | Persistent write operations since the instance started. |
+| `kubling.bm.disk.read.total` | Counter | operations | Persistent read operations since the instance started. |
+| `kubling.bm.disk.usage` | Gauge | MiB | Current persistent buffer use. |
 
-### `kubling.bm.disk.read.total` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
-Total number of read operations performed by the Buffer Manager from disk.
+Use these process-wide metrics with the query-correlated events described in
+[Buffer Manager](/engine/buffer-manager#observe-buffer-use).
 
-### `kubling.bm.disk.usage` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
-Total disk space currently used by the Buffer Manager (in bytes).
+## Transaction metrics <Tag description={"v26.7+"} />
 
-## Soft Transactions related metrics
+The canonical transaction metrics cover native database, provider-native and
+Soft Transaction participants.
 
-### `kubling.stx.count` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
-Cumulative number of Soft Transactions operations initiated since engine startup.
+| Metric | Type and tags | Meaning |
+| --- | --- | --- |
+| `kubling.transaction.started` | Counter | Coordinated transactions started since the instance started. |
+| `kubling.transaction.active` | Gauge | Coordinated transactions currently active. |
+| `kubling.transaction.completion` | Counter, `outcome=committed\|rolled_back` | Terminal transaction outcomes. |
+| `kubling.transaction.timeout` | Counter | Transactions rolled back after reaching their deadline. This is a subset of `outcome=rolled_back`. |
+| `kubling.transaction.heuristic` | Counter | Heuristic transaction outcomes. |
+| `kubling.transaction.recovery.active` | Gauge | `1` while a recovery scan is active; otherwise `0`. |
+| `kubling.transaction.recovery.scan` | Counter, `outcome=successful\|failed` | Completed recovery scans. |
+| `kubling.transaction.recovery.recovered` | Counter | Transaction records resolved by recovery scans. |
+| `kubling.transaction.recovery.unresolved` | Gauge | `1` when the last completed scan left unresolved work; otherwise `0`. |
+| `kubling.transaction.recovery.last.success` | Gauge | Unix epoch time, in seconds, of the last successful scan. |
+| `kubling.transaction.soft.row.locks.current` | Gauge | Rows currently locked by Soft Transactions. |
+| `kubling.transaction.soft.store.size` | Gauge | Current Soft Transaction journal size in bytes. |
 
-### `kubling.stx.current` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
-Number of Soft Transactions operations currently open and active.
+Metric tags intentionally exclude transaction IDs, branch IDs, data-source
+names and SQL text.
 
-### `kubling.stx.db.size` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
-Current size (in bytes) of the Soft Transactions internal database.
+### Legacy Soft Transaction metrics
 
-### `kubling.stx.row.locks.current` <Tag description={"Gauge"} /> <Tag description={"v25.6+"} />
-Number of rows currently locked by ongoing Soft Transactions.
+The `kubling.stx.*` metrics remain available with their existing values for
+compatibility. Migrate dashboards and alerts to the canonical namespace; new
+integrations should not depend on the compatibility names.
 
-### `kubling.stx.rollback.count` <Tag description={"Counter"} /> <Tag description={"v25.6+"} />
-Cumulative number of rollback operations performed on Soft Transactions since engine startup.
+| Legacy metric | Migration target | Note |
+| --- | --- | --- |
+| `kubling.stx.count` | `kubling.transaction.started` | The canonical counter covers all coordinated transaction paths. |
+| `kubling.stx.current` | `kubling.transaction.active` | The canonical gauge covers all coordinated transaction paths. |
+| `kubling.stx.rollback.count` | `kubling.transaction.completion{outcome="rolled_back"}` | Rolled-back completions include the timeout subset. |
+| `kubling.stx.row.locks.current` | `kubling.transaction.soft.row.locks.current` | Direct Soft Transaction replacement. |
+| `kubling.stx.db.size` | `kubling.transaction.soft.store.size` | Direct Soft Transaction replacement. |
 
 ## JavaScript related metrics
 
 ### `kubling.js.threads.active` <Tag description={"Gauge"} />
 Provides the number of current active JavaScript context threads.
 
-### `kubling.js.executions` <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-sm font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 font-gilroyMedium">Counter</span>
+### `kubling.js.executions` <Tag description={"Counter"} />
 Provides the number of total JavaScript context threads claimed during current execution.
 
 ### `kubling.js.auth.thread.active` <Tag description={"Gauge"} />
@@ -408,26 +447,47 @@ deltas between snapshots, so cumulative values are not counted repeatedly.
 Metrics are engine-side observations. They do not prove that a disconnected
 HTTP caller received the final task snapshot.
 
-## Cache related metrics <Tag description={"v24.5.3+"} />
+## Cache metrics <Tag description={"v24.5.3+"} />
 
-### `kubling.cache.request.count` <Tag description={"Counter"} />
-Number of times the Engine requested for a Cache.
+Aggregate metrics describe all backing caches in the current Kubling process:
 
-### `kubling.cache.entries.current` <Tag description={"Gauge"} />
-Current cached result sets.
+| Metric | Type | Unit | Meaning |
+| --- | --- | --- | --- |
+| `kubling.cache.request.count` | Counter | lookups | Cache lookups since the instance started. |
+| `kubling.cache.entries.current` | Gauge | entries | Entries currently retained. |
+| `kubling.cache.hit.count` | Counter | lookups | Lookups that returned a cached value. |
+| `kubling.cache.hit.ratio` | Gauge | percent | Percentage of cache lookups that were hits. It reports `0` before the first lookup. |
+| `kubling.cache.mem.usage` | Gauge | MiB | Estimated capacity charged across the backing caches. This is not JVM heap use. |
 
-### `kubling.cache.hit.count` <Tag description={"Counter"} />
-Number of times the Engine requested for a Cache and lookup methods have returned a cached value.
+### Per-cache metrics <Tag description={"v26.7+"} />
 
-### `kubling.cache.hit.ratio` <Tag description={"Gauge"} />
-Ratio of cache requests which were hits.
+Detailed metrics add a bounded `cache` tag so result and prepared-plan cache
+behavior can be inspected separately:
 
-### `kubling.cache.mem.usage` <Tag description={"Gauge"} />
-Total memory usage in Megabytes.
+| Metric | Type | Unit and tags | Meaning |
+| --- | --- | --- | --- |
+| `kubling.cache.detail.entries.current` | Gauge | entries, `cache` | Entries currently retained by this cache. |
+| `kubling.cache.detail.logical.size` | Gauge | MiB, `cache` | Estimated logical result volume represented by retained entries. |
+| `kubling.cache.detail.capacity.weight` | Gauge | MiB, `cache` | Capacity currently charged to the cache limit. |
+| `kubling.cache.detail.limit.entries` | Gauge | entries, `cache` | Configured entry limit. |
+| `kubling.cache.detail.limit.logical.size` | Gauge | MiB, `cache` | Configured logical-size limit, or `0` when that limit is disabled. |
+| `kubling.cache.detail.access.count` | Counter | lookups, `cache`, `result=hit\|miss` | Lookup outcomes since the instance started. |
+| `kubling.cache.detail.removal.count` | Counter | entries, `cache`, `cause=collected\|expired\|explicit\|replaced\|size` | Entries removed for each bounded cause. |
+
+Logical size estimates the retained result payload. Capacity weight is the
+value charged to eviction limits, including a non-zero charge for entries
+whose logical result size cannot be estimated. Use removal cause `size` to
+identify pressure from either the entry limit or logical-size limit.
 
 <Callout type='info'>
-    Metrics come with without any tags by default. You can specify yours in the `metricsCommonTags` attribute of the [Main application configuration](/schemas#main-application-configuration).
+  Prometheus exporters normalize metric names and may add type or unit suffixes.
+  The names above are the canonical Kubling names. Custom tags configured with
+  `metricsCommonTags` are added to the exposed series. See
+  [Main application configuration](/schemas#main-application-configuration).
 </Callout>
+
+See [Query result cache](/engine/cache#observe-cache-behavior) for cache
+configuration, identity and invalidation behavior.
 
 ## Prometheus
 The metrics mentioned above are automatically adapted to [Prometheus format](https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md).<br/>

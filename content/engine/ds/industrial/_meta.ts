@@ -1,6 +1,6 @@
 export default {
     "intro": "Introduction",
-    "snmp": "SNMP",
-    "modbus": "Modbus",
+    "snmp": "SNMP (Deprecated)",
+    "modbus": "Modbus (Deprecated)",
     "tools": "Tools"
 }

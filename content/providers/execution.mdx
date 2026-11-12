@@ -1,0 +1,48 @@
+import Tag from '../../component/Tag'
+
+# Provider mutations
+
+Kubling uses each provider's declared capabilities to determine how an
+`INSERT`, `UPDATE` or `DELETE` can be executed. Provider-specific support
+belongs to that provider's documentation; this page describes behavior common
+to every gRPC provider.
+
+## Multi-request `UPDATE` and `DELETE` <Tag description={"v26.7+"} />
+
+A provider may be able to address one exact row but be unable to express a set
+of resolved rows in one request. For example, it may support equality but not
+the logical `OR` required to combine several row identities.
+
+Kubling can split that `UPDATE` or `DELETE` into one provider request per row
+when both of these conditions are met:
+
+- the table has a usable exact row identity
+- the statement runs inside an explicit transaction that provides a rollback
+  boundary
+
+The transaction path determines the safety boundary:
+
+| Transaction path | Safety boundary |
+| --- | --- |
+| Provider-native transaction | All requests use the transaction-bound provider connection. A failure marks the transaction rollback-only. |
+| Soft Transaction | Kubling locks the complete row set and records every mutation and compensation before the first external request. |
+| No explicit supported transaction | Kubling rejects the statement before sending a provider mutation request. |
+
+When the provider can express the complete filter, Kubling continues to send
+one request. A table without a usable row identity can use that single-request
+path, but not the per-row fallback.
+
+`INSERT` behavior is unchanged. Synthetic-table mutation rewrites have their
+own execution model and are not covered by this split contract.
+
+See [Row identity](/engine/tx/identity) for key selection and
+[Soft Transaction model](/engine/tx/model#multi-request-mutations) for commit
+and rollback behavior.
+
+## Operational impact
+
+A provider without a combined filter may receive one request per resolved row.
+Use selective predicates for bulk mutations and account for the additional
+round trips. If the statement is rejected because it requires several
+requests, start an explicit supported transaction, narrow the predicate or use
+a provider that can express the complete filter.

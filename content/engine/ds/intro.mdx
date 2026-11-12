@@ -17,9 +17,12 @@ Kubling supports the following main categories:
 - **Script Document:** JavaScript handlers expose semi-structured documents or
   APIs as tables. See [Script Document](./script-doc).
 - **Embedded and Portable Local:** Local storage is hosted with the engine for
-  lightweight or self-contained models.
-- **Industrial:** Built-in protocol adapters integrate systems such as SNMP and
-  Modbus.
+  lightweight or self-contained models. The
+  [RocksDB Data Source](./rocksdb) provides preview disk-backed relational
+  tables with declared keys and indexes.
+- **Industrial:** The built-in SNMP and Modbus adapters are deprecated and
+  retained for existing deployments while external provider replacements are
+  developed.
 - **Proxy:** Composite and routing data sources operate over other Kubling data
   sources instead of connecting directly to a remote origin.
 

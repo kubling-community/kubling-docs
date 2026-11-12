@@ -1,140 +1,82 @@
-# Soft Transaction Model
+import { Callout } from 'nextra/components'
+import Tag from '../../../component/Tag'
 
-Soft Transactions in Kubling define a **logical execution boundary** that groups multiple operations into a single, coordinated unit of work.
+# Soft Transaction model
 
-This model is implemented entirely at the engine level and is designed to operate across **heterogeneous systems**, 
-including data sources with and without native transactional support. 
+A Soft Transaction is Kubling's emulation path for a data source that cannot
+provide the native transaction semantics required by the workload. It is
+configured per data source, so one client transaction can contain native and
+emulated participants.
 
-Rather than assuming uniform guarantees, Kubling explicitly models execution, ordering, and finalization to preserve correctness 
-where possible and make limitations explicit where not.
+<Callout type="warning">
+  A Soft Transaction cannot turn compensation into atomic rollback. Use it only
+  when the external effects are reversible and the application accepts the
+  documented failure boundaries.
+</Callout>
 
-A Soft Transaction establishes:
-- A consistent execution scope
-- Controlled coordination of side effects
-- Deterministic finalization paths
+## Strategies
 
-## Soft Transaction Strategies
+| Strategy | When the mutation reaches the source | Rollback behavior |
+| --- | --- | --- |
+| `DEFER_OPERATION` | During transaction completion | Discards work that has not executed; compensates an applied prefix if completion fails. |
+| `IMMEDIATE_OPERATION` | When the statement runs | Compensates mutations that were already applied. |
 
-Execution behavior within a Soft Transaction is governed by the **Soft Transaction Strategy**, which is configured **per Data Source**, not globally.
+`DEFER_OPERATION` is the default. A VDB can use different strategies for
+different data sources in the same transaction.
 
-Kubling supports two strategies:
+## Lifecycle
 
-- **`DEFER_OPERATION`** (default)
-- **`IMMEDIATE_OPERATION`**
+### Begin
 
-Because strategies are defined per data source, a single Soft Transaction may coordinate:
+Kubling creates the transaction context. A data source becomes a participant
+when the transaction first uses it.
 
-- Deferred execution for some data sources
-- Immediate execution for others
-- Native transactions for certain systems
-- Compensation-based rollback for non-transactional systems
+### Execute
 
-This flexibility is fundamental to Kubling’s ability to orchestrate heterogeneous environments.
+For each emulated participant, Kubling records mutations in statement order.
+Depending on the strategy, it either retains the mutation for completion or
+executes it and durably records the information needed for compensation.
 
-## Transaction Lifecycle (Logical Model)
+### Complete
 
-Independently of the strategies involved, every Soft Transaction follows the same **logical lifecycle**:
+On commit, deferred mutations are applied and immediate mutations are accepted
+as the transaction outcome. On rollback, unapplied work is discarded and
+already applied work is compensated in reverse order.
 
-1. **Begin**
-2. **Execution**
-3. **Pre-Commit**
-4. **Commit or Rollback**
+Locks and transaction-local state are released only after commit, rollback or
+timeout completes. A failed compensation is reported as a failed rollback and
+its recovery evidence is retained.
 
-The phases below describe this lifecycle and identify where strategy- and data-source-specific behavior applies.
+## Native provider selection
 
-## Begin
+For a provider-backed data source, `softTransactions.enabled` opts the source
+into coordinated transactions. Kubling then selects the strongest path the
+provider declares:
 
-When a Soft Transaction begins:
+- A provider with native transactions owns isolation, statement execution,
+  commit and rollback.
+- A provider without native transactions uses the configured Soft Transaction
+  strategy.
 
-- A transaction identifier is created
-- A transaction context is established
-- Data sources become participants as operations are evaluated
+When the native path is selected, `strategy` and `mvcc` do not override the
+provider's transaction model. Kubling also does not add emulated row locks,
+simulated MVCC or compensation.
 
-At this stage, no external side effects have occurred.
+## Multi-request mutations <Tag description={"v26.7+"} />
 
-## Execution Phase
+A provider may be able to mutate one exact row but be unable to encode several
+resolved rows in one request. Kubling can split that statement only when an
+explicit transaction provides a safe rollback boundary:
 
-During execution, operations are evaluated under the active transaction context.
+- a provider-native transaction executes every request on the bound provider
+  connection and marks the transaction rollback-only if one fails
+- a Soft Transaction acquires the complete lock set and records every mutation
+  and compensation before the first request can execute
 
-### Operation Enlistment Model
+Without either boundary, Kubling rejects the statement before sending the first
+mutation. Providers that can represent the complete exact filter continue to
+receive one request.
 
-Operations are **enlisted per Data Source**.
-
-For each participating data source:
-- A dedicated operation group is created
-- Operations targeting that data source are appended to its group
-- Execution order is preserved **within each group**
-
-This model allows Kubling to:
-- Apply different execution strategies per data source
-- Preserve deterministic ordering where required
-- Coordinate systems with incompatible transactional semantics
-
-### `DEFER_OPERATION`
-
-With the **`DEFER_OPERATION`** strategy:
-
-- Operations are **enlisted**, not executed immediately
-- The engine accumulates operations per data source
-- No interaction with the underlying system occurs during execution
-
-This behavior is identical regardless of whether the underlying data source supports native transactions.
-
-### `IMMEDIATE_OPERATION`
-
-With the **`IMMEDIATE_OPERATION`** strategy:
-
-- Operations are executed as they are evaluated
-- If the underlying data source supports transactions:
-  - Kubling opens a native transaction
-  - The connection is retained and not returned to the pool
-- If the underlying data source does not support transactions:
-  - Operations are executed directly
-  - Side effects become immediately visible
-
-## Pre-Commit
-
-Before finalization, the engine enters a **pre-commit phase**.
-
-During this phase:
-
-- No new operations are admitted
-- The set of participating data sources is fixed
-- The final commit or rollback path is determined **per data source**
-
-Pre-commit establishes a stable boundary before irreversible actions occur.
-
-## Commit (Structural Semantics)
-
-Commit marks the point at which a Soft Transaction is finalized successfully from the engine’s perspective.
-
-Commit behavior is evaluated **per Data Source**, according to its configured strategy and capabilities:
-
-- Under **`DEFER_OPERATION`**, enlisted operations may be executed at this stage
-- Under **`IMMEDIATE_OPERATION`**, commit may be purely logical
-
-Commit does not imply uniform transactional guarantees across all systems.  
-Its **semantic implications** are described in detail in *Commit, Rollback & Compensation*.
-
-## Rollback (Structural Semantics)
-
-Rollback indicates that a Soft Transaction should not be considered successful.
-
-Rollback behavior is also evaluated **per Data Source**:
-
-- Native rollback is used where supported
-- Explicit compensation is used where required
-
-Rollback does not imply that no side effects occurred.  
-Its **semantic meaning and limitations** are described in detail in *Commit, Rollback & Compensation*.
-
-## Transaction Boundaries and Visibility
-
-Soft Transactions define clear coordination boundaries:
-
-- External systems do not observe in-progress transactional intent
-- The engine maintains a consistent internal view of execution state
-- Finalization determines when effects become stable or are reconciled
-
-Concurrency control and visibility within these boundaries are enforced through row-level locking and transaction-local visibility mechanisms, 
-described in subsequent sections.
+See [Commit, rollback and compensation](/engine/tx/finalization) for finalization
+semantics and [Timeouts and recovery](/engine/tx/recovery) for process-restart
+behavior.
