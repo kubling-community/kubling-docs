@@ -210,5 +210,18 @@ When no DDL is defined and there are `importer` properties, the engine automatic
 In this specific sample all the `TABLES` of the schema `PUBLIC` will have a local Kubling `TABLE`.
 
 
-## MySQL Data Source (`MYSQL`)
-Configuration is exactly the same as `POSTGRESQL` (above). Only difference is that `dataSourceType` must have the value `MYSQL`.
+## MariaDB Data Source (`MARIADB`) <Tag description={"v26.7.2+"} />
+
+Use `MARIADB` for MariaDB and compatible MySQL servers. It uses the
+[Standard DB Data Source Configuration](/schemas#standard-db-data-source-configuration),
+with `dataSourceType` set to `MARIADB`.
+
+<Callout type="warning">
+  `MYSQL` is deprecated. Existing descriptors remain supported temporarily,
+  but should be migrated to `MARIADB` before the next major release.
+
+  Both types use MariaDB Connector/J. Before changing the type, review any
+  driver-specific `dataSourceProperties` and configure an explicit TLS policy
+  when the server does not satisfy the driver's certificate and hostname
+  verification defaults.
+</Callout>
