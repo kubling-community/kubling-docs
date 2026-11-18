@@ -54,16 +54,17 @@ const banner = (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
       <span>Migration guides:</span>
       <a
-        href="/naming-migration"
+        href="/engine/ds/db-data-sources#mariadb-data-source-mariadb-"
         className="underline underline-offset-4 hover:no-underline"
       >
-        Kubling 26.5 namespace, JDBC and error-code changes →
+        Migrate the deprecated <code>MYSQL</code> Data Source type to{' '}
+        <code>MARIADB</code> →
       </a>
       <a
         href="/cli/migration"
         className="underline underline-offset-4 hover:no-underline"
       >
-        KDV 26.3+ CLI project and test workflow changes →
+        KDV 26.3+ CLI migration →
       </a>
     </div>
   </Banner>

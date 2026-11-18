@@ -3,6 +3,16 @@
 This page covers Kubling releases. KDV is versioned independently; see the
 [KDV changelog](/cli/changelog) for CLI releases.
 
+## v26.7.2
+
+- Added `MARIADB` as the primary Data Source type for MariaDB and compatible
+  MySQL servers. Existing `MYSQL` descriptors remain supported temporarily but
+  are deprecated and should be migrated to `MARIADB`.
+- Standardized MariaDB and MySQL-compatible connections, including native
+  transaction recovery, on MariaDB Connector/J. Existing deployments should
+  review driver-specific properties and TLS settings when upgrading.
+- Updated bundled runtime dependencies.
+
 ## v26.7.1
 
 - Added opt-in Soft Transactions to the Preview
@@ -44,6 +54,10 @@ This page covers Kubling releases. KDV is versioned independently; see the
   [BACnet Provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/bacnet)
   for exposing building-management devices, objects and points from BACnet/IP
   networks through profile-driven tables.
+- Added the official
+  [Oracle Database Provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/oracle)
+  for discovering and querying Oracle Database tables and views, with mutations
+  and native transaction support.
 - Added the official
   [Object Storage Provider](https://github.com/kubling-community/kubling-providers/tree/main/providers/object-storage)
   for exposing S3-compatible, Azure Blob, Google Cloud Storage and filesystem

@@ -230,6 +230,34 @@ export const providerCatalog: ProviderCatalogEntry[] = [
     ]
   },
   {
+    name: 'Oracle Database',
+    description:
+      'Discovers Oracle Database tables and views, pushes down relational queries, and supports mutations and native transactions.',
+    category: 'Databases & storage',
+    kind: 'Integration',
+    status: 'Official',
+    publisher: 'Kubling',
+    capabilities: ['Aggregate pushdown'],
+    distributions: [
+      {
+        channel: 'Container image',
+        href: 'https://hub.docker.com/r/kubling/oracle-provider',
+        identifier: 'kubling/oracle-provider'
+      }
+    ],
+    sourceUrl:
+      'https://github.com/kubling-community/kubling-providers/tree/main/providers/oracle',
+    keywords: [
+      'database',
+      'jdbc',
+      'native transactions',
+      'oracle',
+      'oracle database',
+      'relational',
+      'storage'
+    ]
+  },
+  {
     name: 'Redfish',
     description:
       'Exposes hardware inventory, health, firmware, power and thermal data from multiple Redfish BMCs as bounded read-only tables.',

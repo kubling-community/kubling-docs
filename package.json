@@ -27,7 +27,7 @@
   },
   "homepage": "https://docs.kubling.com",
   "dependencies": {
-    "next": "16.4.1",
+    "next": "16.4.6",
     "nextra": "4.6.1",
     "nextra-theme-docs": "4.6.1",
     "react": "19.2.8",
@@ -45,6 +45,8 @@
     "typescript": "6.0.3"
   },
   "overrides": {
+    "katex": "0.19.1",
+    "minimatch": "11.0.9",
     "zod": "4.6.7"
   }
 }

@@ -89,7 +89,7 @@ The supported recovery boundary covers:
 | File-backed H2 and Portable Local | Preserve prepared work in the database file. |
 | Embedded in-memory H2 | Can join a live transaction, but data and prepared work do not survive restart. |
 | PostgreSQL | Recovers prepared transactions when the server permits them and the recovery account has the required access. |
-| MySQL | Recovers prepared transactions when the recovery account has the database privileges required to inspect them. |
+| MariaDB and compatible MySQL servers | Recover prepared transactions when the recovery account has the database privileges required to inspect them. |
 | Kubling | Reconnects to the remote Kubling instance through a new connection; both instances need durable transaction state for an end-to-end restart. |
 
 A data source using Soft Transaction emulation remains on the compensation path
